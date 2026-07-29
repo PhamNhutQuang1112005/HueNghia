@@ -765,61 +765,66 @@ function saveTicket(){
   }
   closePanel();
   showToast(currentPanelSeats.length > 1 ? 'Đã đặt vé nhóm thành công' : 'Đã đặt vé thành công');
-  if(multiSelectMode) toggleMultiSelect();
+  if(multiSelectMode) exitMultiSelectMode();
 }
 
-/* ---- Modal thông tin khách rước ---- */
-function refreshPickupPrice(){
-  const station = document.getElementById('pickupStation').value.trim();
-  const destination = document.getElementById('pickupDestination').value.trim();
-  const priceRow = document.getElementById('pickupPriceRow');
-  const priceVal = document.getElementById('pickupPriceValue');
-  if(station && destination){
-    const basePrice = 280000;
-    priceVal.textContent = basePrice.toLocaleString('vi-VN') + 'đ';
-    priceRow.style.display = 'flex';
-  } else {
-    priceRow.style.display = 'none';
-    priceVal.textContent = '—';
-  }
-}
-function refreshPickupPreview(){
-  document.getElementById('pickupPreviewName').textContent = document.getElementById('pickupCustomerName').value.trim() || '—';
-  document.getElementById('pickupPreviewPhone').textContent = document.getElementById('pickupPhone').value.trim() || '—';
-  document.getElementById('pickupPreviewStation').textContent = document.getElementById('pickupStation').value.trim() || '—';
-  document.getElementById('pickupPreviewAddress').textContent = document.getElementById('pickupAddress').value.trim() || '—';
-  document.getElementById('pickupPreviewDestination').textContent = document.getElementById('pickupDestination').value.trim() || '—';
-  document.getElementById('pickupPreviewTrip').textContent = document.getElementById('pickupTrip').value.trim() || '—';
-  document.getElementById('pickupPreviewNote').textContent = document.getElementById('pickupNote').value.trim() || '—';
-  const luggageRow = document.getElementById('pickupPreviewLuggage');
-  if(luggageRow){ luggageRow.style.display = document.getElementById('pickupLuggage').checked ? 'flex' : 'none'; }
-  refreshPickupPrice();
-}
-function openPickupModal(){
-  const modal = document.getElementById('pickupModal');
-  const tripEl = document.getElementById('tripTitle');
-  const tripInput = document.getElementById('pickupTrip');
-  if(tripEl && tripInput){ tripInput.value = tripEl.textContent.trim(); }
-  document.getElementById('pickupCustomerName').value = '';
-  document.getElementById('pickupPhone').value = '';
-  document.getElementById('pickupStation').value = '';
-  document.getElementById('pickupAddress').value = '';
-  document.getElementById('pickupDestination').value = '';
-  document.getElementById('pickupTrip').value = '';
-  document.getElementById('pickupNote').value = '';
-  document.getElementById('pickupLuggage').checked = false;
-  refreshPickupPreview();
-  modal.classList.add('open');
-}
-function savePickupInfo(){
-  const name = document.getElementById('pickupCustomerName').value.trim();
-  const phone = document.getElementById('pickupPhone').value.trim();
-  if(!name || !phone){
-    showToast('Vui lòng nhập họ tên và số điện thoại khách');
+/* ---- Bán vé trực tiếp: xác nhận bán và chuyển ghế sang trạng thái đã bán (màu đỏ) ---- */
+function sellTicket(){
+  const type = document.getElementById('f_type').value;
+
+  if(type === 'Trung chuyển' && !document.getElementById('f_transship').value.trim()){
+    showToast('Vui lòng nhập trạm trung chuyển');
     return;
   }
-  closeModal('pickupModal');
-  showToast(`Đã lưu thông tin khách rước: ${name}`);
+  if(type === 'Rước đường' && !document.getElementById('f_transship_select').value.trim()){
+    showToast('Vui lòng chọn địa điểm rước');
+    return;
+  }
+  if(type === 'Rước đường' && !getStationValue().trim()){
+    showToast('Vui lòng chọn trạm đi cho khách rước đường');
+    return;
+  }
+  if(!document.getElementById('f_destination').value.trim()){
+    showToast('Vui lòng chọn trạm đến');
+    return;
+  }
+
+  const applyFormToSeat = (seat) => {
+    seat.customerName = document.getElementById('f_name').value.trim();
+    seat.phone = document.getElementById('f_phone').value.trim();
+    seat.guestType = type;
+    seat.firstStop = getStationValue().trim() || seat.firstStop;
+    seat.lastStop = document.getElementById('f_destination').value.trim() || seat.lastStop;
+    seat.transshipStation = type === 'Rước đường'
+      ? document.getElementById('f_transship_select').value.trim()
+      : document.getElementById('f_transship').value.trim();
+    seat.arrivalTransfer = document.getElementById('f_arrival_transfer').value.trim();
+    seat.hasLuggage = document.getElementById('f_luggage').checked;
+    seat.note = document.getElementById('f_note').value.trim();
+  };
+
+  const seatsToSell = currentPanelSeats.length ? currentPanelSeats : (currentPanelSeat ? [currentPanelSeat] : []);
+  if(!seatsToSell.length){ closePanel(); return; }
+
+  const groupTicketNo = (currentPanelMode === 'edit' && currentPanelSeat && currentPanelSeat.ticketNo)
+    ? currentPanelSeat.ticketNo
+    : ("SGCD-" + String(ticketSeq++).padStart(4,'0'));
+
+  seatsToSell.forEach(seat => {
+    applyFormToSeat(seat);
+    seat.ticketNo = seat.ticketNo || groupTicketNo;
+    seat.paid = true;
+    seat.count = seatsToSell.length;
+    seat.state = 'sold'; // Bán vé -> ghế chuyển sang màu đỏ (đã bán)
+  });
+
+  renderSeats();
+  if(document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
+  closePanel();
+  showToast(seatsToSell.length > 1
+    ? 'Đã bán vé thành công cho ' + seatsToSell.length + ' ghế'
+    : 'Đã bán vé thành công — Ghế ' + seatsToSell[0].code);
+  if(multiSelectMode) exitMultiSelectMode();
 }
 
 /* ---- Modal chỉ định xe ---- */
@@ -832,6 +837,19 @@ function saveAssign(){
   if(document.getElementById('driverWarn').style.display === 'flex'){ showToast('Vui lòng chọn tài xế khác trước khi lưu (BR-07)'); return; }
   closeModal('assignModal');
   showToast('Đã lưu thông tin chỉ định xe');
+}
+
+/* ---- Modal khởi hành xe ---- */
+function openDepartModal(){
+  const tripEl = document.getElementById('tripTitle');
+  const infoEl = document.getElementById('departTripInfo');
+  if(tripEl && infoEl) infoEl.textContent = tripEl.textContent.trim();
+  document.getElementById('departModal').classList.add('open');
+}
+function confirmDepart(){
+  const tripEl = document.getElementById('tripTitle');
+  closeModal('departModal');
+  showToast('Xe đã khởi hành: ' + (tripEl ? tripEl.textContent.trim() : ''));
 }
 
 /* ---- Toast ---- */

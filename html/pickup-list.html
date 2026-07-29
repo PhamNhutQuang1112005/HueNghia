@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Danh sách khách rước liền — Nhà xe Huệ Nghĩa Express</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/pickup-list.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ TOPBAR / SIDEBAR NGANG (y chang trang ticketstaff) ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9"/><path d="M4 16h16"/><path d="M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M18 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>
+      </div>
+      <div class="brand-text"><b>HUỆ NGHĨA EXPRESS</b><span>Hệ thống quản lý nhà xe</span></div>
+    </div>
+
+    <div class="topbar-align-group">
+      <div class="search-wrap">
+        <div class="search-box">
+          <input id="searchInput" type="text" placeholder="Tìm kiếm theo SĐT, Mã vé, Tên hành khách...">
+          <button class="search-btn" type="button" aria-label="Tìm kiếm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          </button>
+        </div>
+        <div class="search-results" id="searchResults">
+          <div class="search-result-row" onclick="pickSearchResult()">
+            <div><div class="src-name">Nguyễn Văn Long</div><div class="src-meta">SG - Châu Đốc • 07:00 • 08/07/2026</div></div>
+            <div class="src-status paid">Đã bán</div>
+          </div>
+          <div class="search-result-row" onclick="pickSearchResult()">
+            <div><div class="src-name">Trần Thị Mai</div><div class="src-meta">SG - Châu Đốc • 22:00 • 08/07/2026</div></div>
+            <div class="src-status hold">Đã đặt</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-btn-group">
+        <button class="pill-btn active" type="button" onclick="location.href='ticketstaff.html'">
+          Quản lý vé
+        </button>
+      </div>
+    </div>
+
+    <div class="topbar-spacer"></div>
+
+    <div class="user-menu" id="userMenu">
+      <button type="button" class="user-chip" id="userChipBtn" aria-haspopup="true" aria-expanded="false">
+        <div class="avatar" id="userAvatar">L</div>
+        <span id="userName">Liêm</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="user-dropdown" id="userDropdown" hidden>
+        <div class="user-dropdown-meta">
+          <b id="userRoleLabel">Nhân viên bán vé</b>
+          <span id="userUsername">banve01</span>
+        </div>
+        <button type="button" class="user-logout-btn" id="logoutBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          Đăng xuất
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="page-head">
+      <div class="page-head-row">
+        <div>
+          <h1>Danh sách hành khách rước liền</h1>
+          <p>Danh sách khách đã đăng ký rước liền, chờ chỉ định lên xe trung chuyển.</p>
+        </div>
+        <div class="pax-count-chip" id="paxCountChip">0 khách chờ chỉ định</div>
+      </div>
+    </div>
+
+    <div class="pax-table-wrap">
+      <table class="pax-table">
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Họ tên</th>
+            <th>SĐT</th>
+            <th>Trạm đi → Trạm đến</th>
+            <th>Trung chuyển đi</th>
+            <th>Trung chuyển đến</th>
+            <th>Ghi chú</th>
+            <th>Baga</th>
+            <th>Trạng thái</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="paxTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== MODAL: CHỈ ĐỊNH XE CHO KHÁCH RƯỚC LIỀN ===== -->
+<div class="overlay" id="assignPickupModal">
+  <div class="assign-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Chỉ định xe rước</h2>
+        <div class="sub" id="assignModalSub">Khách: —</div>
+      </div>
+      <button class="icon-close" onclick="closeAssignModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    </div>
+
+    <div class="panel-body">
+      <!-- LEFT: danh sách phơi xe -->
+      <div>
+        <div class="trip-col-title">Danh sách phơi xe</div>
+        <div class="trip-search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="tripSearchInput" type="text" placeholder="Tìm giờ, biển số, tuyến..." oninput="filterTripList(this.value)">
+        </div>
+        <div class="trip-list" id="tripListPanel"></div>
+      </div>
+
+      <!-- RIGHT: sơ đồ ghế -->
+      <div>
+        <div class="seatmap-col-title">
+          <span>Sơ đồ ghế</span>
+          <span class="seatmap-selected-tag" id="seatSelectedTag"></span>
+        </div>
+        <div class="van-frame" id="vanFrame"></div>
+        <div class="seat-legend">
+          <div class="seat-legend-item"><span class="seat-legend-dot empty"></span>Trống</div>
+          <div class="seat-legend-item"><span class="seat-legend-dot selected"></span>Đang chọn</div>
+          <div class="seat-legend-item"><span class="seat-legend-dot blocked"></span>Ghế không chọn</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-footer">
+      <span class="hint" id="assignHint">Chọn 1 phơi xe và 1 ghế trống để chỉ định.</span>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-secondary" onclick="closeAssignModal()">Đóng</button>
+        <button class="btn btn-primary" id="confirmAssignBtn" disabled onclick="confirmAssign()">Xác nhận chỉ định</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg><span id="toastText"></span></div>
+
+<script src="../js/pickup-list.js"></script>
+</body>
+</html>

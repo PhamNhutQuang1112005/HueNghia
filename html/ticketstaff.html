@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tổng đài — Nhà xe Châu Đốc Express</title>
+<title>Bán vé — Nhà xe Châu Đốc Express</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/callcenter.css">
+<link rel="stylesheet" href="../css/ticketstaff.css">
 </head>
 <body>
 
@@ -43,10 +43,7 @@
       </div>
 
       <div class="tab-btn-group">
-        <button class="pill-btn active" type="button">
-          Quản lý phơi xe
-        </button>
-        <button class="pill-btn active" type="button" onclick="openPickupModal()">
+        <button class="pill-btn active" type="button" onclick="window.location.href='pickup-list.html'">
           Rước liền
         </button>
       </div>
@@ -62,8 +59,8 @@
       </button>
       <div class="user-dropdown" id="userDropdown" hidden>
         <div class="user-dropdown-meta">
-          <b id="userRoleLabel">Nhân viên tổng đài</b>
-          <span id="userUsername">tongdai01</span>
+          <b id="userRoleLabel">Nhân viên bán vé</b>
+          <span id="userUsername">banve01</span>
         </div>
         <button type="button" class="user-logout-btn" id="logoutBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
@@ -225,10 +222,16 @@
             <span class="z2-dot">●</span>
             <a class="z2-link">Lộ trình <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg></a>
           </div>
-          <button class="assign-btn" onclick="openAssignModal()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1Z"/></svg>
-            Chỉ định xe
-          </button>
+          <div class="z2-btn-group">
+            <button class="assign-btn" onclick="openAssignModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+              Chỉ định xe
+            </button>
+            <button class="assign-btn depart-btn" onclick="openDepartModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14"/><path d="M5 17a2 2 0 0 1-2-2v-3.2a1 1 0 0 1 .3-.7l2.6-2.6A2 2 0 0 1 7.3 8H16a2 2 0 0 1 1.6.8l2.1 2.8a1 1 0 0 0 .5.3l1.4.4a1 1 0 0 1 .7 1v1.7a2 2 0 0 1-2 2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/></svg>
+              Khởi hành xe
+            </button>
+          </div>
         </div>
 
         <div class="z2-grid">
@@ -521,6 +524,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
         <span id="savePanelBtnText">Đặt vé</span>
       </button>
+      <button class="btn btn-sell" id="sellPanelBtn" onclick="sellTicket()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="m5 13 4 4L19 7"/></svg>
+        Bán vé
+      </button>
     </div>
   </div>
 </div>
@@ -544,111 +551,6 @@
   </div>
 </div>
 
-<!-- ===== MODAL: THÔNG TIN KHÁCH RƯỚC ===== -->
-<div class="overlay" id="pickupModal">
-  <div class="slidepanel">
-    <div class="panel-head">
-      <div>
-        <h2>Thông tin khách rước</h2>
-        <div class="sub">Nhập thông tin khách rước để lưu vào hệ thống</div>
-      </div>
-      <button class="icon-close" onclick="closeModal('pickupModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
-    </div>
-
-    <div class="panel-body">
-      <div class="panel-form">
-        <div class="form-row" style="--cols:2;">
-          <div class="form-field">
-            <label>Họ và tên <span style="color:var(--red);">*</span></label>
-            <input type="text" id="pickupCustomerName" placeholder="Nguyễn Văn A" oninput="refreshPickupPreview()">
-          </div>
-          <div class="form-field">
-            <label>Số điện thoại <span style="color:var(--red);">*</span></label>
-            <input type="tel" id="pickupPhone" placeholder="09xxxxxxxx" oninput="refreshPickupPreview()">
-          </div>
-        </div>
-
-        <div class="form-row" style="--cols:2;">
-          <div class="form-field">
-            <label>Trạm đi</label>
-            <select id="pickupStation" onchange="refreshPickupPreview(); refreshPickupPrice()">
-              <option value="">Chọn trạm đi</option>
-              <option>Trạm Kinh Dương Vương</option>
-              <option>Trạm An Sương</option>
-              <option>Trạm Q.5</option>
-              <option>Văn phòng trung tâm</option>
-            </select>
-          </div>
-          <div class="form-field">
-            <label>Trung chuyển đi</label>
-            <input type="text" id="pickupAddress" placeholder="Nhập trung chuyển đi" oninput="refreshPickupPreview(); refreshPickupPrice()">
-          </div>
-        </div>
-
-        <div class="form-row" style="--cols:2;">
-          <div class="form-field">
-            <label>Trạm đến</label>
-            <select id="pickupDestination" onchange="refreshPickupPreview(); refreshPickupPrice()">
-              <option value="">Chọn trạm đến</option>
-              <option>Trạm Châu Đốc</option>
-              <option>Trạm Tân Châu</option>
-              <option>Bến xe Châu Đốc</option>
-              <option>Trạm Long Xuyên</option>
-              <option>Trạm Cần Thơ</option>
-            </select>
-          </div>
-          <div class="form-field">
-            <label>Trung chuyển đến</label>
-            <input type="text" id="pickupTrip" placeholder="Nhập trung chuyển đến" oninput="refreshPickupPreview(); refreshPickupPrice()">
-          </div>
-        </div>
-
-        <div class="form-row" style="--cols:2;">
-          <div class="form-field">
-            <label>Ghi chú</label>
-            <input type="text" id="pickupNote" placeholder="Ghi chú thêm..." oninput="refreshPickupPreview()">
-          </div>
-          <div class="form-field checkbox-field">
-            <label>&nbsp;</label>
-            <label class="checkbox-inline">
-              <input type="checkbox" id="pickupLuggage" onchange="refreshPickupPreview()">
-              Có baga kèm theo
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel-ticket-wrap">
-        <div class="ticket">
-          <div class="route">Khách rước</div>
-          <div class="datetime">Thông tin điểm đón</div>
-          <div class="ticket-dash"></div>
-          <div class="kv"><span>Khách</span><span id="pickupPreviewName">—</span></div>
-          <div class="kv"><span>SĐT</span><span id="pickupPreviewPhone">—</span></div>
-          <div class="kv"><span>Trạm đi</span><span id="pickupPreviewStation">—</span></div>
-          <div class="kv"><span>Trung chuyển đi</span><span id="pickupPreviewAddress">—</span></div>
-          <div class="kv"><span>Trạm đến</span><span id="pickupPreviewDestination">—</span></div>
-          <div class="kv"><span>Trung chuyển đến</span><span id="pickupPreviewTrip">—</span></div>
-          <div class="kv" id="pickupPreviewLuggage" style="display:none;"><span>Baga</span><span>Có</span></div>
-          <div class="kv"><span>Ghi chú</span><span id="pickupPreviewNote">—</span></div>
-          <div class="ticket-dash"></div>
-          <div class="price-row" id="pickupPriceRow" style="display:none;">
-            <span style="font-size:11.5px;color:var(--text-sub);font-weight:600;">Giá vé</span>
-            <div class="price-row" style="gap:6px;">
-              <span class="price" id="pickupPriceValue">—</span>
-              <svg class="edit-price" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel-footer">
-      <button class="btn btn-secondary" onclick="closeModal('pickupModal')">Đóng</button>
-      <button class="btn btn-primary" onclick="savePickupInfo()">Lưu thông tin</button>
-    </div>
-  </div>
-</div>
 
 <!-- ===== MODAL: CHỈ ĐỊNH XE ===== -->
 <div class="modal-overlay" id="assignModal">
@@ -677,9 +579,28 @@
   </div>
 </div>
 
+<!-- ===== MODAL: KHỞI HÀNH XE ===== -->
+<div class="modal-overlay" id="departModal">
+  <div class="modal">
+    <h3>Khởi hành xe</h3>
+    <div class="form-field">
+      <label>Chuyến xe</label>
+      <div id="departTripInfo" style="font-size:14px;font-weight:700;color:var(--text-main);padding:8px 0;">07:00 - Sài Gòn - Châu Đốc</div>
+    </div>
+    <div class="warn-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      Sau khi xác nhận, chuyến xe sẽ được đánh dấu đã khởi hành và không thể huỷ thao tác này.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('departModal')">Đóng</button>
+      <button class="btn btn-primary" onclick="confirmDepart()">Xác nhận khởi hành</button>
+    </div>
+  </div>
+</div>
+
 <div class="seat-menu" id="seatMenu"></div>
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg><span id="toastText"></span></div>
 
-<script src="../js/callcenter.js"></script>
+<script src="../js/ticketstaff.js"></script>
 </body>
 </html>
