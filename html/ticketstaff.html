@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/ticketstaff.css">
+<link rel="stylesheet" href="../css/ticketstaff.css?v=2">
 </head>
 <body>
 
@@ -97,7 +97,7 @@
         <div class="field-label-row">
           <label class="field-label" style="margin-bottom:0;">Tuyến</label>
           <button class="date-btn" id="calTrigger" onclick="toggleCalendar()">
-            <svg class="date-btn-ico" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M3 10h18"/></svg>
+            <svg class="date-btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M3 10h18"/></svg>
             <span id="calTriggerDate">Hôm nay</span>
             <svg class="date-btn-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
           </button>
@@ -240,21 +240,21 @@
             <span class="z2-circle gray lg"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="10" rx="2"/><path d="M2.5 12h19M7 7V5.5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1V7"/></svg></span>
             <span class="z2-text">
               <span class="z2-label">Biển số xe</span>
-              <span class="z2-value no-bold">51F-123.45</span>
+              <span class="z2-value no-bold" id="headerPlate">51F-123.45</span>
             </span>
           </div>
           <div class="z2-item" style="grid-column:3;grid-row:1;">
             <span class="z2-circle gray"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7.5" r="3.3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span>
             <span class="z2-text">
               <span class="z2-label">Tài xế</span>
-              <span class="z2-value no-bold">Trần Văn Hùng</span>
+              <span class="z2-value no-bold" id="headerDriver">Trần Văn Hùng</span>
             </span>
           </div>
           <div class="z2-item" style="grid-column:5;grid-row:1;">
             <span class="z2-circle gray"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19v-1.5a4.5 4.5 0 0 1 4.5-4.5h1a4.5 4.5 0 0 1 4.5 4.5V19"/><circle cx="8.5" cy="8" r="3"/><path d="M15.5 6.5a2.8 2.8 0 0 1 0 5.5M18 19v-1.2a3.8 3.8 0 0 0-2.3-3.5"/></svg></span>
             <span class="z2-text">
               <span class="z2-label">Phụ xe</span>
-              <span class="z2-value no-bold">Nguyễn Văn Bình</span>
+              <span class="z2-value no-bold" id="headerHelper">Nguyễn Văn Bình</span>
             </span>
           </div>
 
@@ -265,21 +265,21 @@
           <div class="z2-item combo" style="grid-column:1;grid-row:3;">
             <span class="z2-subitem">
               <span class="z2-circle gray lg"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg></span>
-              <span class="z2-text"><span class="z2-label">Đã bán</span><span class="z2-value-row"><span class="z2-value no-bold">10/32</span><span class="badge-onboard">▲7</span></span></span>
+              <span class="z2-text"><span class="z2-label">Đã bán</span><span class="z2-value-row"><span class="z2-value no-bold" id="statsDaBan">10/32</span><span class="badge-onboard">▲7</span></span></span>
             </span>
             <span class="z2-money-bullet">•</span>
             <span class="z2-subitem">
               <span class="z2-circle gray"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></span>
-              <span class="z2-text"><span class="z2-label">Đã đặt</span><span class="z2-value no-bold">12/32</span></span>
+              <span class="z2-text"><span class="z2-label">Đã đặt</span><span class="z2-value no-bold" id="statsDaDat">12/32</span></span>
             </span>
           </div>
           <div class="z2-item money-line" style="grid-column:3/6;grid-row:3;">
             <span class="z2-circle gray"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
-            <span class="z2-text"><span class="z2-label">Tổng tiền</span><span class="z2-value no-bold">6.720.000đ</span></span>
+            <span class="z2-text"><span class="z2-label">Tổng tiền</span><span class="z2-value no-bold" id="statsTongTien">6.720.000đ</span></span>
             <span class="z2-money-bullet">•</span>
-            <span class="z2-text"><span class="z2-label">Đã thu</span><span class="z2-value no-bold">5.280.000đ</span></span>
+            <span class="z2-text"><span class="z2-label">Đã thu</span><span class="z2-value no-bold" id="statsDaThu">5.280.000đ</span></span>
             <span class="z2-money-bullet">•</span>
-            <span class="z2-text"><span class="z2-label">Chưa thu</span><span class="z2-value no-bold">1.440.000đ</span></span>
+            <span class="z2-text"><span class="z2-label">Chưa thu</span><span class="z2-value no-bold" id="statsChuaThu">1.440.000đ</span></span>
           </div>
 
         </div>
@@ -296,7 +296,7 @@
       <!-- ZONE 3 -->
       <section class="zone3">
 
-        <div class="floor-row">
+        <div class="floor-row" id="mainFloorRow">
           <div class="floor-col">
             <div class="floor-title-bar">TẦNG DƯỚI</div>
             <div class="seat-grid" id="floorDown"></div>
@@ -305,6 +305,15 @@
             <div class="floor-title-bar">TẦNG TRÊN</div>
             <div class="seat-grid" id="floorUp"></div>
           </div>
+        </div>
+
+        <div class="floor-container" id="subSeatsSection" style="margin-top: 15px;">
+          <div id="subSeatsList"></div>
+        </div>
+
+        <div class="floor-container" id="extraSeatsSection" style="margin-top: 15px; display: none;">
+          <div class="floor-title-bar">DANH SÁCH GHẾ DƯ</div>
+          <div id="extraSeatsList"></div>
         </div>
 
         <div class="seat-legend">
@@ -556,13 +565,56 @@
 <div class="modal-overlay" id="assignModal">
   <div class="modal">
     <h3>Chỉ định xe</h3>
-    <div class="form-field">
-      <label>Biển số xe</label>
-      <select><option>51B-123.45 — Limousine 24 Phòng</option><option>51B-678.90 — Giường nằm 34 chỗ</option><option>50F-111.22 — Ghế ngồi 45 chỗ</option></select>
+    <div class="form-row" style="--cols:2;">
+      <div class="form-field">
+        <label>Biển số xe</label>
+        <select id="plateSelect"><option>51B-123.45</option><option>51B-678.90</option><option>50F-111.22</option></select>
+      </div>
+      <div class="form-field">
+        <label>Loại xe</label>
+        <select id="vehicleTypeSelect">
+          <option value="">-- Chọn loại xe --</option>
+          <option value="Limousine 24 Phòng">Limousine 24 Phòng</option>
+          <option value="Giường nằm 34 chỗ">Giường nằm 34 chỗ</option>
+          <option value="Ghế ngồi 45 chỗ">Ghế ngồi 45 chỗ</option>
+          <option value="Limousine 34 giường">Limousine 34 giường</option>
+          <option value="Xe thường 36 giường">Xe thường 36 giường</option>
+          <option value="Xe thường 40 giường">Xe thường 40 giường</option>
+          <option value="Xe thường 41 giường">Xe thường 41 giường</option>
+          <option value="Xe VIP 24 phòng">Xe VIP 24 phòng</option>
+          <option value="Xe 44 giường">Xe 44 giường</option>
+          <option value="Xe Limousine 9 chỗ">Xe Limousine 9 chỗ</option>
+          <option value="Xe Limousine 11 chỗ">Xe Limousine 11 chỗ</option>
+          <option value="Xe Limousine 19 chỗ">Xe Limousine 19 chỗ</option>
+          <option value="Xe Limousine 28 chỗ">Xe Limousine 28 chỗ</option>
+          <option value="Xe thường 16 chỗ">Xe thường 16 chỗ</option>
+          <option value="Xe thường 26 chỗ">Xe thường 26 chỗ</option>
+          <option value="Xe thường 28 chỗ">Xe thường 28 chỗ</option>
+          <option value="Xe thường 47 chỗ">Xe thường 47 chỗ</option>
+          <option value="Xe Limousine 18 chỗ">Xe Limousine 18 chỗ</option>
+        </select>
+      </div>
     </div>
     <div class="form-field">
       <label>Tài xế</label>
-      <select id="driverSelect" onchange="checkDriverConflict()"><option>Trần Văn Hùng</option><option>Lê Minh Tuấn (trùng lịch)</option><option>Phạm Quốc Bảo</option></select>
+      <div class="searchable-dropdown" id="driverDropdownContainer">
+        <input type="text" id="driverSelect" placeholder="Nhập hoặc chọn tài xế..." onclick="toggleSearchDropdown('driverDropdownContainer', event)" oninput="filterDropdown('driverDropdownContainer'); checkDriverConflict();" />
+        <svg class="combobox-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+        <div class="dropdown-panel" id="driverDropdownPanel">
+          <div class="dropdown-item" data-value="Trần Văn Hùng" onclick="selectSearchDropdownItem('driverDropdownContainer', 'Trần Văn Hùng', 'Trần Văn Hùng', 'driver')">
+            <span>Trần Văn Hùng</span>
+            <span class="dropdown-item-check">✓</span>
+          </div>
+          <div class="dropdown-item" data-value="Lê Minh Tuấn (trùng lịch)" onclick="selectSearchDropdownItem('driverDropdownContainer', 'Lê Minh Tuấn (trùng lịch)', 'Lê Minh Tuấn (trùng lịch)', 'driver')">
+            <span>Lê Minh Tuấn (trùng lịch)</span>
+            <span class="dropdown-item-check">✓</span>
+          </div>
+          <div class="dropdown-item" data-value="Phạm Quốc Bảo" onclick="selectSearchDropdownItem('driverDropdownContainer', 'Phạm Quốc Bảo', 'Phạm Quốc Bảo', 'driver')">
+            <span>Phạm Quốc Bảo</span>
+            <span class="dropdown-item-check">✓</span>
+          </div>
+        </div>
+      </div>
       <div class="warn-box" id="driverWarn" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
         Tài xế đã được chỉ định cho phơi xe khác cùng khung giờ (BR-07).
@@ -570,11 +622,46 @@
     </div>
     <div class="form-field">
       <label>Tài lơ (phụ xe)</label>
-      <select><option>Nguyễn Thị Hương</option><option>Đỗ Văn Sơn</option></select>
+      <div class="searchable-dropdown" id="helperDropdownContainer">
+        <input type="text" id="helperSelect" placeholder="Nhập hoặc chọn phụ xe..." onclick="toggleSearchDropdown('helperDropdownContainer', event)" oninput="filterDropdown('helperDropdownContainer')" />
+        <svg class="combobox-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+        <div class="dropdown-panel" id="helperDropdownPanel">
+          <div class="dropdown-item" data-value="Nguyễn Thị Hương" onclick="selectSearchDropdownItem('helperDropdownContainer', 'Nguyễn Thị Hương', 'Nguyễn Thị Hương', 'helper')">
+            <span>Nguyễn Thị Hương</span>
+            <span class="dropdown-item-check">✓</span>
+          </div>
+          <div class="dropdown-item" data-value="Đỗ Văn Sơn" onclick="selectSearchDropdownItem('helperDropdownContainer', 'Đỗ Văn Sơn', 'Đỗ Văn Sơn', 'helper')">
+            <span>Đỗ Văn Sơn</span>
+            <span class="dropdown-item-check">✓</span>
+          </div>
+          <div class="dropdown-item" data-value="Nguyễn Văn Bình" onclick="selectSearchDropdownItem('helperDropdownContainer', 'Nguyễn Văn Bình', 'Nguyễn Văn Bình', 'helper')">
+            <span>Nguyễn Văn Bình</span>
+            <span class="dropdown-item-check">✓</span>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('assignModal')">Đóng</button>
       <button class="btn btn-primary" onclick="saveAssign()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: GHẾ PHỤ (GHI CHÚ + GIÁ TIỀN) ===== -->
+<div class="modal-overlay" id="subSeatModal">
+  <div class="modal">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+      <h3 id="subSeatModalTitle" style="margin:0;">Thêm ghế phụ</h3>
+      <div class="seat-price-tag" id="subSeatPriceDisplay">280.000đ</div>
+    </div>
+    <div class="form-field">
+      <label>Ghi chú</label>
+      <textarea id="subSeatNote" rows="3" placeholder="Nhập ghi chú..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('subSeatModal')">Đóng</button>
+      <button class="btn btn-primary" onclick="saveSubSeat()">Lưu</button>
     </div>
   </div>
 </div>
@@ -598,9 +685,70 @@
   </div>
 </div>
 
+<!-- ===== MODAL: CHỈ ĐỊNH GHẾ DƯ CHO PHƠI KHÁC ===== -->
+<div class="modal-overlay" id="assignSeatModal">
+  <div class="modal" style="width: 880px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+    <div class="panel-head" style="padding: 16px 22px; border-bottom: 1px solid var(--border-gray); flex:0 0 auto;">
+      <div>
+        <h2 style="font-size: 18px; font-weight: 800; margin: 0;">Chuyển chỉ định ghế dư</h2>
+        <div class="sub" id="assignSeatModalSub" style="font-size: 13.5px; color: var(--text-sub); font-weight: 600; margin-top: 2px;">Khách: —</div>
+      </div>
+      <button class="icon-close" onclick="closeAssignSeatModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    </div>
+
+    <div class="panel-body" style="flex:1 1 auto; overflow-y:auto; padding: 18px 22px; display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start;">
+      <!-- LEFT: danh sách phơi xe -->
+      <div>
+        <div class="trip-col-title" style="font-size:12.5px; font-weight:800; color:var(--text-sub); text-transform:uppercase; letter-spacing:.4px; margin-bottom:8px;">Danh sách phơi xe</div>
+        <div class="trip-search-box" style="display:flex; align-items:center; gap:8px; border:1.5px solid var(--border-gray); border-radius:999px; padding:8px 14px; margin-bottom:10px; background:white;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:15px; height:15px; stroke:var(--text-sub); flex:0 0 auto;"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="assignSeatTripSearch" type="text" placeholder="Tìm giờ, biển số, tuyến..." oninput="filterAssignSeatTripList(this.value)" style="border:none; background:transparent; outline:none; flex:1; font-size:14.5px; color:var(--text-main); font-family:inherit;">
+        </div>
+        <div class="trip-list" id="assignSeatTripList" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+
+      <!-- RIGHT: sơ đồ ghế -->
+      <div>
+        <div class="seatmap-col-title" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <span style="font-size:12.5px; font-weight:800; color:var(--text-sub); text-transform:uppercase; letter-spacing:.4px;">Sơ đồ ghế của phơi xe</span>
+          <span class="seatmap-selected-tag" id="assignSeatSelectedTag" style="font-size:13px; font-weight:700; color:var(--red);"></span>
+        </div>
+        
+        <!-- Frame containing both floor down and floor up in the modal -->
+        <div class="van-frame" id="assignSeatVanFrame" style="border:1px solid var(--surface); border-radius:var(--radius-lg); background:var(--surface-2); padding:20px; display:flex; flex-direction:row; gap:20px; justify-content:center; align-items:start;">
+          <!-- Down floor -->
+          <div class="floor-col" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;">
+            <div class="floor-title-bar" style="text-align:center; font-size:13px; font-weight:800; letter-spacing:1px; color:var(--text-main); background:var(--surface); border-radius:var(--radius-sm); padding:4px 0; margin-bottom:6px;">TẦNG DƯỚI</div>
+            <div class="seat-grid" id="assignSeatFloorDown"></div>
+          </div>
+          <!-- Up floor -->
+          <div class="floor-col" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;">
+            <div class="floor-title-bar" style="text-align:center; font-size:13px; font-weight:800; letter-spacing:1px; color:var(--text-main); background:var(--surface); border-radius:var(--radius-sm); padding:4px 0; margin-bottom:6px;">TẦNG TRÊN</div>
+            <div class="seat-grid" id="assignSeatFloorUp"></div>
+          </div>
+        </div>
+        
+        <div class="seat-legend" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:14px; padding:8px 12px; background:white; border:1px solid var(--surface); border-radius:var(--radius-sm); width:100%;">
+          <div class="seat-legend-item" style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-main);"><span class="seat-legend-dot empty" style="width:16px; height:16px; border-radius:5px; flex:0 0 auto; background:#7DAEE8;"></span>Trống</div>
+          <div class="seat-legend-item" style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-main);"><span class="seat-legend-dot selected" style="width:16px; height:16px; border-radius:5px; flex:0 0 auto; background:#F27874;"></span>Đang chọn</div>
+          <div class="seat-legend-item" style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-main);"><span class="seat-legend-dot blocked" style="width:16px; height:16px; border-radius:5px; flex:0 0 auto; background:#C7CBD1;"></span>Đã có khách</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-footer" style="flex: 0 0 auto; padding: 14px 22px; border-top: 1px solid var(--border-gray); display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+      <span class="hint" id="assignSeatHint" style="font-size:13px; color:var(--text-sub); font-weight:600;">Chọn 1 phơi xe và 1 ghế trống để chỉ định.</span>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-secondary" onclick="closeAssignSeatModal()">Đóng</button>
+        <button class="btn btn-primary" id="confirmAssignSeatBtn" disabled onclick="confirmAssignSeat()">Xác nhận chỉ định</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="seat-menu" id="seatMenu"></div>
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg><span id="toastText"></span></div>
 
-<script src="../js/ticketstaff.js"></script>
+<script src="../js/ticketstaff.js?v=7"></script>
 </body>
 </html>

@@ -225,10 +225,6 @@
             <span class="z2-dot">●</span>
             <a class="z2-link">Lộ trình <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg></a>
           </div>
-          <button class="assign-btn" onclick="openAssignModal()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1Z"/></svg>
-            Chỉ định xe
-          </button>
         </div>
 
         <div class="z2-grid">
@@ -237,21 +233,21 @@
             <span class="z2-circle gray lg"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="10" rx="2"/><path d="M2.5 12h19M7 7V5.5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1V7"/></svg></span>
             <span class="z2-text">
               <span class="z2-label">Biển số xe</span>
-              <span class="z2-value no-bold">51F-123.45</span>
+              <span class="z2-value no-bold" id="headerPlate">51F-123.45</span>
             </span>
           </div>
           <div class="z2-item" style="grid-column:3;grid-row:1;">
             <span class="z2-circle gray"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7.5" r="3.3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span>
             <span class="z2-text">
               <span class="z2-label">Tài xế</span>
-              <span class="z2-value no-bold">Trần Văn Hùng</span>
+              <span class="z2-value no-bold" id="headerDriver">Trần Văn Hùng</span>
             </span>
           </div>
           <div class="z2-item" style="grid-column:5;grid-row:1;">
             <span class="z2-circle gray"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19v-1.5a4.5 4.5 0 0 1 4.5-4.5h1a4.5 4.5 0 0 1 4.5 4.5V19"/><circle cx="8.5" cy="8" r="3"/><path d="M15.5 6.5a2.8 2.8 0 0 1 0 5.5M18 19v-1.2a3.8 3.8 0 0 0-2.3-3.5"/></svg></span>
             <span class="z2-text">
               <span class="z2-label">Phụ xe</span>
-              <span class="z2-value no-bold">Nguyễn Văn Bình</span>
+              <span class="z2-value no-bold" id="headerHelper">Nguyễn Văn Bình</span>
             </span>
           </div>
 
@@ -262,21 +258,21 @@
           <div class="z2-item combo" style="grid-column:1;grid-row:3;">
             <span class="z2-subitem">
               <span class="z2-circle gray lg"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg></span>
-              <span class="z2-text"><span class="z2-label">Đã bán</span><span class="z2-value-row"><span class="z2-value no-bold">10/32</span><span class="badge-onboard">▲7</span></span></span>
+              <span class="z2-text"><span class="z2-label">Đã bán</span><span class="z2-value-row"><span class="z2-value no-bold" id="statsDaBan">10/32</span><span class="badge-onboard">▲7</span></span></span>
             </span>
             <span class="z2-money-bullet">•</span>
             <span class="z2-subitem">
               <span class="z2-circle gray"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></span>
-              <span class="z2-text"><span class="z2-label">Đã đặt</span><span class="z2-value no-bold">12/32</span></span>
+              <span class="z2-text"><span class="z2-label">Đã đặt</span><span class="z2-value no-bold" id="statsDaDat">12/32</span></span>
             </span>
           </div>
           <div class="z2-item money-line" style="grid-column:3/6;grid-row:3;">
             <span class="z2-circle gray"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
-            <span class="z2-text"><span class="z2-label">Tổng tiền</span><span class="z2-value no-bold">6.720.000đ</span></span>
+            <span class="z2-text"><span class="z2-label">Tổng tiền</span><span class="z2-value no-bold" id="statsTongTien">6.720.000đ</span></span>
             <span class="z2-money-bullet">•</span>
-            <span class="z2-text"><span class="z2-label">Đã thu</span><span class="z2-value no-bold">5.280.000đ</span></span>
+            <span class="z2-text"><span class="z2-label">Đã thu</span><span class="z2-value no-bold" id="statsDaThu">5.280.000đ</span></span>
             <span class="z2-money-bullet">•</span>
-            <span class="z2-text"><span class="z2-label">Chưa thu</span><span class="z2-value no-bold">1.440.000đ</span></span>
+            <span class="z2-text"><span class="z2-label">Chưa thu</span><span class="z2-value no-bold" id="statsChuaThu">1.440.000đ</span></span>
           </div>
 
         </div>
@@ -302,6 +298,10 @@
             <div class="floor-title-bar">TẦNG TRÊN</div>
             <div class="seat-grid" id="floorUp"></div>
           </div>
+        </div>
+
+        <div class="floor-container" id="subSeatsSection" style="margin-top: 15px;">
+          <div id="subSeatsList"></div>
         </div>
 
         <div class="seat-legend">
@@ -525,6 +525,24 @@
   </div>
 </div>
 
+<!-- ===== MODAL: GHẾ PHỤ (GHI CHÚ + GIÁ TIỀN) ===== -->
+<div class="modal-overlay" id="subSeatModal">
+  <div class="modal">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+      <h3 id="subSeatModalTitle" style="margin:0;">Thêm ghế phụ</h3>
+      <div class="seat-price-tag" id="subSeatPriceDisplay">280.000đ</div>
+    </div>
+    <div class="form-field">
+      <label>Ghi chú</label>
+      <textarea id="subSeatNote" rows="3" placeholder="Nhập ghi chú..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('subSeatModal')">Đóng</button>
+      <button class="btn btn-primary" onclick="saveSubSeat()">Lưu</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== MODAL: HỦY VÉ ===== -->
 <div class="modal-overlay" id="cancelModal">
   <div class="modal">
@@ -646,33 +664,6 @@
     <div class="panel-footer">
       <button class="btn btn-secondary" onclick="closeModal('pickupModal')">Đóng</button>
       <button class="btn btn-primary" onclick="savePickupInfo()">Lưu thông tin</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== MODAL: CHỈ ĐỊNH XE ===== -->
-<div class="modal-overlay" id="assignModal">
-  <div class="modal">
-    <h3>Chỉ định xe</h3>
-    <div class="form-field">
-      <label>Biển số xe</label>
-      <select><option>51B-123.45 — Limousine 24 Phòng</option><option>51B-678.90 — Giường nằm 34 chỗ</option><option>50F-111.22 — Ghế ngồi 45 chỗ</option></select>
-    </div>
-    <div class="form-field">
-      <label>Tài xế</label>
-      <select id="driverSelect" onchange="checkDriverConflict()"><option>Trần Văn Hùng</option><option>Lê Minh Tuấn (trùng lịch)</option><option>Phạm Quốc Bảo</option></select>
-      <div class="warn-box" id="driverWarn" style="display:none;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-        Tài xế đã được chỉ định cho phơi xe khác cùng khung giờ (BR-07).
-      </div>
-    </div>
-    <div class="form-field">
-      <label>Tài lơ (phụ xe)</label>
-      <select><option>Nguyễn Thị Hương</option><option>Đỗ Văn Sơn</option></select>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('assignModal')">Đóng</button>
-      <button class="btn btn-primary" onclick="saveAssign()">Lưu</button>
     </div>
   </div>
 </div>

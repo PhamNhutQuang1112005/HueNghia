@@ -361,6 +361,33 @@ a{text-decoration:none;color:inherit;}
 .toast.show{opacity:1;bottom:34px;}
 .toast svg{width:14px;height:14px;stroke:var(--green);}
 
+  /* Double-floor seatmap layout for Assign Modal */
+  #assignPickupModal .panel-body {
+    overflow-y: hidden !important;
+  }
+  #assignPickupModal .trip-list {
+    max-height: 460px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  #assignPickupModal .floor-col {
+    flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
+  }
+  #assignPickupModal .floor-title-bar {
+    text-align:center; font-size:13px; font-weight:800; letter-spacing:1px; color:var(--text-main); background:var(--surface); border-radius:var(--radius-sm); padding:4px 0; margin-bottom:6px;
+  }
+  #assignPickupModal .seat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    flex: 1 1 auto;
+    align-content: start;
+    justify-items: center;
+  }
+  #assignPickupModal .seat-grid.cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
 ::-webkit-scrollbar{width:9px;height:9px;}
 ::-webkit-scrollbar-thumb{background:#D8D9DA;border-radius:99px;}
 ::-webkit-scrollbar-track{background:transparent;}

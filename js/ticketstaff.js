@@ -54,15 +54,63 @@ function groupSeat(mainSeat, code, state){
   });
 }
 
+const VEHICLE_TYPE_SEATS = {
+  "Limousine 34 giường": 34,
+  "Xe thường 36 giường": 36,
+  "Xe thường 40 giường": 40,
+  "Xe thường 41 giường": 41,
+  "Xe VIP 24 phòng": 24,
+  "Xe 44 giường": 44,
+  "Xe Limousine 9 chỗ": 9,
+  "Xe Limousine 11 chỗ": 11,
+  "Xe Limousine 19 chỗ": 19,
+  "Xe Limousine 28 chỗ": 28,
+  "Xe thường 16 chỗ": 16,
+  "Xe thường 26 chỗ": 26,
+  "Xe thường 28 chỗ": 28,
+  "Xe thường 47 chỗ": 47,
+  "Xe Limousine 18 chỗ": 18,
+  "Limousine 24 Phòng": 24,
+  "Giường nằm 34 chỗ": 34,
+  "Ghế ngồi 45 chỗ": 45
+};
+
+function buildSequentialSeatCodes(total){
+  const downCount = Math.ceil(total / 2);
+  const upCount = total - downCount;
+  const down = Array.from({length: downCount}, (_, i) => "A" + (i + 1));
+  const up = Array.from({length: upCount}, (_, i) => "B" + (i + 1));
+  return { down, up };
+}
+
+function getSeatCodesForVehicleType(typeLabel){
+  const total = VEHICLE_TYPE_SEATS[typeLabel];
+  if(typeLabel === "Limousine 34 giường" || typeLabel === "Giường nằm 34 chỗ"){
+    const base = buildSequentialSeatCodes(VEHICLE_TYPE_SEATS["Xe thường 36 giường"]);
+    return {
+      down: base.down.map(c => c === "A3" ? "A3_hidden" : c),
+      up: base.up.map(c => c === "B3" ? "B3_hidden" : c),
+    };
+  }
+  return buildSequentialSeatCodes(total);
+}
+
 const a1 = makeSeat("A1","sold");
 const a2 = groupSeat(a1, "A2", "sold");
 const a10 = makeSeat("A10","hold");
 const a11 = groupSeat(a10, "A11", "hold");
+const a12 = makeSeat("A12", "sold", {
+  customerName: "Trần Văn Bình",
+  phone: "0918234567",
+  firstStop: "Trạm An Sương",
+  lastStop: "Trạm Long Xuyên",
+  transshipStation: "45 Trường Chinh, Q.12"
+});
 
 let seatPlanDown = [
   a1, a2, makeSeat("A3","empty"), makeSeat("A4","cargo"),
   makeSeat("A5","sold"), makeSeat("A6","empty"), makeSeat("A7","sold"), makeSeat("A8","free"),
-  makeSeat("A9","empty"), a10, a11, makeSeat("A12","sold"),
+  makeSeat("A9","empty"), a10, a11, a12,
 ];
 seatPlanDown[2].locked = true; // ví dụ trạng thái khoá tạm thời (BR-05)
 seatPlanDown[2].lockedBy = "NV. Hồng";
@@ -79,34 +127,139 @@ let seatPlanUp = [
 // Danh sách các chuyến (khớp với data-trip trên trip-card ở Zone 1) để có thể
 // chuyển ghế của khách sang một chuyến xe khác, không chỉ trong cùng 1 chuyến.
 const sgcdTripsMeta = [
-  { id:'1', time:'07:00', route:'Sài Gòn - Châu Đốc' },
-  { id:'2', time:'08:30', route:'Sài Gòn - Châu Đốc' },
-  { id:'3', time:'10:00', route:'Sài Gòn - Châu Đốc' },
-  { id:'4', time:'13:15', route:'Sài Gòn - Châu Đốc' },
-  { id:'5', time:'15:30', route:'Sài Gòn - Châu Đốc' },
-  { id:'6', time:'17:00', route:'Sài Gòn - Châu Đốc' },
+  { id:'1', time:'07:00', route:'Sài Gòn - Châu Đốc', plate: '51F-123.45', vehicleType: 'Limousine 24 Phòng' },
+  { id:'2', time:'08:30', route:'Sài Gòn - Châu Đốc', plate: '50H-678.90', vehicleType: 'Giường nằm 34 chỗ' },
+  { id:'3', time:'10:00', route:'Sài Gòn - Châu Đốc', plate: '51F-234.56', vehicleType: 'Limousine 24 Phòng' },
+  { id:'4', time:'13:15', route:'Sài Gòn - Châu Đốc', plate: '50H-345.67', vehicleType: 'Ghế ngồi 45 chỗ' },
+  { id:'5', time:'15:30', route:'Sài Gòn - Châu Đốc', plate: '51F-456.78', vehicleType: 'Limousine 24 Phòng' },
+  { id:'6', time:'17:00', route:'Sài Gòn - Châu Đốc', plate: '50H-567.89', vehicleType: 'Giường nằm 34 chỗ' },
 ];
 const cdsgTripsMeta = [
-  { id:'7', time:'06:00', route:'Châu Đốc - Sài Gòn' },
-  { id:'8', time:'09:15', route:'Châu Đốc - Sài Gòn' },
-  { id:'9', time:'14:00', route:'Châu Đốc - Sài Gòn' },
-  { id:'10', time:'21:00', route:'Châu Đốc - Sài Gòn' },
+  { id:'7', time:'06:00', route:'Châu Đốc - Sài Gòn', plate: '51F-123.45', vehicleType: 'Limousine 24 Phòng' },
+  { id:'8', time:'09:15', route:'Châu Đốc - Sài Gòn', plate: '50H-678.90', vehicleType: 'Giường nằm 34 chỗ' },
+  { id:'9', time:'14:00', route:'Châu Đốc - Sài Gòn', plate: '51F-234.56', vehicleType: 'Limousine 24 Phòng' },
+  { id:'10', time:'21:00', route:'Châu Đốc - Sài Gòn', plate: '50H-567.89', vehicleType: 'Giường nằm 34 chỗ' },
 ];
 const allTripsMeta = [...sgcdTripsMeta, ...cdsgTripsMeta];
 
 // Sinh dữ liệu ghế mẫu cho các chuyến còn lại, luôn chừa vài ghế trống để demo chuyển ghế.
-function generateTripSeatPlan(){
+function generateTripSeatPlanForVehicleType(vehicleType){
+  const codes = getSeatCodesForVehicleType(vehicleType);
   const pattern = ['sold','hold','empty','empty','sold','empty','hold','free','empty','sold','cargo','empty'];
-  const buildFloor = codes => codes.map((code,i) => makeSeat(code, pattern[i % pattern.length]));
+  const buildFloor = floorCodes => floorCodes.map((code, i) => {
+    if (code.endsWith('_hidden')) return { code, state: 'hidden' };
+    return makeSeat(code, pattern[i % pattern.length]);
+  });
   return {
-    down: buildFloor(['A1','A2','A3','A4','A5','A6','A7','A8','A9','A10','A11','A12']),
-    up: buildFloor(['B1','B2','B3','B4','B5','B6','B7','B8','B9','B10','B11','B12']),
+    down: buildFloor(codes.down),
+    up: buildFloor(codes.up),
   };
 }
 
-const tripSeatBank = { '1': { down: seatPlanDown, up: seatPlanUp } };
-allTripsMeta.forEach(t => { if(t.id !== '1') tripSeatBank[t.id] = generateTripSeatPlan(); });
+const HN_STORAGE_KEY = 'hn_trip_seat_bank_v7';
+let isSyncingFromStorage = false;
+
+function saveSeatBank() {
+  localStorage.setItem(HN_STORAGE_KEY, JSON.stringify(tripSeatBank));
+}
+
+function loadSeatBank() {
+  const saved = localStorage.getItem(HN_STORAGE_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse seat bank", e);
+    }
+  }
+  return null;
+}
+
+let extraLeftoverSeats = []; // danh sách "ghế dư" khi đổi loại xe làm mất mã ghế đang có khách
+let subSeats = []; // danh sách "ghế phụ" tự thêm (chỉ có ghi chú + giá tiền), ô "+" luôn ở cuối danh sách này
+
+const savedBank = loadSeatBank();
+const tripSeatBank = savedBank || {};
+if (!savedBank) {
+  tripSeatBank['1'] = {
+    down: seatPlanDown,
+    up: seatPlanUp,
+    plate: '51F-123.45',
+    vehicleType: 'Limousine 24 Phòng',
+    driver: 'Trần Văn Hùng',
+    helper: 'Nguyễn Thị Hương'
+  };
+  allTripsMeta.forEach(t => {
+    if (t.id !== '1') {
+      const plan = generateTripSeatPlanForVehicleType(t.vehicleType || 'Giường nằm 34 chỗ');
+      tripSeatBank[t.id] = {
+        down: plan.down,
+        up: plan.up,
+        plate: t.plate || '50H-678.90',
+        vehicleType: t.vehicleType || 'Giường nằm 34 chỗ',
+        driver: 'Phạm Quốc Bảo',
+        helper: 'Đỗ Văn Sơn'
+      };
+    }
+  });
+  saveSeatBank();
+} else {
+  seatPlanDown = tripSeatBank['1'].down;
+  seatPlanUp = tripSeatBank['1'].up;
+  extraLeftoverSeats = tripSeatBank['1'].extraSeats || [];
+  subSeats = tripSeatBank['1'].subSeats || [];
+}
+
 let currentTripId = '1';
+
+window.addEventListener('storage', (e) => {
+  if (e.key === HN_STORAGE_KEY) {
+    const newBank = loadSeatBank();
+    if (newBank) {
+      isSyncingFromStorage = true;
+      Object.keys(newBank).forEach(k => {
+        tripSeatBank[k] = newBank[k];
+      });
+      if (tripSeatBank[currentTripId]) {
+        seatPlanDown = tripSeatBank[currentTripId].down;
+        seatPlanUp = tripSeatBank[currentTripId].up;
+        extraLeftoverSeats = tripSeatBank[currentTripId].extraSeats || [];
+        subSeats = tripSeatBank[currentTripId].subSeats || [];
+
+        // Update header details from bank
+        const plateVal = tripSeatBank[currentTripId].plate || '51F-123.45';
+        const vehicleType = tripSeatBank[currentTripId].vehicleType || 'Limousine 24 Phòng';
+        const driverVal = tripSeatBank[currentTripId].driver || 'Trần Văn Hùng';
+        const helperVal = tripSeatBank[currentTripId].helper || 'Nguyễn Thị Hương';
+        
+        const headerPlate = document.getElementById('headerPlate');
+        if (headerPlate) headerPlate.textContent = plateVal;
+        
+        const carTypeEl = document.querySelector('.car-type');
+        if (carTypeEl) {
+          const svgIcon = carTypeEl.querySelector('svg');
+          carTypeEl.innerHTML = '';
+          if (svgIcon) carTypeEl.appendChild(svgIcon);
+          carTypeEl.appendChild(document.createTextNode(' ' + vehicleType));
+        }
+        
+        const headerDriver = document.getElementById('headerDriver');
+        if (headerDriver) headerDriver.textContent = driverVal;
+        
+        const headerHelper = document.getElementById('headerHelper');
+        if (headerHelper) headerHelper.textContent = helperVal;
+      }
+      renderSeats();
+      renderExtraSeats();
+      renderSubSeats();
+      renderZone1TripList();
+      if (document.getElementById('zone3Passengers') && document.getElementById('zone3Passengers').style.display !== 'none') {
+        renderPassengerList();
+      }
+      isSyncingFromStorage = false;
+    }
+  }
+});
 
 let multiSelectMode = false;
 let selectionMode = null; // 'transfer' | 'group' | null — loại thao tác đang thực hiện
@@ -154,7 +307,7 @@ function clearPaxFilter(){
 }
 
 function getAllBookedSeats(){
-  return [...seatPlanDown.map(s=>({...s, floor:'down'})), ...seatPlanUp.map(s=>({...s, floor:'up'}))]
+  return [...seatPlanDown.map(s=>({...s, floor:'down'})), ...seatPlanUp.map(s=>({...s, floor:'up'})), ...extraLeftoverSeats.map(s=>({...s, floor:'extra'}))]
     .filter(s=>['sold','hold','free','cargo'].includes(s.state));
 }
 
@@ -224,7 +377,18 @@ function renderPassengerList(){
   document.getElementById('paxResultHint').textContent = groups.length + ' vé / ' + groupSeatsByTicket(getAllBookedSeats()).length + ' vé';
 }
 
+function shortenStopName(name) {
+  if (!name || name === '—') return '—';
+  return name
+    .replace('Trạm ', '')
+    .replace('Bến xe ', 'BX ')
+    .replace('Văn phòng ', 'VP ');
+}
+
 function seatCard(seat){
+  if (seat.state === 'hidden') {
+    return `<div class="seat-card hidden-placeholder"></div>`;
+  }
   const stateClass = seat.locked ? "locked" : seat.state;
   const lockHtml = seat.locked ? `<div class="lock-tag"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>${seat.lockedBy||'Đang giữ'}</div>` : "";
   const isEmpty = seat.state === "empty";
@@ -244,23 +408,95 @@ function seatCard(seat){
       <div><div class="seat-code">${seat.code}</div></div>
       <div class="seat-top-right">${priceHtml}${cancelTag}</div>
     </div>
-    <div class="seat-line">Chặng đầu: <span class="seat-stop">${seat.firstStop || '—'}</span></div>
-    <div class="seat-line">Chặng cuối: <span class="seat-stop">${seat.lastStop || '—'}</span></div>
-    <div class="seat-note">Ghi chú: ${seat.note || '—'}</div>
+    <div class="seat-line"><span class="seat-label-full">Chặng đầu: </span><span class="seat-label-short">Đi: </span><span class="seat-stop" title="${seat.firstStop || ''}">${shortenStopName(seat.firstStop)}</span></div>
+    <div class="seat-line"><span class="seat-label-full">Chặng cuối: </span><span class="seat-label-short">Đến: </span><span class="seat-stop" title="${seat.lastStop || ''}">${shortenStopName(seat.lastStop)}</span></div>
+    <div class="seat-note" title="${seat.note || ''}"><span class="seat-label-full">Ghi chú: </span><span class="seat-label-short">GC: </span>${seat.note || '—'}</div>
     <button class="seat-footbtn" type="button" onclick="${footBtnClick}">${footLabel}</button>
   </div>`;
 }
 
 function renderSeats(){
-  document.getElementById('floorDown').innerHTML = seatPlanDown.map(seatCard).join('');
-  document.getElementById('floorUp').innerHTML = seatPlanUp.map(seatCard).join('');
+  const totalSeats = [...seatPlanDown, ...seatPlanUp].filter(s => s.state !== 'hidden').length;
+  const useThreeCols = totalSeats >= 34;
+
+  const floorDownEl = document.getElementById('floorDown');
+  const floorUpEl = document.getElementById('floorUp');
+
+  if(floorDownEl) {
+    floorDownEl.classList.toggle('cols-3', useThreeCols);
+    floorDownEl.innerHTML = seatPlanDown.map(seatCard).join('');
+  }
+  if(floorUpEl) {
+    floorUpEl.classList.toggle('cols-3', useThreeCols);
+    floorUpEl.innerHTML = seatPlanUp.map(seatCard).join('');
+  }
+
   updatePassengerTabCount();
+  updateTripStats();
+
+  if (typeof isSyncingFromStorage !== 'undefined' && !isSyncingFromStorage) {
+    saveSeatBank();
+  }
 }
 function updatePassengerTabCount(){
   const cntEl = document.getElementById('passengerTabCnt');
   if(cntEl) cntEl.textContent = '(' + getAllBookedSeats().length + ')';
 }
+function updateTripStats() {
+  const totalSeats = [...seatPlanDown, ...seatPlanUp].filter(s => s.state !== 'hidden').length + subSeats.length;
+  
+  // Calculate booked seats (ghế phụ tính như ghế bình thường)
+  const bookedSeats = [...seatPlanDown, ...seatPlanUp].filter(s => ['sold','hold','free','cargo'].includes(s.state)).concat(subSeats);
+  const soldSeats = bookedSeats.filter(s => s.state === 'sold' || s.state === 'sub');
+  
+  // Calculate revenue
+  let totalRevenue = 0;
+  let paidRevenue = 0;
+  let unpaidRevenue = 0;
+  
+  bookedSeats.forEach(s => {
+    if (s.state === 'free') return;
+    const price = s.price || 280000;
+    totalRevenue += price;
+    if (s.paid) {
+      paidRevenue += price;
+    } else {
+      unpaidRevenue += price;
+    }
+  });
+  
+  // Format numbers
+  const formatMoney = (val) => val.toLocaleString('vi-VN') + 'đ';
+  
+  // Update DOM elements
+  const elDaBan = document.getElementById('statsDaBan');
+  if (elDaBan) elDaBan.textContent = `${soldSeats.length}/${totalSeats}`;
+  
+  const elDaDat = document.getElementById('statsDaDat');
+  if (elDaDat) elDaDat.textContent = `${bookedSeats.length}/${totalSeats}`;
+  
+  const elTongTien = document.getElementById('statsTongTien');
+  if (elTongTien) elTongTien.textContent = formatMoney(totalRevenue);
+  
+  const elDaThu = document.getElementById('statsDaThu');
+  if (elDaThu) elDaThu.textContent = formatMoney(paidRevenue);
+  
+  const elChuaThu = document.getElementById('statsChuaThu');
+  if (elChuaThu) elChuaThu.textContent = formatMoney(unpaidRevenue);
+
+  // Update selected trip card in sidebar
+  const selectedTripCard = document.querySelector('.trip-card.selected');
+  if (selectedTripCard) {
+    const numEl = selectedTripCard.querySelector('.trip-nums .n1');
+    if (numEl) {
+      numEl.textContent = `${bookedSeats.length}/${totalSeats}`;
+    }
+  }
+}
 renderSeats();
+renderExtraSeats();
+renderSubSeats();
+renderZone1TripList();
 
 function setZone1Collapsed(collapsed){
   document.body.classList.toggle('zone1-collapsed', collapsed);
@@ -282,7 +518,7 @@ try{
 }catch(e){}
 
 function findSeat(code){
-  return seatPlanDown.find(s=>s.code===code) || seatPlanUp.find(s=>s.code===code);
+  return seatPlanDown.find(s=>s.code===code) || seatPlanUp.find(s=>s.code===code) || extraLeftoverSeats.find(s=>s.code===code);
 }
 
 function updateTransferBarVisibility(){
@@ -343,6 +579,14 @@ function onSeatClick(ev, code){
   if(ev.detail > 1){ return; }
   const seat = findSeat(code);
   if(seat.locked){ showToast(`Ghế ${code} đang được ${seat.lockedBy} thao tác`); return; }
+
+  // Check if this is an extra leftover seat
+  const isExtraSeat = extraLeftoverSeats.some(s => s.code === code);
+  if(isExtraSeat) {
+    openAssignSeatModal(code);
+    ev.stopPropagation();
+    return;
+  }
 
   if(!multiSelectMode && OCCUPIED_STATES.includes(seat.state)){
     multiSelectMode = true;
@@ -827,14 +1071,298 @@ function sellTicket(){
   if(multiSelectMode) exitMultiSelectMode();
 }
 
-/* ---- Modal chỉ định xe ---- */
-function openAssignModal(){ document.getElementById('assignModal').classList.add('open'); document.getElementById('driverWarn').style.display='none'; }
+/* ---- Modal chỉ định xe: đổi loại xe -> đổi sơ đồ ghế ---- */
+
+// Vehicle type config successfully initialized at the top of the file
+
+// Chuyển sơ đồ ghế hiện tại sang đúng số lượng/khung ghế của loại xe được chọn.
+// Ghế nào giữ nguyên mã ở xe mới thì giữ nguyên toàn bộ thông tin khách (VD: khách A1 xe 36 chỗ
+// chuyển sang xe 34 chỗ vẫn ở A1). Ghế đang có khách nhưng mã đó không còn tồn tại ở xe mới
+// (VD: khách ở B3 xe 36 chỗ chuyển sang xe 34 chỗ - không có B3) sẽ dồn xuống danh sách "Ghế dư".
+function applyVehicleType(typeLabel){
+  if(!typeLabel || !VEHICLE_TYPE_SEATS[typeLabel]) return;
+
+  const target = getSeatCodesForVehicleType(typeLabel);
+  const targetCodes = new Set([...target.down, ...target.up]);
+
+  // Gom toàn bộ ghế đang có (kể cả ghế dư từ lần đổi trước) để tra cứu theo mã.
+  const allCurrentSeats = [...seatPlanDown, ...seatPlanUp, ...extraLeftoverSeats];
+  const seatByCode = {};
+  allCurrentSeats.forEach(s => { seatByCode[s.code] = s; });
+
+  seatPlanDown = target.down.map(code => {
+    if (code.endsWith('_hidden')) return { code, state: 'hidden' };
+    return seatByCode[code] ? { ...seatByCode[code], code } : makeSeat(code, "empty");
+  });
+  seatPlanUp = target.up.map(code => {
+    if (code.endsWith('_hidden')) return { code, state: 'hidden' };
+    return seatByCode[code] ? { ...seatByCode[code], code } : makeSeat(code, "empty");
+  });
+
+  // Save to bank so changes persist when switching trips
+  if(tripSeatBank[currentTripId]) {
+    tripSeatBank[currentTripId].down = seatPlanDown;
+    tripSeatBank[currentTripId].up = seatPlanUp;
+  }
+
+  // Update header vehicle label
+  const carTypeEl = document.querySelector('.car-type');
+  if (carTypeEl) {
+    const svgIcon = carTypeEl.querySelector('svg');
+    carTypeEl.innerHTML = '';
+    if (svgIcon) carTypeEl.appendChild(svgIcon);
+    carTypeEl.appendChild(document.createTextNode(' ' + typeLabel));
+  }
+
+  // Update trip card subtext in the sidebar list
+  const selectedTripCard = document.querySelector('.trip-card.selected');
+  if (selectedTripCard) {
+    const subEl = selectedTripCard.querySelector('.trip-sub');
+    if (subEl) {
+      const parts = subEl.textContent.split('•');
+      subEl.textContent = parts[0].trim() + ' • ' + typeLabel;
+    }
+  }
+
+  // Ghế dư: có khách (không phải ghế trống) nhưng mã không còn trong sơ đồ xe mới.
+  extraLeftoverSeats = allCurrentSeats.filter(s => !targetCodes.has(s.code) && ['sold','hold','free','cargo'].includes(s.state));
+
+  if(tripSeatBank[currentTripId]) {
+    tripSeatBank[currentTripId].extraSeats = extraLeftoverSeats;
+  }
+
+  renderSeats();
+  renderExtraSeats();
+}
+
+function renderExtraSeats(){
+  const section = document.getElementById('extraSeatsSection');
+  const list = document.getElementById('extraSeatsList');
+  if(!section || !list) return;
+  if(extraLeftoverSeats.length === 0){
+    section.style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+  section.style.display = '';
+
+  // Align columns configuration with the main seat map
+  const totalSeats = [...seatPlanDown, ...seatPlanUp].filter(s => s.state !== 'hidden').length;
+  const useThreeCols = totalSeats >= 34;
+  list.classList.toggle('cols-3', useThreeCols);
+
+  list.innerHTML = extraLeftoverSeats.map(seatCard).join('');
+}
+
+/* ===================== GHẾ PHỤ (chỉ ghi chú + giá tiền) ===================== */
+function subSeatCard(seat){
+  return `
+  <div class="seat-card sub" data-code="${seat.code}" onclick="openSubSeatModal('${seat.code}')">
+    <div class="seat-top">
+      <div><div class="seat-code">${seat.code}</div></div>
+      <div class="seat-top-right">
+        <div class="seat-price-tag">${(seat.price || 0).toLocaleString('vi-VN')}đ</div>
+        <button type="button" class="seat-cancel-tag" onclick="event.stopPropagation(); deleteSubSeat('${seat.code}')">Xóa</button>
+      </div>
+    </div>
+    <div class="seat-note" title="${seat.note || ''}">${seat.note || '—'}</div>
+  </div>`;
+}
+
+function subSeatAddTile(){
+  return `
+  <div class="seat-card sub-add" onclick="openSubSeatModal()">
+    <span class="sub-add-plus">+</span>
+  </div>`;
+}
+
+function renderSubSeats(){
+  const section = document.getElementById('subSeatsSection');
+  const list = document.getElementById('subSeatsList');
+  if(!section || !list) return;
+
+  const totalSeats = [...seatPlanDown, ...seatPlanUp].filter(s => s.state !== 'hidden').length;
+  const useThreeCols = totalSeats >= 34;
+  list.classList.toggle('cols-3', useThreeCols);
+
+  list.innerHTML = subSeats.map(subSeatCard).join('') + subSeatAddTile();
+}
+
+let editingSubSeatCode = null;
+
+function nextSubSeatCode(){
+  let max = 0;
+  subSeats.forEach(s => {
+    const m = /^S(\d+)$/.exec(s.code);
+    if(m) max = Math.max(max, parseInt(m[1], 10));
+  });
+  return 'S' + (max + 1);
+}
+
+const DEFAULT_SUB_SEAT_PRICE = 280000;
+
+function openSubSeatModal(code){
+  editingSubSeatCode = code || null;
+  const titleEl = document.getElementById('subSeatModalTitle');
+  const noteEl = document.getElementById('subSeatNote');
+  const priceDisplayEl = document.getElementById('subSeatPriceDisplay');
+  if(editingSubSeatCode){
+    const seat = subSeats.find(s => s.code === editingSubSeatCode);
+    if(!seat) return;
+    if(titleEl) titleEl.textContent = `Sửa ghế phụ ${seat.code}`;
+    if(noteEl) noteEl.value = seat.note || '';
+    if(priceDisplayEl) priceDisplayEl.textContent = (seat.price || DEFAULT_SUB_SEAT_PRICE).toLocaleString('vi-VN') + 'đ';
+  } else {
+    if(titleEl) titleEl.textContent = 'Thêm ghế phụ';
+    if(noteEl) noteEl.value = '';
+    if(priceDisplayEl) priceDisplayEl.textContent = DEFAULT_SUB_SEAT_PRICE.toLocaleString('vi-VN') + 'đ';
+  }
+  document.getElementById('subSeatModal').classList.add('open');
+}
+
+function saveSubSeat(){
+  const note = document.getElementById('subSeatNote').value.trim();
+
+  if(editingSubSeatCode){
+    const seat = subSeats.find(s => s.code === editingSubSeatCode);
+    if(seat){
+      seat.note = note;
+      // Giá tiền không được sửa, giữ nguyên giá đã lưu trước đó
+    }
+  } else {
+    subSeats.push({
+      code: nextSubSeatCode(),
+      state: 'sub',
+      note,
+      price: DEFAULT_SUB_SEAT_PRICE,
+      paid: true
+    });
+  }
+
+  if(tripSeatBank[currentTripId]) tripSeatBank[currentTripId].subSeats = subSeats;
+  saveSeatBank();
+  renderSubSeats();
+  updateTripStats();
+  updatePassengerTabCount();
+  closeModal('subSeatModal');
+  showToast(editingSubSeatCode ? 'Đã cập nhật ghế phụ' : 'Đã thêm ghế phụ');
+}
+
+function deleteSubSeat(code){
+  subSeats = subSeats.filter(s => s.code !== code);
+  if(tripSeatBank[currentTripId]) tripSeatBank[currentTripId].subSeats = subSeats;
+  saveSeatBank();
+  renderSubSeats();
+  updateTripStats();
+  updatePassengerTabCount();
+  showToast('Đã xóa ghế phụ');
+}
+
+function openAssignModal(){ 
+  document.getElementById('assignModal').classList.add('open'); 
+  document.getElementById('driverWarn').style.display='none'; 
+  
+  // Pre-select current vehicle type and add to select options if missing
+  const carTypeEl = document.querySelector('.car-type');
+  if (carTypeEl) {
+    const cloned = carTypeEl.cloneNode(true);
+    const svg = cloned.querySelector('svg');
+    if (svg) svg.remove();
+    const currentType = cloned.textContent.trim();
+    
+    const select = document.getElementById('vehicleTypeSelect');
+    if (select) {
+      let exists = false;
+      for (let i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === currentType) {
+          exists = true;
+          select.selectedIndex = i;
+          break;
+        }
+      }
+      if (!exists) {
+        const newOpt = new Option(currentType, currentType);
+        select.add(newOpt, 1); // Insert right after the placeholder
+        select.selectedIndex = 1;
+      }
+    }
+  }
+
+  // Pre-populate plate and add to select options if missing, plus driver and helper
+  const headerPlate = document.getElementById('headerPlate');
+  const headerDriver = document.getElementById('headerDriver');
+  const headerHelper = document.getElementById('headerHelper');
+
+  if (headerPlate) {
+    const currentPlate = headerPlate.textContent.trim();
+    const plateSelect = document.getElementById('plateSelect');
+    if (plateSelect) {
+      let exists = false;
+      for (let i = 0; i < plateSelect.options.length; i++) {
+        if (plateSelect.options[i].value === currentPlate) {
+          exists = true;
+          plateSelect.selectedIndex = i;
+          break;
+        }
+      }
+      if (!exists) {
+        const newOpt = new Option(currentPlate, currentPlate);
+        plateSelect.add(newOpt, 0); // Insert at the top
+        plateSelect.selectedIndex = 0;
+      }
+    }
+  }
+  if (headerDriver && document.getElementById('driverSelect')) {
+    const val = headerDriver.textContent.trim();
+    document.getElementById('driverSelect').value = val;
+    dropdownState['driverDropdownContainer'] = { value: val, label: val };
+    document.querySelectorAll('#driverDropdownPanel .dropdown-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.value === val);
+    });
+  }
+  if (headerHelper && document.getElementById('helperSelect')) {
+    const val = headerHelper.textContent.trim();
+    document.getElementById('helperSelect').value = val;
+    dropdownState['helperDropdownContainer'] = { value: val, label: val };
+    document.querySelectorAll('#helperDropdownPanel .dropdown-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.value === val);
+    });
+  }
+}
 function checkDriverConflict(){
   const conflict = document.getElementById('driverSelect').value.includes('trùng lịch');
   document.getElementById('driverWarn').style.display = conflict ? 'flex' : 'none';
 }
 function saveAssign(){
   if(document.getElementById('driverWarn').style.display === 'flex'){ showToast('Vui lòng chọn tài xế khác trước khi lưu (BR-07)'); return; }
+  
+  const select = document.getElementById('vehicleTypeSelect');
+  if (select && select.value) {
+    applyVehicleType(select.value);
+  }
+
+  // Update header info dynamically
+  const plateVal = document.getElementById('plateSelect').value;
+  const driverVal = document.getElementById('driverSelect').value;
+  const helperVal = document.getElementById('helperSelect').value;
+
+  const headerPlate = document.getElementById('headerPlate');
+  const headerDriver = document.getElementById('headerDriver');
+  const headerHelper = document.getElementById('headerHelper');
+
+  if (headerPlate) headerPlate.textContent = plateVal;
+  if (headerDriver) headerDriver.textContent = driverVal;
+  if (headerHelper) headerHelper.textContent = helperVal;
+
+  if (tripSeatBank[currentTripId]) {
+    tripSeatBank[currentTripId].plate = plateVal;
+    tripSeatBank[currentTripId].driver = driverVal;
+    tripSeatBank[currentTripId].helper = helperVal;
+  }
+  
+  saveSeatBank();
+  renderZone1TripList();
+  
   closeModal('assignModal');
   showToast('Đã lưu thông tin chỉ định xe');
 }
@@ -880,8 +1408,29 @@ function toggleSearchResults(force){
 document.getElementById('searchInput').addEventListener('focus', ()=>toggleSearchResults(true));
 document.addEventListener('click', (e)=>{
   if(!e.target.closest('.search-wrap')) document.getElementById('searchResults').classList.remove('open');
-  if(!e.target.closest('#directionDropdown') && !e.target.closest('#directionTrigger')) document.getElementById('directionDropdown').classList.remove('open');
-  if(!e.target.closest('#routeDropdown') && !e.target.closest('#routeTrigger')) document.getElementById('routeDropdown').classList.remove('open');
+  if(!e.target.closest('#directionDropdown') && !e.target.closest('#directionTrigger')) {
+    const panel = document.getElementById('directionDropdown');
+    if (panel) panel.classList.remove('open');
+  }
+  if(!e.target.closest('#routeDropdown') && !e.target.closest('#routeTrigger')) {
+    const panel = document.getElementById('routeDropdown');
+    if (panel) panel.classList.remove('open');
+  }
+  
+  // Close searchable dropdowns (Driver & Helper) and save values if clicked outside
+  document.querySelectorAll('.searchable-dropdown').forEach(container => {
+    const panel = container.querySelector('.dropdown-panel');
+    if (panel && panel.classList.contains('open') && !container.contains(e.target)) {
+      panel.classList.remove('open');
+      
+      const input = container.querySelector('input');
+      const state = dropdownState[container.id];
+      if (input && state) {
+        state.label = input.value;
+        state.value = input.value;
+      }
+    }
+  });
 });
 function pickSearchResult(){
   document.getElementById('searchResults').classList.remove('open');
@@ -896,17 +1445,50 @@ function selectTrip(el, time, routeLabel){
   const tripId = el.dataset.trip;
   if(!tripId || !tripSeatBank[tripId]) return;
 
+  // Sync state
+  currentTripId = tripId;
+  seatPlanDown = tripSeatBank[tripId].down;
+  seatPlanUp = tripSeatBank[tripId].up;
+  extraLeftoverSeats = tripSeatBank[tripId].extraSeats || [];
+
+  // Update header details from bank
+  const plateVal = tripSeatBank[tripId].plate || '51F-123.45';
+  const vehicleType = tripSeatBank[tripId].vehicleType || 'Limousine 24 Phòng';
+  const driverVal = tripSeatBank[tripId].driver || 'Trần Văn Hùng';
+  const helperVal = tripSeatBank[tripId].helper || 'Nguyễn Thị Hương';
+  
+  const headerPlate = document.getElementById('headerPlate');
+  if (headerPlate) headerPlate.textContent = plateVal;
+  
+  const carTypeEl = document.querySelector('.car-type');
+  if (carTypeEl) {
+    const svgIcon = carTypeEl.querySelector('svg');
+    carTypeEl.innerHTML = '';
+    if (svgIcon) carTypeEl.appendChild(svgIcon);
+    carTypeEl.appendChild(document.createTextNode(' ' + vehicleType));
+  }
+  
+  const headerDriver = document.getElementById('headerDriver');
+  if (headerDriver) headerDriver.textContent = driverVal;
+  
+  const headerHelper = document.getElementById('headerHelper');
+  if (headerHelper) headerHelper.textContent = helperVal;
+
   // Đang chuyển ghế và đã chọn ghế nguồn: cho phép bấm sang chuyến khác để chọn ghế trống làm đích,
   // không làm mất lựa chọn ghế nguồn đã chọn trước đó (không cần thêm nút nào).
   if(multiSelectMode && selectionMode === 'transfer' && selectedSourceSeats.length){
     currentTripId = tripId;
     seatPlanDown = tripSeatBank[tripId].down;
     seatPlanUp = tripSeatBank[tripId].up;
+    extraLeftoverSeats = tripSeatBank[tripId].extraSeats || [];
+    subSeats = tripSeatBank[tripId].subSeats || [];
     if(transferTargetTripId !== tripId){
       selectedTargetSeats = [];
       transferTargetTripId = tripId;
     }
     renderSeats();
+    renderExtraSeats();
+    renderSubSeats();
     if(transferSourceTripId === tripId){
       selectedSourceSeats.forEach(code=>{
         const card = document.querySelector(`.seat-card[data-code="${code}"]`);
@@ -929,7 +1511,11 @@ function selectTrip(el, time, routeLabel){
   currentTripId = tripId;
   seatPlanDown = tripSeatBank[tripId].down;
   seatPlanUp = tripSeatBank[tripId].up;
+  extraLeftoverSeats = tripSeatBank[tripId].extraSeats || [];
+  subSeats = tripSeatBank[tripId].subSeats || [];
   renderSeats();
+  renderExtraSeats();
+  renderSubSeats();
   if(document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
 }
 let selectedDirection = 'sg-cd';
@@ -1012,6 +1598,84 @@ function renderRouteOptions(){
       <span class="dropdown-item-check">✓</span>
     </div>
   `).join('');
+}
+
+/* ===================== SEARCHABLE DROPDOWNS ===================== */
+const dropdownState = {
+  driverDropdownContainer: { value: '', label: '' },
+  helperDropdownContainer: { value: '', label: '' }
+};
+
+function toggleSearchDropdown(containerId, event) {
+  event.stopPropagation();
+  
+  // Close all other dropdowns
+  document.querySelectorAll('.searchable-dropdown').forEach(d => {
+    if (d.id !== containerId) {
+      const panel = d.querySelector('.dropdown-panel');
+      if (panel) panel.classList.remove('open');
+    }
+  });
+
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const panel = container.querySelector('.dropdown-panel');
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  
+  if (!isOpen) {
+    panel.classList.add('open');
+    const input = container.querySelector('input');
+    if (input) {
+      input.select();
+    }
+    filterDropdown(containerId);
+  } else {
+    panel.classList.remove('open');
+  }
+}
+
+function filterDropdown(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const input = container.querySelector('input');
+  if (!input) return;
+  const filter = input.value.toLowerCase().trim();
+  const items = container.querySelectorAll('.dropdown-item');
+  
+  items.forEach(item => {
+    const text = item.textContent.toLowerCase();
+    if (text.includes(filter)) {
+      item.style.display = '';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+  
+  const panel = container.querySelector('.dropdown-panel');
+  if (panel) panel.classList.add('open');
+}
+
+function selectSearchDropdownItem(containerId, label, value, type) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const input = container.querySelector('input');
+  if (input) {
+    input.value = label;
+  }
+  dropdownState[containerId] = { value, label };
+  
+  container.querySelectorAll('.dropdown-item').forEach(item => {
+    const itemValue = item.dataset.value;
+    item.classList.toggle('active', itemValue === value);
+  });
+  
+  const panel = container.querySelector('.dropdown-panel');
+  if (panel) panel.classList.remove('open');
+  
+  if (type === 'driver') {
+    checkDriverConflict();
+  }
 }
 
 /* ---- Zone 1: Calendar ---- */
@@ -1101,6 +1765,259 @@ tsTrack.addEventListener('click', (e)=>{
   tsStartHour = hour;
   updateTsUI();
 });
+
+/* ===================== MODAL CHỈ ĐỊNH GHẾ DƯ CHO PHƠI KHÁC ===================== */
+let activeAssignSourceSeatCode = null;
+let activeAssignTargetTripId = null;
+let selectedAssignTargetSeatCode = null;
+let assignSeatTripSearchKeyword = '';
+
+function openAssignSeatModal(seatCode){
+  activeAssignSourceSeatCode = seatCode;
+  const seat = findSeat(seatCode);
+  if(!seat) return;
+  
+  const modalSub = document.getElementById('assignSeatModalSub');
+  if(modalSub){
+    modalSub.textContent = `Khách: ${seat.customerName || '—'} · ${seat.phone || '—'} · Ghế dư hiện tại: ${seatCode}`;
+  }
+  
+  activeAssignTargetTripId = currentTripId;
+  selectedAssignTargetSeatCode = null;
+  assignSeatTripSearchKeyword = '';
+  
+  const searchInput = document.getElementById('assignSeatTripSearch');
+  if(searchInput) searchInput.value = '';
+  
+  renderAssignSeatTripList();
+  renderAssignSeatMap();
+  updateAssignSeatConfirmState();
+  
+  document.getElementById('assignSeatModal').classList.add('open');
+}
+
+function closeAssignSeatModal(){
+  document.getElementById('assignSeatModal').classList.remove('open');
+  activeAssignSourceSeatCode = null;
+  activeAssignTargetTripId = null;
+  selectedAssignTargetSeatCode = null;
+  assignSeatTripSearchKeyword = '';
+}
+
+function filterAssignSeatTripList(keyword) {
+  assignSeatTripSearchKeyword = keyword || '';
+  renderAssignSeatTripList();
+}
+
+function renderAssignSeatTripList(){
+  const wrap = document.getElementById('assignSeatTripList');
+  if(!wrap) return;
+  const kw = assignSeatTripSearchKeyword.trim().toLowerCase();
+  
+  const filtered = !kw ? allTripsMeta : allTripsMeta.filter(t =>
+    t.time.toLowerCase().includes(kw) ||
+    (t.plate && t.plate.toLowerCase().includes(kw)) ||
+    t.route.toLowerCase().includes(kw) ||
+    (t.vehicleType && t.vehicleType.toLowerCase().includes(kw))
+  );
+  
+  if(filtered.length === 0){
+    wrap.innerHTML = '<div class="trip-empty-msg" style="padding:16px 4px; text-align:center; font-size:13.5px; color:var(--text-sub); font-weight:600;">Không tìm thấy phơi xe phù hợp</div>';
+    return;
+  }
+  
+  wrap.innerHTML = filtered.map(t => {
+    const plan = tripSeatBank[t.id];
+    const totalSeats = plan ? (plan.down.length + plan.up.length) : 0;
+    const bookedSeats = plan ? [...plan.down, ...plan.up].filter(s => ['sold','hold','free','cargo'].includes(s.state)).length : 0;
+    const selected = t.id === activeAssignTargetTripId ? 'selected' : '';
+    const plate = t.plate || 'Chưa có';
+    const vehicleType = t.vehicleType || 'Chưa rõ';
+    
+    return `
+      <div class="trip-card ${selected}" onclick="selectAssignSeatTrip('${t.id}')">
+        <div>
+          <div class="trip-time-row">
+            <span class="trip-time">${t.time}</span>
+            <span class="trip-plate-inline">${plate}</span>
+          </div>
+          <div class="trip-sub">${t.route} • ${vehicleType}</div>
+        </div>
+        <div class="trip-nums">
+          <div class="n1">${bookedSeats}/${totalSeats}</div>
+          <div class="n2">đã đặt</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function selectAssignSeatTrip(tripId){
+  if(tripId === activeAssignTargetTripId) return;
+  activeAssignTargetTripId = tripId;
+  selectedAssignTargetSeatCode = null;
+  renderAssignSeatTripList();
+  renderAssignSeatMap();
+  updateAssignSeatConfirmState();
+}
+
+function renderAssignSeatMap(){
+  const tripId = activeAssignTargetTripId;
+  const tripPlan = tripSeatBank[tripId];
+  const floorDownEl = document.getElementById('assignSeatFloorDown');
+  const floorUpEl = document.getElementById('assignSeatFloorUp');
+  
+  if(!tripPlan || !floorDownEl || !floorUpEl) return;
+  
+  const mapSeat = seat => {
+    if(seat.state === 'hidden'){
+      return `<div class="van-seat" style="visibility:hidden; pointer-events:none;"></div>`;
+    }
+    const isTarget = seat.code === selectedAssignTargetSeatCode;
+    const isBooked = ['sold','hold','free','cargo'].includes(seat.state);
+    let cls = 'empty';
+    if(isBooked) cls = 'blocked';
+    else if(isTarget) cls = 'selected';
+    
+    const clickable = !isBooked ? `onclick="selectAssignTargetSeat('${seat.code}')"` : '';
+    
+    return `
+      <div class="van-seat ${cls}" ${clickable}>
+        <svg width="100%" height="100%" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M5 5C5 3.89543 5.89543 3 7 3H17C18.1046 3 19 3.89543 19 5V17C19 18.6569 17.6569 20 16 20H8C6.34315 20 5 18.6569 5 17V5Z"/>
+          <path d="M2 8C2 7.44772 2.44772 7 3 7H5V15H3C2.44772 15 2 14.5523 2 14V8Z"/>
+          <path d="M19 7H21C21.5523 7 22 7.44772 22 8V14C22 14.5523 21.5523 15 21 15H19V7Z"/>
+        </svg>
+        <span class="seat-num">${seat.code}</span>
+      </div>
+    `;
+  };
+  
+  const totalSeats = tripPlan.down.length + tripPlan.up.length;
+  const useThreeCols = totalSeats >= 34;
+  
+  floorDownEl.classList.toggle('cols-3', useThreeCols);
+  floorDownEl.innerHTML = tripPlan.down.map(mapSeat).join('');
+  
+  floorUpEl.classList.toggle('cols-3', useThreeCols);
+  floorUpEl.innerHTML = tripPlan.up.map(mapSeat).join('');
+  
+  const tag = document.getElementById('assignSeatSelectedTag');
+  if(tag) tag.textContent = selectedAssignTargetSeatCode ? ('Ghế ' + selectedAssignTargetSeatCode) : '';
+}
+
+function selectAssignTargetSeat(code){
+  const tripPlan = tripSeatBank[activeAssignTargetTripId];
+  if(!tripPlan) return;
+  const seat = [...tripPlan.down, ...tripPlan.up].find(s => s.code === code);
+  if(!seat || ['sold','hold','free','cargo'].includes(seat.state)) return;
+  
+  selectedAssignTargetSeatCode = (selectedAssignTargetSeatCode === code) ? null : code;
+  renderAssignSeatMap();
+  updateAssignSeatConfirmState();
+}
+
+function updateAssignSeatConfirmState(){
+  const btn = document.getElementById('confirmAssignSeatBtn');
+  const hint = document.getElementById('assignSeatHint');
+  if(!btn) return;
+  
+  if(activeAssignTargetTripId && selectedAssignTargetSeatCode){
+    btn.disabled = false;
+    if(hint) hint.textContent = `Sẵn sàng chỉ định ghế ${activeAssignSourceSeatCode} sang chuyến ${activeAssignTargetTripId}, ghế ${selectedAssignTargetSeatCode}`;
+  } else {
+    btn.disabled = true;
+    if(hint) hint.textContent = 'Chọn 1 phơi xe và 1 ghế trống để chỉ định.';
+  }
+}
+
+function confirmAssignSeat(){
+  if(!activeAssignSourceSeatCode || !activeAssignTargetTripId || !selectedAssignTargetSeatCode) return;
+  
+  const sourceIdx = extraLeftoverSeats.findIndex(s => s.code === activeAssignSourceSeatCode);
+  if(sourceIdx === -1) {
+    showToast('Không tìm thấy ghế dư nguồn');
+    return;
+  }
+  const sourceSeat = extraLeftoverSeats[sourceIdx];
+  
+  const tripPlan = tripSeatBank[activeAssignTargetTripId];
+  if(!tripPlan) {
+    showToast('Không tìm thấy sơ đồ phơi xe đích');
+    return;
+  }
+  const targetSeat = [...tripPlan.down, ...tripPlan.up].find(s => s.code === selectedAssignTargetSeatCode);
+  if(!targetSeat || ['sold','hold','free','cargo'].includes(targetSeat.state)) {
+    showToast('Ghế đích không hợp lệ hoặc đã có người đặt');
+    return;
+  }
+  
+  targetSeat.state = sourceSeat.state;
+  targetSeat.firstStop = sourceSeat.firstStop;
+  targetSeat.lastStop = sourceSeat.lastStop;
+  targetSeat.phone = sourceSeat.phone;
+  targetSeat.note = sourceSeat.note;
+  targetSeat.customerName = sourceSeat.customerName;
+  targetSeat.pickupTime = sourceSeat.pickupTime;
+  targetSeat.ticketNo = sourceSeat.ticketNo;
+  targetSeat.paid = sourceSeat.paid;
+  targetSeat.count = sourceSeat.count;
+  targetSeat.hasLuggage = sourceSeat.hasLuggage;
+  targetSeat.guestType = sourceSeat.guestType;
+  targetSeat.transshipStation = sourceSeat.transshipStation;
+  targetSeat.arrivalTransfer = sourceSeat.arrivalTransfer;
+  
+  extraLeftoverSeats.splice(sourceIdx, 1);
+  
+  if (tripSeatBank[currentTripId]) {
+    tripSeatBank[currentTripId].extraSeats = extraLeftoverSeats;
+  }
+  saveSeatBank();
+  
+  if(activeAssignTargetTripId === currentTripId){
+    seatPlanDown = tripPlan.down;
+    seatPlanUp = tripPlan.up;
+    renderSeats();
+  }
+  
+  renderExtraSeats();
+  if(document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
+  closeAssignSeatModal();
+  showToast(`Đã chỉ định ghế ${activeAssignSourceSeatCode} sang chuyến ${activeAssignTargetTripId}, ghế ${selectedAssignTargetSeatCode} thành công`);
+}
+
+function renderZone1TripList() {
+  const sgcdWrap = document.getElementById('tripListSGCD');
+  const cdsgWrap = document.getElementById('tripListCDSG');
+  if (!sgcdWrap || !cdsgWrap) return;
+  
+  const mapTrip = t => {
+    const plan = tripSeatBank[t.id];
+    const totalSeats = plan ? plan.down.filter(s => s.state !== 'hidden').length + plan.up.filter(s => s.state !== 'hidden').length : 0;
+    const bookedSeats = plan ? [...plan.down, ...plan.up].filter(s => ['sold','hold','free','cargo'].includes(s.state)).length : 0;
+    const selected = t.id === currentTripId ? 'selected' : '';
+    const plate = plan && plan.plate ? plan.plate : (t.plate || 'Chưa có');
+    const vehicleType = plan && plan.vehicleType ? plan.vehicleType : (t.vehicleType || 'Chưa rõ');
+    
+    return `
+      <div class="trip-card ${selected}" data-trip="${t.id}" onclick="selectTrip(this,'${t.time}','${t.route}')">
+        <div>
+          <div class="trip-time-row">
+            <span class="trip-time">${t.time}</span>
+            <span class="trip-plate-inline">${plate}</span>
+          </div>
+          <div class="trip-sub">${t.route} • ${vehicleType}</div>
+        </div>
+        <div class="trip-nums">
+          <div class="n1">${bookedSeats}/${totalSeats}</div>
+        </div>
+      </div>
+    `;
+  };
+  
+  sgcdWrap.innerHTML = sgcdTripsMeta.map(mapTrip).join('');
+  CDSG_TABS_MAPPING_VERIFICATION_CHECK: 
+  cdsgWrap.innerHTML = cdsgTripsMeta.map(mapTrip).join('');
+}
 
 /* ===================== TÀI KHOẢN / ĐĂNG XUẤT ===================== */
 (function initUserMenu(){

@@ -132,11 +132,22 @@
           <span>Sơ đồ ghế</span>
           <span class="seatmap-selected-tag" id="seatSelectedTag"></span>
         </div>
-        <div class="van-frame" id="vanFrame"></div>
+        <div class="van-frame" id="vanFrame" style="display:flex; flex-direction:row; gap:20px; justify-content:center; align-items:start;">
+          <!-- Down floor -->
+          <div class="floor-col">
+            <div class="floor-title-bar">TẦNG DƯỚI</div>
+            <div class="seat-grid" id="assignSeatFloorDown"></div>
+          </div>
+          <!-- Up floor -->
+          <div class="floor-col">
+            <div class="floor-title-bar">TẦNG TRÊN</div>
+            <div class="seat-grid" id="assignSeatFloorUp"></div>
+          </div>
+        </div>
         <div class="seat-legend">
           <div class="seat-legend-item"><span class="seat-legend-dot empty"></span>Trống</div>
           <div class="seat-legend-item"><span class="seat-legend-dot selected"></span>Đang chọn</div>
-          <div class="seat-legend-item"><span class="seat-legend-dot blocked"></span>Ghế không chọn</div>
+          <div class="seat-legend-item"><span class="seat-legend-dot blocked"></span>Đã có khách</div>
         </div>
       </div>
     </div>
@@ -145,7 +156,7 @@
       <span class="hint" id="assignHint">Chọn 1 phơi xe và 1 ghế trống để chỉ định.</span>
       <div style="display:flex;gap:10px;">
         <button class="btn btn-secondary" onclick="closeAssignModal()">Đóng</button>
-        <button class="btn btn-primary" id="confirmAssignBtn" disabled onclick="confirmAssign()">Xác nhận chỉ định</button>
+        <button class="btn btn-primary" id="confirmAssignBtn" disabled onclick="confirmAssign()">Bán vé</button>
       </div>
     </div>
   </div>
@@ -153,6 +164,6 @@
 
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg><span id="toastText"></span></div>
 
-<script src="../js/pickup-list.js"></script>
+<script src="../js/pickup-list.js?v=7"></script>
 </body>
 </html>
