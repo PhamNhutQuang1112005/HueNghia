@@ -1,11 +1,14 @@
 /* ================= DỮ LIỆU MẪU ================= */
 
 /* Danh sách khách đăng ký rước liền */
-let pickupPassengers = [
+const HN_PICKUP_PAX_KEY = 'hn_pickup_passengers_v6';
+
+const DEFAULT_PICKUP_PASSENGERS = [
   {
     id: 1,
     name: 'Nguyễn Thị Hồng',
     phone: '0909123456',
+    ticketCount: 1,
     fromStation: 'Trạm Kinh Dương Vương',
     toStation: 'Trạm Châu Đốc',
     fromTransfer: '12 Kinh Dương Vương, Q.Bình Tân',
@@ -18,6 +21,7 @@ let pickupPassengers = [
     id: 2,
     name: 'Trần Văn Bình',
     phone: '0918234567',
+    ticketCount: 1,
     fromStation: 'Trạm An Sương',
     toStation: 'Trạm Long Xuyên',
     fromTransfer: '45 Trường Chinh, Q.12',
@@ -30,6 +34,7 @@ let pickupPassengers = [
     id: 3,
     name: 'Lê Thị Mai',
     phone: '0933345678',
+    ticketCount: 2,
     fromStation: 'Trạm Q.5',
     toStation: 'Trạm Tân Châu',
     fromTransfer: '88 Nguyễn Trãi, Q.5',
@@ -42,6 +47,7 @@ let pickupPassengers = [
     id: 4,
     name: 'Phạm Quốc Huy',
     phone: '0944456789',
+    ticketCount: 1,
     fromStation: 'Văn phòng trung tâm',
     toStation: 'Bến xe Châu Đốc',
     fromTransfer: '120 Lê Hồng Phong, Q.10',
@@ -54,6 +60,7 @@ let pickupPassengers = [
     id: 5,
     name: 'Võ Thị Kim Ngân',
     phone: '0977567890',
+    ticketCount: 2,
     fromStation: 'Trạm Kinh Dương Vương',
     toStation: 'Trạm Cần Thơ',
     fromTransfer: '5 Hồ Học Lãm, Bình Tân',
@@ -64,9 +71,53 @@ let pickupPassengers = [
   }
 ];
 
+function loadPickupPassengers() {
+  const keysToTry = [
+    HN_PICKUP_PAX_KEY,
+    'hn_pickup_passengers_v5',
+    'hn_pickup_passengers_v4',
+    'hn_pickup_passengers_v3'
+  ];
+
+  let storedPax = [];
+  for (const k of keysToTry) {
+    const saved = localStorage.getItem(k);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          storedPax = parsed;
+          break;
+        }
+      } catch(e){}
+    }
+  }
+
+  const defaults = JSON.parse(JSON.stringify(DEFAULT_PICKUP_PASSENGERS));
+  defaults.forEach(def => {
+    const exists = storedPax.some(p => p.id === def.id || (p.name === def.name && p.phone === def.phone));
+    if (!exists) {
+      storedPax.push(def);
+    }
+  });
+
+  storedPax = storedPax.filter(p => !p.name || (!p.name.includes('Cao Thị Thùy Linh') && !p.name.includes('Cao Thi Thuy Linh') && !p.name.includes('Thùy Linh')));
+
+  localStorage.setItem(HN_PICKUP_PAX_KEY, JSON.stringify(storedPax));
+  return storedPax;
+}
+
+function savePickupPassengers() {
+  const jsonStr = JSON.stringify(pickupPassengers);
+  localStorage.setItem(HN_PICKUP_PAX_KEY, jsonStr);
+  try { window.dispatchEvent(new StorageEvent('storage', { key: HN_PICKUP_PAX_KEY, newValue: jsonStr })); } catch(e){}
+}
+
+let pickupPassengers = loadPickupPassengers();
+
 /* Danh sách phơi xe (xe trung chuyển đang sẵn sàng nhận khách rước) */
-/* seats: trạng thái từng ghế — 'empty' (trống, có thể chọn) | 'blocked' (đã có khách, không chọn được) */
-const HN_STORAGE_KEY = 'hn_trip_seat_bank_v6';
+const HN_STORAGE_KEY = 'hn_trip_seat_bank_v7';
+const HN_TRIPS_KEY = 'hn_trips_meta_v9';
 
 const sgcdTripsMeta = [
   { id:'1', time:'07:00', route:'Sài Gòn - Châu Đốc', plate: '51F-123.45', vehicleType: 'Limousine 24 Phòng' },
@@ -82,7 +133,19 @@ const cdsgTripsMeta = [
   { id:'9', time:'14:00', route:'Châu Đốc - Sài Gòn', plate: '51F-234.56', vehicleType: 'Limousine 24 Phòng' },
   { id:'10', time:'21:00', route:'Châu Đốc - Sài Gòn', plate: '50H-567.89', vehicleType: 'Giường nằm 34 chỗ' },
 ];
-const allTripsMeta = [...sgcdTripsMeta, ...cdsgTripsMeta];
+
+function loadAllTripsMeta() {
+  const saved = localStorage.getItem(HN_TRIPS_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch(e){}
+  }
+  return [...sgcdTripsMeta, ...cdsgTripsMeta];
+}
+
+let allTripsMeta = loadAllTripsMeta();
 
 // Default seat generator (if storage empty)
 const staffList = ["tuyetphuong.huenghia","minh.tran","nguyen.long","thi.hoa"];
@@ -189,7 +252,9 @@ function generateTripSeatPlanForVehicleType(vehicleType){
 let tripSeatBank = {};
 
 function saveSeatBank() {
-  localStorage.setItem(HN_STORAGE_KEY, JSON.stringify(tripSeatBank));
+  const jsonStr = JSON.stringify(tripSeatBank);
+  localStorage.setItem(HN_STORAGE_KEY, jsonStr);
+  try { window.dispatchEvent(new StorageEvent('storage', { key: HN_STORAGE_KEY, newValue: jsonStr })); } catch(e){}
 }
 
 function loadSeatBank() {
@@ -276,12 +341,17 @@ window.addEventListener('storage', (e) => {
       renderPaxTable();
     }
   }
+  if (e.key === HN_PICKUP_PAX_KEY) {
+    pickupPassengers = loadPickupPassengers();
+    renderPaxTable();
+  }
 });
 
 let activePaxId = null;
 let activeTripId = null;
-let selectedSeat = null;
+let selectedSeats = [];
 let tripSearchKeyword = '';
+let customAssignPrice = null;
 
 /* ================= RENDER DANH SÁCH KHÁCH ================= */
 
@@ -318,11 +388,19 @@ function renderPaxTable(){
     return `
       <tr>
         <td>${idx + 1}</td>
-        <td class="name-cell"><span class="pax-name">${p.name}</span></td>
-        <td class="pax-phone">${p.phone}</td>
         <td>
-          <div class="route-line"><b>${p.fromStation}</b><span>→ ${p.toStation}</span></div>
+          <div class="pax-info">
+            <div class="pax-name">KH: ${p.name}</div>
+            <div class="pax-phone">SĐT: ${p.phone}</div>
+          </div>
         </td>
+        <td>
+          <div class="route-tags">
+            <span class="route-tag route-from">Trạm đi: ${p.fromStation}</span>
+            <span class="route-tag route-to">Trạm đến: ${p.toStation}</span>
+          </div>
+        </td>
+        <td class="center" style="font-weight:700; font-size:13.5px; color:var(--text-main);">${p.ticketCount || p.count || 1}</td>
         <td>${p.fromTransfer || '—'}</td>
         <td>${p.toTransfer || '—'}</td>
         <td class="note-cell">${p.note || '—'}</td>
@@ -340,11 +418,25 @@ function openAssignModal(paxId){
   const pax = pickupPassengers.find(p => p.id === paxId);
   if(!pax) return;
 
+  const countStr = (pax.ticketCount || pax.count || 1) + ' vé';
   document.getElementById('assignModalSub').textContent =
-    `Khách: ${pax.name} · ${pax.phone} · ${pax.fromStation} → ${pax.toStation}`;
+    `Khách: ${pax.name} · ${pax.phone} · SL: ${countStr} · ${pax.fromStation} → ${pax.toStation}`;
 
   activeTripId = pax.assigned ? pax.assigned.tripId : allTripsMeta[0].id;
-  selectedSeat = pax.assigned ? pax.assigned.seat : null;
+  
+  if (pax.assigned && pax.assigned.seats && Array.isArray(pax.assigned.seats)) {
+    selectedSeats = [...pax.assigned.seats];
+  } else if (pax.assigned && pax.assigned.seat) {
+    selectedSeats = pax.assigned.seat.split(',').map(s => s.trim()).filter(Boolean);
+  } else {
+    selectedSeats = [];
+  }
+
+  const trip = allTripsMeta.find(t => t.id === activeTripId);
+  customAssignPrice = pax.assigned && pax.assigned.price ? pax.assigned.price : (trip ? (trip.price || 280000) : 280000);
+  const priceInput = document.getElementById('assignTripPrice');
+  if(priceInput) priceInput.value = customAssignPrice;
+
   tripSearchKeyword = '';
   const searchInput = document.getElementById('tripSearchInput');
   if(searchInput) searchInput.value = '';
@@ -358,7 +450,7 @@ function openAssignModal(paxId){
 
 function closeAssignModal(){
   document.getElementById('assignPickupModal').classList.remove('open');
-  activePaxId = null; activeTripId = null; selectedSeat = null; tripSearchKeyword = '';
+  activePaxId = null; activeTripId = null; selectedSeats = []; tripSearchKeyword = ''; customAssignPrice = null;
 }
 
 function filterTripList(keyword){
@@ -411,9 +503,20 @@ function renderTripList(){
 function selectTrip(tripId){
   if(tripId === activeTripId) return;
   activeTripId = tripId;
-  selectedSeat = null;
+  selectedSeats = [];
+  
+  const trip = allTripsMeta.find(t => t.id === activeTripId);
+  customAssignPrice = trip ? (trip.price || 280000) : 280000;
+  const priceInput = document.getElementById('assignTripPrice');
+  if(priceInput) priceInput.value = customAssignPrice;
+
   renderTripList();
   renderSeatMap();
+  updateConfirmState();
+}
+
+function onAssignPriceChange(val){
+  customAssignPrice = Math.max(0, parseInt(val) || 0);
   updateConfirmState();
 }
 
@@ -428,7 +531,7 @@ function renderSeatMap(){
     if(seat.state === 'hidden'){
       return `<div class="van-seat" style="visibility:hidden; pointer-events:none;"></div>`;
     }
-    const isSelected = seat.code === selectedSeat;
+    const isSelected = selectedSeats.includes(seat.code);
     const isBooked = ['sold','hold','free','cargo'].includes(seat.state);
     let cls = 'empty';
     if(isBooked) cls = 'blocked';
@@ -454,10 +557,22 @@ function renderSeatMap(){
   floorDownEl.classList.toggle('cols-3', useThreeCols);
   floorDownEl.innerHTML = tripPlan.down.map(mapSeat).join('');
 
-  floorUpEl.classList.toggle('cols-3', useThreeCols);
-  floorUpEl.innerHTML = tripPlan.up.map(mapSeat).join('');
+  if (tripPlan.up.length === 0) {
+    floorUpEl.parentElement.style.display = 'none';
+    floorDownEl.parentElement.style.maxWidth = '320px';
+    floorDownEl.parentElement.style.margin = '0 auto';
+  } else {
+    floorUpEl.parentElement.style.display = 'flex';
+    floorDownEl.parentElement.style.maxWidth = '';
+    floorDownEl.parentElement.style.margin = '';
+    floorUpEl.classList.toggle('cols-3', useThreeCols);
+    floorUpEl.innerHTML = tripPlan.up.map(mapSeat).join('');
+  }
 
-  document.getElementById('seatSelectedTag').textContent = selectedSeat ? ('Ghế ' + selectedSeat) : '';
+  const tagEl = document.getElementById('seatSelectedTag');
+  if (tagEl) {
+    tagEl.textContent = '';
+  }
 }
 
 function selectSeat(code){
@@ -466,7 +581,13 @@ function selectSeat(code){
   const seat = [...tripPlan.down, ...tripPlan.up].find(s => s.code === code);
   if(!seat || ['sold','hold','free','cargo'].includes(seat.state)) return;
   
-  selectedSeat = (selectedSeat === code) ? null : code;
+  const idx = selectedSeats.indexOf(code);
+  if (idx !== -1) {
+    selectedSeats.splice(idx, 1);
+  } else {
+    selectedSeats.push(code);
+  }
+  
   renderSeatMap();
   updateConfirmState();
 }
@@ -474,64 +595,89 @@ function selectSeat(code){
 function updateConfirmState(){
   const btn = document.getElementById('confirmAssignBtn');
   const hint = document.getElementById('assignHint');
+  const totalEl = document.getElementById('assignTotalPrice');
   if(!btn) return;
   
-  if(activeTripId && selectedSeat){
+  const trip = allTripsMeta.find(t => t.id === activeTripId);
+  const unitPrice = (customAssignPrice !== null && !isNaN(customAssignPrice)) ? customAssignPrice : (trip ? (trip.price || 280000) : 280000);
+  const totalPrice = unitPrice * selectedSeats.length;
+
+  if (totalEl) {
+    totalEl.textContent = totalPrice.toLocaleString('vi-VN') + 'đ';
+  }
+  
+  if(activeTripId && selectedSeats.length > 0){
     btn.disabled = false;
-    const trip = allTripsMeta.find(t => t.id === activeTripId);
-    hint.textContent = `Sẽ bán vé ghế ${selectedSeat} — phơi xe ${trip ? trip.time : activeTripId}`;
+    const seatsText = selectedSeats.join(', ');
+    hint.innerHTML = `Sẽ chỉ định <b>${selectedSeats.length} ghế (${seatsText})</b> — phơi xe <b>${trip ? trip.time : activeTripId}</b>`;
   } else {
     btn.disabled = true;
-    hint.textContent = 'Chọn 1 phơi xe và 1 ghế trống để bán vé.';
+    hint.textContent = 'Chọn 1 phơi xe và chọn 1 hoặc nhiều ghế trống để chỉ định.';
   }
 }
 
 function confirmAssign(){
-  if(!activePaxId || !activeTripId || !selectedSeat) return;
+  if(!activePaxId || !activeTripId || selectedSeats.length === 0) return;
   const pax = pickupPassengers.find(p => p.id === activePaxId);
   if(!pax) return;
 
   const tripPlan = tripSeatBank[activeTripId];
   if(!tripPlan) return;
 
-  // Nếu khách đang đổi chỉ định từ 1 ghế/phơi xe khác thì trả ghế cũ về trạng thái trống
+  // Nếu khách đang đổi chỉ định từ 1 hoặc nhiều ghế/phơi xe khác thì trả ghế cũ về trạng thái trống
   if(pax.assigned){
     const oldTripPlan = tripSeatBank[pax.assigned.tripId];
     if(oldTripPlan){
-      const oldSeat = [...oldTripPlan.down, ...oldTripPlan.up].find(s => s.code === pax.assigned.seat);
-      if(oldSeat){
-        oldSeat.state = 'empty';
-        oldSeat.customerName = null;
-        oldSeat.phone = null;
-        oldSeat.ticketNo = null;
-        oldSeat.paid = false;
-      }
+      const oldSeatsList = pax.assigned.seats || (pax.assigned.seat ? pax.assigned.seat.split(',').map(s => s.trim()).filter(Boolean) : []);
+      oldSeatsList.forEach(code => {
+        const oldSeat = [...oldTripPlan.down, ...oldTripPlan.up].find(s => s.code === code);
+        if(oldSeat){
+          oldSeat.state = 'empty';
+          oldSeat.customerName = null;
+          oldSeat.phone = null;
+          oldSeat.ticketNo = null;
+          oldSeat.paid = false;
+        }
+      });
     }
   }
 
-  // Assign passenger to new seat in tripSeatBank
-  const targetSeat = [...tripPlan.down, ...tripPlan.up].find(s => s.code === selectedSeat);
-  if(targetSeat){
-    targetSeat.state = 'sold'; // Bán vé
-    targetSeat.customerName = pax.name;
-    targetSeat.phone = pax.phone;
-    targetSeat.firstStop = pax.fromStation;
-    targetSeat.lastStop = pax.toStation;
-    targetSeat.transshipStation = pax.fromTransfer;
-    targetSeat.paid = true;
-    targetSeat.count = 1;
-    targetSeat.ticketNo = targetSeat.ticketNo || ("SGCD-" + String(Math.floor(1000 + Math.random()*9000)));
-  }
+  // Assign passenger to all selected seats in tripSeatBank
+  const trip = allTripsMeta.find(t => t.id === activeTripId);
+  const unitPrice = (customAssignPrice !== null && !isNaN(customAssignPrice)) ? customAssignPrice : (trip ? (trip.price || 280000) : 280000);
+  const ticketNumber = "SGCD-" + String(Math.floor(1000 + Math.random()*9000));
 
-  pax.assigned = { tripId: activeTripId, seat: selectedSeat };
+  selectedSeats.forEach(code => {
+    const targetSeat = [...tripPlan.down, ...tripPlan.up].find(s => s.code === code);
+    if(targetSeat){
+      targetSeat.state = 'sold'; // Bán vé
+      targetSeat.customerName = pax.name;
+      targetSeat.phone = pax.phone;
+      targetSeat.firstStop = pax.fromStation;
+      targetSeat.lastStop = pax.toStation;
+      targetSeat.transshipStation = pax.fromTransfer;
+      targetSeat.price = unitPrice;
+      targetSeat.paid = true;
+      targetSeat.count = selectedSeats.length;
+      targetSeat.ticketNo = ticketNumber;
+    }
+  });
 
-  // Save the updated bank to localStorage so the ticketstaff tab gets updated!
+  pax.assigned = {
+    tripId: activeTripId,
+    seat: selectedSeats.join(', '),
+    seats: [...selectedSeats],
+    price: unitPrice
+  };
+
+  // Save the updated bank and pickup passengers to localStorage so changes persist across refreshes!
   saveSeatBank();
+  savePickupPassengers();
 
   closeAssignModal();
   renderPaxTable();
-  const trip = allTripsMeta.find(t => t.id === activeTripId);
-  showToast(`Đã bán vé cho ${pax.name} lên xe ${trip ? (trip.plate || '') : ''} — ghế ${selectedSeat}`);
+  const totalPrice = unitPrice * selectedSeats.length;
+  showToast(`Đã bán vé cho ${pax.name} lên xe ${trip ? (trip.plate || '') : ''} — ${selectedSeats.length} ghế (${selectedSeats.join(', ')}) · Tổng: ${totalPrice.toLocaleString('vi-VN')}đ`);
 }
 
 /* ================= TIỆN ÍCH ================= */

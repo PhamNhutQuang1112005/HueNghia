@@ -207,23 +207,24 @@ a{text-decoration:none;color:inherit;}
 .pax-table-wrap{border:1px solid var(--surface);border-radius:var(--radius-md);overflow:auto;}
 .pax-table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:1000px;}
 .pax-table thead th{
-  text-align:center;background:var(--surface-2);color:var(--text-sub);
+  text-align:left;background:var(--surface-2);color:var(--text-sub);
   font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;
   padding:10px 12px;border-bottom:2px solid var(--border-gray);white-space:nowrap;
 }
 .pax-table tbody td{padding:10px 12px;border-bottom:1px solid #ECECEC;vertical-align:middle;color:var(--text-main);white-space:nowrap;}
-.pax-table tbody td.name-cell{white-space:normal;}
 .pax-table tbody td.note-cell{white-space:normal;overflow-wrap:anywhere;color:var(--text-sub);}
 .pax-table tbody tr:last-child td{border-bottom:none;}
 .pax-table tbody tr:nth-child(even){background:#FCFCFC;}
 .pax-table tbody tr:hover{background:#FAFAFA;}
 .pax-table td:nth-child(1){text-align:center;width:36px;color:var(--text-sub);font-weight:600;}
 .pax-table td.center{text-align:center;}
-.pax-name{font-weight:700;}
-.pax-phone{font-family:'Roboto Mono',monospace;font-size:13.5px;}
-.route-line{display:flex;flex-direction:column;gap:1px;}
-.route-line b{font-size:14px;}
-.route-line span{font-size:12px;color:var(--text-sub);}
+.pax-info{display:flex;flex-direction:column;gap:3px;}
+.pax-name{font-weight:700;color:var(--text-main);white-space:nowrap;font-size:13.5px;}
+.pax-phone{color:var(--text-sub);white-space:nowrap;font-size:13.5px;}
+.route-tags{display:flex;flex-direction:column;gap:3px;}
+.route-tag{display:block;font-size:13.5px;white-space:nowrap;}
+.route-tag.route-from{color:var(--text-main);font-weight:600;}
+.route-tag.route-to{color:var(--text-sub);font-weight:500;}
 .luggage-mark{
   display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;
   border-radius:4px;background:#fff;border:1px solid var(--border-gray);color:#fff;
@@ -255,7 +256,7 @@ a{text-decoration:none;color:inherit;}
 }
 .overlay.open{display:flex;}
 .assign-panel{
-  width:980px;max-width:95vw;max-height:90vh;background:white;border-radius:16px;
+  width:980px;height:650px;max-width:95vw;max-height:92vh;background:white;border-radius:16px;
   box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;
   transform:scale(.96);opacity:0;animation:popin .16s ease forwards;overflow:hidden;
 }
@@ -273,8 +274,8 @@ a{text-decoration:none;color:inherit;}
 .icon-close svg{width:13px;height:13px;}
 
 .panel-body{
-  flex:1 1 auto;overflow-y:auto;padding:18px 22px;display:grid;
-  grid-template-columns:350px 1fr;gap:20px;align-items:start;
+  flex:1 1 0;min-height:0;overflow-y:hidden;padding:18px 22px;display:grid;
+  grid-template-columns:350px 1fr;gap:20px;align-items:stretch;
 }
 
 /* left: trip list */
@@ -361,14 +362,29 @@ a{text-decoration:none;color:inherit;}
 .toast.show{opacity:1;bottom:34px;}
 .toast svg{width:14px;height:14px;stroke:var(--green);}
 
-  /* Double-floor seatmap layout for Assign Modal */
+  /* Double-floor & 45-seat layout for Assign Modal */
   #assignPickupModal .panel-body {
     overflow-y: hidden !important;
+    height: 100%;
+    align-items: stretch;
+  }
+  #assignPickupModal .assign-left-col {
+    display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden;
+  }
+  #assignPickupModal .assign-right-col {
+    display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden;
   }
   #assignPickupModal .trip-list {
-    max-height: 460px;
-    overflow-y: auto;
-    padding-right: 4px;
+    flex: 1 1 0; min-height: 0; overflow-y: auto; padding-right: 4px;
+  }
+  #assignPickupModal .van-frame {
+    flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 14px 16px; width: 100%;
+    display: flex; flex-direction: row; gap: 16px; justify-content: center; align-items: flex-start;
+    border: 1px solid var(--border-gray); border-radius: var(--radius-lg); background: var(--surface-2);
+  }
+  #assignPickupModal .seat-legend {
+    flex: 0 0 auto; margin-top: 8px; padding: 7px 12px; background: white;
+    border: 1px solid var(--border-gray); border-radius: var(--radius-sm); width: 100%;
   }
   #assignPickupModal .floor-col {
     flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
@@ -386,6 +402,11 @@ a{text-decoration:none;color:inherit;}
   }
   #assignPickupModal .seat-grid.cols-3 {
     grid-template-columns: repeat(3, 1fr);
+    gap: 6px 8px;
+  }
+  #assignPickupModal .seat-grid.cols-3 .van-seat {
+    width: 36px;
+    height: 36px;
   }
 
 ::-webkit-scrollbar{width:9px;height:9px;}

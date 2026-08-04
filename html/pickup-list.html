@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/pickup-list.css">
+<link rel="stylesheet" href="../css/pickup-list.css?v=31">
 </head>
 <body>
 
@@ -75,7 +75,6 @@
       <div class="page-head-row">
         <div>
           <h1>Danh sách hành khách rước liền</h1>
-          <p>Danh sách khách đã đăng ký rước liền, chờ chỉ định lên xe trung chuyển.</p>
         </div>
         <div class="pax-count-chip" id="paxCountChip">0 khách chờ chỉ định</div>
       </div>
@@ -85,16 +84,16 @@
       <table class="pax-table">
         <thead>
           <tr>
-            <th>STT</th>
-            <th>Họ tên</th>
-            <th>SĐT</th>
-            <th>Trạm đi → Trạm đến</th>
-            <th>Trung chuyển đi</th>
-            <th>Trung chuyển đến</th>
-            <th>Ghi chú</th>
-            <th>Baga</th>
-            <th>Trạng thái</th>
-            <th>Thao tác</th>
+            <th style="text-align:center; width:45px;">STT</th>
+            <th style="text-align:left;">Khách hàng</th>
+            <th style="text-align:left;">Trạm đi / Trạm đến</th>
+            <th style="text-align:center; width:75px;">SL vé</th>
+            <th style="text-align:left;">Trung chuyển đi</th>
+            <th style="text-align:left;">Trung chuyển đến</th>
+            <th style="text-align:left;">Ghi chú</th>
+            <th style="text-align:center; width:65px;">Baga</th>
+            <th style="text-align:center; width:130px;">Trạng thái</th>
+            <th style="text-align:center; width:110px;">Thao tác</th>
           </tr>
         </thead>
         <tbody id="paxTableBody"></tbody>
@@ -117,7 +116,7 @@
 
     <div class="panel-body">
       <!-- LEFT: danh sách phơi xe -->
-      <div>
+      <div class="assign-left-col">
         <div class="trip-col-title">Danh sách phơi xe</div>
         <div class="trip-search-box">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -127,12 +126,23 @@
       </div>
 
       <!-- RIGHT: sơ đồ ghế -->
-      <div>
+      <div class="assign-right-col">
         <div class="seatmap-col-title">
           <span>Sơ đồ ghế</span>
-          <span class="seatmap-selected-tag" id="seatSelectedTag"></span>
+          <div class="assign-price-box" style="display:flex; align-items:center; gap:12px; background:white; border:1px solid var(--border-gray); border-radius:8px; padding:3px 10px;">
+            <div style="display:flex; align-items:center; gap:5px;">
+              <label for="assignTripPrice" style="font-weight:700; color:var(--text-sub); text-transform:none; margin:0; font-size:12px;">Giá vé:</label>
+              <input type="number" id="assignTripPrice" min="0" step="5000" style="width:90px; border:1px solid var(--border-gray); border-radius:6px; padding:2px 6px; font-weight:700; color:var(--text-main); font-size:13px; outline:none; text-align:right;" oninput="onAssignPriceChange(this.value)">
+              <span style="font-weight:600; color:var(--text-sub); font-size:12px;">đ</span>
+            </div>
+            <div style="width:1px; height:18px; background:var(--border-gray);"></div>
+            <div style="display:flex; align-items:center; gap:5px;">
+              <span style="font-weight:700; color:var(--text-sub); font-size:12px;">Tổng tiền:</span>
+              <span id="assignTotalPrice" style="font-weight:800; color:var(--red); font-size:14px;">0đ</span>
+            </div>
+          </div>
         </div>
-        <div class="van-frame" id="vanFrame" style="display:flex; flex-direction:row; gap:20px; justify-content:center; align-items:start;">
+        <div class="van-frame" id="vanFrame">
           <!-- Down floor -->
           <div class="floor-col">
             <div class="floor-title-bar">TẦNG DƯỚI</div>
@@ -164,6 +174,6 @@
 
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg><span id="toastText"></span></div>
 
-<script src="../js/pickup-list.js?v=7"></script>
+<script src="../js/pickup-list.js?v=36"></script>
 </body>
 </html>
