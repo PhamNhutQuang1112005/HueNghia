@@ -1,5 +1,5 @@
 :root{
-  --red:#F5100B;
+  --red:#C20D08;
   --red-light:#FEEFEF;
   --black:#000000;
   --border-gray:#CBCDCD;
@@ -120,7 +120,6 @@ a{text-decoration:none;color:inherit;}
   display:flex;align-items:center;gap:5px;white-space:nowrap;
 }
 .pill-btn.active{background:var(--red);border-color:var(--red);color:white;}
-.pill-btn.ghost{background:var(--surface-2);border-color:var(--surface-2);}
 .pill-btn svg{width:12px;height:12px;}
 
 .topbar-spacer{flex:1 1 auto;}
@@ -311,12 +310,10 @@ a{text-decoration:none;color:inherit;}
 /* right: seat map */
 .seatmap-col-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .seatmap-col-title span{font-size:12.5px;font-weight:800;color:var(--text-sub);text-transform:uppercase;letter-spacing:.4px;}
-.seatmap-selected-tag{font-size:13px;font-weight:700;color:var(--red);}
 .van-frame{
   border:1px solid var(--surface);border-radius:var(--radius-lg);background:var(--surface-2);
   padding:20px 20px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;
 }
-.van-row{display:flex;gap:14px;}
 .van-seat{
   position:relative;
   width:40px;height:40px;

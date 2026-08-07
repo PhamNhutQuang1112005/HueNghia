@@ -6,9 +6,9 @@
    ========================================================= */
 
 :root{
-  --red:#F5100B;
+  --red:#C20D08;
   --red-light:#FEEFEF;
-  --red-dark:#C20D08;
+  --red-dark:#9E0A06;
   --black:#000000;
   --border-gray:#CBCDCD;
   --surface:#E7E7E8;
@@ -315,48 +315,84 @@ a{text-decoration:none;color:inherit;}
   flex:0 0 auto;
   display:flex;
   align-items:flex-end;
-  gap:16px;
-  padding:14px 20px;
+  gap:10px 12px;
+  padding:10px 20px;
   border-bottom:1px solid var(--border-gray);
   background:var(--white);
+  flex-wrap:wrap;
 }
 .filter-field{
   display:flex;
   flex-direction:column;
-  gap:6px;
-  flex:1 1 0;
-  min-width:0;
+  gap:4px;
+  flex:1 1 130px;
+  min-width:120px;
 }
-.filter-field-date{position:relative;}
-.filter-field label{font-size:11px;font-weight:700;color:var(--text-sub);text-transform:uppercase;letter-spacing:.3px;}
+.filter-field-date{
+  flex:0 0 auto !important;
+  min-width:160px !important;
+  max-width:190px !important;
+  position:relative;
+}
+.filter-field label{
+  font-size:10.5px;
+  font-weight:700;
+  color:var(--text-sub);
+  text-transform:uppercase;
+  letter-spacing:.3px;
+}
 .filter-field select{
   width:100%;
-  height:38px;border:1.5px solid var(--border-gray);border-radius:var(--radius-md);
-  padding:0 10px;font-size:13px;color:var(--text-main);background:var(--white);
+  height:35px;
+  border:1.5px solid var(--border-gray);
+  border-radius:var(--radius-md);
+  padding:0 8px;
+  font-size:12.5px;
+  color:var(--text-main);
+  background:var(--white);
+  cursor:pointer;
+}
+.filter-field select optgroup{
+  font-weight:700;
+  color:var(--red);
+  background:var(--surface-2);
+}
+.filter-field select option{
+  font-weight:400;
+  color:var(--text-main);
+  background:var(--white);
+  padding:4px;
 }
 .filter-field select:focus{outline:2px solid var(--red);outline-offset:0;border-color:var(--red);}
 .filter-select{
-  display:flex;align-items:center;gap:8px;height:38px;width:100%;
+  display:flex;align-items:center;gap:6px;height:35px;width:100%;
   border:1.5px solid var(--border-gray);border-radius:var(--radius-md);
-  padding:0 12px;background:var(--white);font-size:13px;font-weight:600;color:var(--text-main);
+  padding:0 10px;background:var(--white);font-size:12.5px;font-weight:600;color:var(--text-main);
   transition:border-color .12s, background .12s, color .12s;
 }
 .filter-select:hover{border-color:var(--red);color:var(--red);}
 .filter-select.open{border-color:var(--red);background:var(--red-light);color:var(--red);}
-.filter-select svg{width:15px;height:15px;stroke:currentColor;flex:0 0 auto;}
+.filter-select svg{width:14px;height:14px;stroke:currentColor;flex:0 0 auto;}
 .filter-select span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:left;}
-.filter-date-chev{width:12px !important;height:12px !important;margin-left:auto;transition:transform .15s;}
+.filter-date-chev{width:11px !important;height:11px !important;margin-left:auto;transition:transform .15s;}
 .filter-select.open .filter-date-chev{transform:rotate(180deg);}
 .filter-reset{
   flex:0 0 auto;
   display:flex;
   align-items:flex-end;
+  margin-left:auto;
+}
+.filter-reset button{
+  height:35px;
+  padding:0 12px;
+  font-size:12px;
+  font-weight:600;
 }
 
 /* --- Lịch chọn ngày (giống callcenter) --- */
 .calendar-popover{
-  position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:40;width:100%;
-  box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:var(--radius-md);
+  position:absolute;top:calc(100% + 6px);left:0;z-index:40;width:250px !important;
+  box-shadow:0 8px 24px rgba(0,0,0,.15);border-radius:var(--radius-md);
 }
 .calendar{
   border:1px solid var(--border-gray);border-radius:var(--radius-md);padding:10px;
@@ -430,7 +466,7 @@ input[type="checkbox"]{width:16px;height:16px;accent-color:var(--red);cursor:poi
 
 /* Cột: Khách hàng & SĐT (Đã tách thành 2 cột riêng) */
 .cell-name{font-weight:700;font-size:15px;}
-.cell-phone{font-size:14.5px;font-weight:600;color:var(--text-main);font-family:'Roboto Mono',monospace;}
+.cell-phone{font-size:14.5px;font-weight:600;color:var(--text-main);font-family:inherit;}
 
 /* Cột 3: SL & Ghi chú */
 .pax-chip{
@@ -438,7 +474,11 @@ input[type="checkbox"]{width:16px;height:16px;accent-color:var(--red);cursor:poi
   background:var(--surface);color:var(--text-main);
   font-size:13.5px;font-weight:700;padding:3px 8px;border-radius:999px;
 }
-.cell-note{font-size:12px;color:var(--text-sub);margin-top:5px;max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.shuttle-table td.col-status,
+.shuttle-table td.col-note {
+  text-align: center;
+}
+.cell-note{font-size:12px;color:var(--text-sub);margin:4px auto 0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px;cursor:pointer;}
 .cell-note.important{color:var(--red-dark);font-weight:600;}
 
 /* Cột 4: Địa chỉ trung chuyển */
@@ -446,12 +486,27 @@ input[type="checkbox"]{width:16px;height:16px;accent-color:var(--red);cursor:poi
   display:inline-block;font-size:13px;font-weight:800;
   padding:3px 9px;border-radius:6px;margin-bottom:5px;white-space:nowrap;
 }
-.addr-detail{font-size:14px;color:var(--text-sub);max-width:210px;line-height:1.4;}
+.addr-detail{font-size:14px;color:var(--text-sub);max-width:100%;line-height:1.4;}
 
-/* Cột 5: Thông tin vé */
-.ticket-code{font-size:16px;font-weight:700;font-family:'Roboto Mono',monospace;}
-.ticket-price{font-size:17px;font-weight:700;color:var(--red-dark);margin-top:2px;}
-.ticket-time{font-size:17px;font-weight:800;margin-top:2px;}
+/* Cột 5: Thông tin vé (Số vé, Số ghế, Chuyến đi, Giá vé) */
+.ticket-code{font-size:15px;font-weight:700;font-family:inherit;}
+.seats-box{
+  max-width:115px;
+  white-space:nowrap;
+  overflow-x:auto;
+  font-family:inherit;
+  font-weight:700;
+  font-size:13.5px;
+  color:var(--text-main);
+  padding-bottom:2px;
+  scrollbar-width:thin;
+}
+.seats-box::-webkit-scrollbar{height:4px;}
+.seats-box::-webkit-scrollbar-track{background:transparent;}
+.seats-box::-webkit-scrollbar-thumb{background:var(--border-gray);border-radius:3px;}
+.seats-box::-webkit-scrollbar-thumb:hover{background:var(--text-sub);}
+.ticket-price{font-size:13.5px;font-weight:600;color:var(--red-dark);}
+.ticket-time{font-size:13.5px;font-weight:700;}
 .ticket-route{font-size:14.5px;color:var(--text-sub);margin-top:2px;}
 .ticket-stations{
   margin-top:8px;
@@ -485,39 +540,89 @@ input[type="checkbox"]{width:16px;height:16px;accent-color:var(--red);cursor:poi
 
 /* Cột 6: Tài xế trung chuyển */
 .driver-name{font-size:14.5px;font-weight:700;}
-.driver-phone{font-size:13.5px;color:var(--text-sub);font-family:'Roboto Mono',monospace;margin-top:2px;}
-.driver-plate{font-size:13.5px;color:var(--text-sub);font-family:'Roboto Mono',monospace;margin-top:2px;}
+.driver-phone{font-size:13.5px;color:var(--text-sub);font-family:inherit;margin-top:2px;}
+.driver-plate{font-size:13.5px;color:var(--text-sub);font-family:inherit;margin-top:2px;}
 .driver-type{
-  display:inline-block;
-  font-size:12.5px;
-  color:var(--green);
-  background:#EAFBF1;
-  font-weight:700;
-  margin-top:4px;
-  padding:2px 6px;
-  border-radius:4px;
-  border:1px solid rgba(22,163,74,0.18);
+  display:block;
+  font-size:13px;
+  color:var(--text-sub);
+  font-weight:500;
+  margin-top:2px;
 }
 .driver-empty{font-size:14px;color:#B0B2B3;font-style:italic;}
 
 /* Cột 7: Trạng thái */
 .status-label{
-  display:inline-flex;align-items:center;gap:4px;
-  font-size:12px;font-weight:700;padding:4px 8px;border-radius:999px;
-  white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  font-size:13px;font-weight:600;color:var(--text-main);
+  background:transparent;padding:0;border-radius:0;
+  white-space:normal;word-break:break-word;text-align:center;
 }
-.status-label.status-waiting{background:var(--status-waiting-bg);color:#4B5563;}
-.status-label.status-enroute{background:var(--status-enroute-bg);color:var(--status-enroute);}
-.status-label.status-onboard{background:var(--status-onboard-bg);color:var(--status-onboard);}
-.status-label.status-issue{background:var(--status-issue-bg);color:var(--status-issue);}
+.status-label.status-waiting,
+.status-label.status-enroute,
+.status-label.status-onboard,
+.status-label.status-issue {
+  background:transparent;
+  color:var(--text-main);
+}
 .status-label svg{width:11px;height:11px;}
 
-.row-actions{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;}
-.mini-link-btn{
-  font-size:13px;font-weight:700;color:var(--text-sub);
-  border:none;background:none;padding:0;text-decoration:underline;
+.table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: nowrap;
 }
-.mini-link-btn.danger{color:var(--red-dark);}
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1.5px solid var(--border-gray);
+  background: var(--white);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-sizing: border-box;
+}
+.action-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.action-btn.action-edit:hover {
+  background: var(--surface-2);
+  border-color: var(--black);
+  color: var(--black);
+}
+.action-btn.action-onboard {
+  color: var(--green);
+  border-color: rgba(22,163,74,0.3);
+}
+.action-btn.action-onboard:hover {
+  background: #EAFBF1;
+  border-color: var(--green);
+}
+.action-btn.action-issue {
+  color: #B45309;
+  border-color: rgba(180,83,9,0.3);
+}
+.action-btn.action-issue:hover {
+  background: #FFF7E0;
+  border-color: #B45309;
+}
+.action-btn.action-delete {
+  color: var(--red);
+  border-color: rgba(245,16,11,0.3);
+}
+.action-btn.action-delete:hover {
+  background: var(--red-light);
+  border-color: var(--red);
+}
 
 .grid-empty{
   padding:60px 20px;text-align:center;color:var(--text-sub);font-size:15px;
@@ -527,7 +632,7 @@ input[type="checkbox"]{width:16px;height:16px;accent-color:var(--red);cursor:poi
 .action-bar{
   position:fixed;
   left:50%;bottom:24px;
-  transform:translate(-50%, 120%);
+  transform:translate(-50%, 100%);
   min-width:420px;
   background:var(--black);
   color:white;
@@ -536,9 +641,17 @@ input[type="checkbox"]{width:16px;height:16px;accent-color:var(--red);cursor:poi
   display:flex;align-items:center;justify-content:space-between;gap:20px;
   box-shadow:0 12px 32px rgba(0,0,0,.28);
   z-index:60;
-  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .25s ease, transform .25s cubic-bezier(.4,0,.2,1), visibility .25s ease;
 }
-.action-bar.show{transform:translate(-50%, 0);}
+.action-bar.show{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transform:translate(-50%, 0);
+}
 .action-bar-info{display:flex;flex-direction:column;line-height:1.25;}
 .action-bar-info b{font-size:13.5px;font-weight:800;}
 .action-bar-info span{font-size:11.5px;color:rgba(255,255,255,0.7);}
@@ -597,7 +710,7 @@ input[type="checkbox"]{width:16px;height:16px;accent-color:var(--red);cursor:poi
 .vehicle-row.disabled:hover{border-color:var(--border-gray);background:transparent;}
 .vehicle-main{display:flex;flex-direction:column;gap:2px;}
 .vehicle-main b{font-size:13px;font-weight:700;}
-.vehicle-main span{font-size:11.5px;color:var(--text-sub);font-family:'Roboto Mono',monospace;}
+.vehicle-main span{font-size:11.5px;color:var(--text-sub);font-family:inherit;}
 .vehicle-seats{
   font-size:12px;font-weight:800;color:var(--green);
   background:#EAFBF1;padding:4px 10px;border-radius:999px;white-space:nowrap;
@@ -725,4 +838,136 @@ input[type="checkbox"]{width:16px;height:16px;accent-color:var(--red);cursor:poi
 }
 .row-menu-dropdown button.danger:hover {
   background: var(--red-light);
+}
+
+/* ===================== VÉ TRUNG CHUYỂN / PHIẾU IN TÀI XẾ ===================== */
+.print-ticket-wrapper {
+  background: var(--white);
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  max-height: 440px;
+  overflow-y: auto;
+}
+.ticket-receipt {
+  font-family: inherit;
+  color: var(--text-main);
+}
+.ticket-receipt-head {
+  text-align: center;
+  border-bottom: 2px dashed var(--border-gray);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.ticket-receipt-brand {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--red-dark);
+  letter-spacing: 0.5px;
+}
+.ticket-receipt-title {
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+.ticket-receipt-meta {
+  font-size: 11.5px;
+  color: var(--text-sub);
+  margin-top: 2px;
+}
+
+.ticket-driver-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  margin-bottom: 14px;
+}
+.ticket-driver-box div b {
+  color: var(--text-main);
+}
+
+.ticket-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.ticket-table th {
+  background: var(--surface);
+  border: 1px solid var(--border-gray);
+  padding: 6px 8px;
+  font-weight: 700;
+  text-align: left;
+}
+.ticket-table td {
+  border: 1px solid var(--border-gray);
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.ticket-sign-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 10px;
+}
+.ticket-sign-box {
+  text-align: center;
+  width: 45%;
+  font-size: 12px;
+}
+.ticket-sign-box b {
+  display: block;
+  font-weight: 700;
+}
+.ticket-sign-box span {
+  font-size: 11px;
+  color: var(--text-sub);
+  font-style: italic;
+  display: block;
+  margin-top: 2px;
+}
+.ticket-sign-space {
+  height: 40px;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #printTicketContainer, #printTicketContainer * {
+    visibility: visible !important;
+  }
+  #printTicketModal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    background: white;
+    display: block !important;
+  }
+  #printTicketModal .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+  #printTicketModal .modal-actions,
+  #printTicketModal h3,
+  #printTicketModal button {
+    display: none !important;
+  }
+  .print-ticket-wrapper {
+    border: none !important;
+    max-height: none !important;
+    padding: 0 !important;
+  }
 }

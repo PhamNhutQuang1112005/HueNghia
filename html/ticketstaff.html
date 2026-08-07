@@ -33,11 +33,9 @@
         <div class="search-results" id="searchResults">
           <div class="search-result-row" onclick="pickSearchResult()">
             <div><div class="src-name">Nguyễn Văn Long</div><div class="src-meta">SG - Châu Đốc • 07:00 • 08/07/2026</div></div>
-            <div class="src-status paid">Đã bán</div>
           </div>
           <div class="search-result-row" onclick="pickSearchResult()">
             <div><div class="src-name">Trần Thị Mai</div><div class="src-meta">SG - Châu Đốc • 22:00 • 08/07/2026</div></div>
-            <div class="src-status hold">Đã đặt</div>
           </div>
         </div>
       </div>
@@ -295,7 +293,8 @@
       <nav class="tabs">
         <span class="tab-item active" onclick="switchTab('seatmap', this)">Sơ đồ ghế</span>
         <span class="tab-item" onclick="switchTab('passengers', this)">Hành khách <span class="cnt" id="passengerTabCnt">(24)</span></span>
-        <span class="tab-item" onclick="showToast('Điều hướng sang trang Trung chuyển')">Trung chuyển <span class="cnt">(0 | 0)</span></span>
+        <span class="tab-item" onclick="switchTab('transship', this)">Trung chuyển <span class="cnt" id="transshipTabCnt">(0 | 0)</span></span>
+        <span class="tab-item" onclick="switchTab('cancelled', this)">Ghế hủy <span class="cnt" id="cancelledTabCnt">(0)</span></span>
         <span class="tab-item">Thống kê</span>
       </nav>
 
@@ -322,11 +321,16 @@
           <div id="extraSeatsList"></div>
         </div>
 
+        <div class="floor-container" id="cancelledSeatsSection" style="margin-top: 15px; display: none;">
+          <div class="floor-title-bar">DANH SÁCH GHẾ HỦY</div>
+          <div id="cancelledSeatsList"></div>
+        </div>
+
         <div class="seat-legend">
           <span class="seat-legend-item" title="Ghế trống — chưa có khách, sẵn sàng để đặt."><span class="seat-legend-dot empty"></span>Trắng — Ghế trống</span>
           <span class="seat-legend-item" title="Ghế đã đặt — mới giữ chỗ, chưa xuất vé chính thức."><span class="seat-legend-dot hold"></span>Vàng — Đã đặt</span>
           <span class="seat-legend-item" title="Ghế đã bán — đã xuất vé chính thức."><span class="seat-legend-dot sold"></span>Đỏ — Đã bán</span>
-          <span class="seat-legend-item" title="Ghế free — được đánh dấu miễn phí/không thu phí theo chỉ định của nhân viên (cần xác nhận thêm quy tắc nghiệp vụ cụ thể với chủ doanh nghiệp khi triển khai)."><span class="seat-legend-dot free"></span>Xám — Ghế free</span>
+          <span class="seat-legend-item" title="Ghế free — được đánh dấu miễn phí/không thu phí theo chỉ định của nhân viên."><span class="seat-legend-dot free"></span>Xám — Ghế free</span>
           <span class="seat-legend-item" title="Ghế có ghi chú đặc biệt — thường có hàng hóa/baga kèm theo khách."><span class="seat-legend-dot cargo"></span>Xanh biển — Có ghi chú</span>
         </div>
       </section>
@@ -392,22 +396,105 @@
         </div>
       </section>
 
-      <!-- CUSTOMER HISTORY VIEW -->
-      <section class="customer-history-view" id="customerHistoryView" style="display:none;">
-        <div class="ch-header">
-          <div class="ch-customer-info">
-            <div class="ch-avatar" id="chAvatar">K</div>
-            <div>
-              <div class="ch-name" id="chName">Khách hàng</div>
-              <div class="ch-phone" id="chPhone">0909123456</div>
+      <!-- ZONE 3C: TRUNG CHUYỂN VIEW -->
+      <section class="zone3 passenger-view" id="zone3Transship" style="display:none; flex-direction:column; gap:20px; padding:16px;">
+        <!-- BẢNG 1: DANH SÁCH TRUNG CHUYỂN ĐÓN -->
+        <div class="transship-block">
+          <div class="transship-block-header">
+            <div class="transship-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;color:var(--red,#C20D08);"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+              <h3>DANH SÁCH TRUNG CHUYỂN ĐÓN</h3>
+              <span class="ch-badge" id="transshipPickupCount">0 khách</span>
             </div>
           </div>
-          <button type="button" class="ch-back-btn" onclick="closeCustomerHistory()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            Quay lại
-          </button>
+          <div class="transship-table-wrap">
+            <table class="transship-table">
+              <thead>
+                <tr>
+                  <th width="50">STT</th>
+                  <th>Tài (tài xế)</th>
+                  <th>Địa chỉ đón</th>
+                  <th>Số ghế</th>
+                  <th>Tên HK</th>
+                  <th>Số điện thoại</th>
+                  <th>Tổng tiền</th>
+                  <th>Trạng thái</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody id="transshipPickupBody"></tbody>
+            </table>
+          </div>
         </div>
 
+        <!-- BẢNG 2: DANH SÁCH TRUNG CHUYỂN TRẢ -->
+        <div class="transship-block">
+          <div class="transship-block-header">
+            <div class="transship-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;color:#2563eb;"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><path d="M12 13v-6"/><path d="M9 10l3 3 3-3"/></svg>
+              <h3>DANH SÁCH TRUNG CHUYỂN TRẢ</h3>
+              <span class="ch-badge blue" id="transshipDropoffCount">0 khách</span>
+            </div>
+          </div>
+          <div class="transship-table-wrap">
+            <table class="transship-table">
+              <thead>
+                <tr>
+                  <th width="50">STT</th>
+                  <th>Địa chỉ đón/trả</th>
+                  <th>Số ghế</th>
+                  <th>Tên HK</th>
+                  <th>Số điện thoại</th>
+                  <th>Tổng tiền</th>
+                  <th>Trạng thái</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody id="transshipDropoffBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ZONE 3D: DANH SÁCH GHẾ HỦY VIEW -->
+      <section class="zone3 passenger-view" id="zone3Cancelled" style="display:none;">
+        <div class="pax-toolbar">
+          <div class="pax-toolbar-left">
+            <span class="pax-toolbar-hint" id="cancelledResultHint">Danh sách ghế đã hủy của chuyến</span>
+          </div>
+          <div class="pax-toolbar-actions">
+            <button class="btn btn-secondary btn-action-red" onclick="showToast('Đang in danh sách ghế hủy...')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+              In danh sách
+            </button>
+            <button class="btn btn-secondary btn-action-red" onclick="showToast('Đang xuất file Excel...')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+              Xuất Excel
+            </button>
+          </div>
+        </div>
+
+        <div class="pax-table-wrap">
+          <table class="pax-table">
+            <thead>
+              <tr>
+                <th width="50">STT</th>
+                <th width="80">Vị trí</th>
+                <th>Họ và tên</th>
+                <th>SĐT</th>
+                <th>Chặng đi</th>
+                <th>Số tiền</th>
+                <th>Nguyên nhân hủy</th>
+                <th>Thời gian hủy</th>
+              </tr>
+            </thead>
+            <tbody id="cancelledTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- CUSTOMER HISTORY VIEW -->
+      <section class="customer-history-view" id="customerHistoryView" style="display:none;">
         <div class="ch-body" id="chBody">
           <!-- History table rendered by JS -->
         </div>
@@ -456,6 +543,7 @@
             <select id="f_type" onchange="onGuestTypeChange()">
               <option>Khách trạm</option>
               <option>Trung chuyển</option>
+              <option>Rước liền</option>
               <option>Rước đường</option>
             </select>
           </div>
@@ -811,6 +899,7 @@
               <select id="rbGuestType" onchange="onRebookGuestTypeChange()">
                 <option value="Khách trạm">Khách trạm</option>
                 <option value="Trung chuyển">Trung chuyển</option>
+                <option value="Rước liền">Rước liền</option>
                 <option value="Rước đường">Rước đường</option>
               </select>
             </div>
