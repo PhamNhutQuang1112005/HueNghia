@@ -1382,15 +1382,13 @@ document.addEventListener("click", (e) => {
 /* ---------------------------------------------------------
    ĐỒNG BỘ DỮ LIỆU TỪ NGUỒN ĐẶT VÉ (CALLCENTER & TICKETSTAFF)
 --------------------------------------------------------- */
-const HN_STORAGE_KEY = 'hn_trip_seat_bank_v12';
-
 function loadBookingsFromStorage() {
   try {
     const rawBank = localStorage.getItem(HN_STORAGE_KEY);
     if (!rawBank) return;
     const tripSeatBank = JSON.parse(rawBank);
 
-    const rawMeta = localStorage.getItem('hn_all_trips_meta_v1');
+    const rawMeta = localStorage.getItem(HN_TRIPS_KEY);
     const allTripsMeta = rawMeta ? JSON.parse(rawMeta) : [];
 
     const extractedCustomers = [];
@@ -1518,7 +1516,7 @@ updateCalTrigger();
   if (!menu || !chipBtn || !dropdown || !logoutBtn) return;
 
   try {
-    const raw = sessionStorage.getItem('hn_current_user');
+    const raw = sessionStorage.getItem(HN_CURRENT_USER_KEY);
     if (raw) {
       const user = JSON.parse(raw);
       const nameEl = document.getElementById('userName');
@@ -1559,7 +1557,7 @@ updateCalTrigger();
   });
 
   logoutBtn.addEventListener('click', () => {
-    sessionStorage.removeItem('hn_current_user');
+    sessionStorage.removeItem(HN_CURRENT_USER_KEY);
     window.location.href = 'index.html';
   });
 })();

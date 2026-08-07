@@ -1,7 +1,4 @@
 // ===== Storage & Data Models =====
-const HN_PICKUP_PAX_KEY = 'hn_pickup_passengers_v6';
-const HN_STORAGE_KEY = 'hn_trip_seat_bank_v12';
-const HN_TRIPS_KEY = 'hn_trips_meta_v9';
 
 const DEFAULT_PICKUP_PASSENGERS = [
   { id: 1, name: 'Nguyễn Thị Hồng', phone: '0909123456', ticketCount: 1, fromStation: 'Trạm Kinh Dương Vương', toStation: 'Trạm Châu Đốc', fromTransfer: '12 Kinh Dương Vương, Q.Bình Tân', toTransfer: 'Ngã 3 Vĩnh Xương, Châu Đốc', note: 'Khách lớn tuổi, cần hỗ trợ lên xuống xe', luggage: true, assigned: null },
@@ -112,15 +109,6 @@ const phonePool = [
   "0906778800", "0914889911"
 ];
 let pickupTimeIdx = 0, phoneIdx = 0, ticketSeq = 1, nameIdx = 0;
-
-const VEHICLE_TYPE_SEATS = {
-  "Limousine 34 giường": 34, "Xe thường 36 giường": 36, "Xe thường 40 giường": 40,
-  "Xe thường 41 giường": 41, "Xe VIP 24 phòng": 24, "Xe 44 giường": 44,
-  "Xe Limousine 9 chỗ": 9, "Xe Limousine 11 chỗ": 11, "Xe Limousine 19 chỗ": 19,
-  "Xe Limousine 28 chỗ": 28, "Xe thường 16 chỗ": 16, "Xe thường 26 chỗ": 26,
-  "Xe thường 28 chỗ": 28, "Xe thường 47 chỗ": 47, "Xe Limousine 18 chỗ": 18,
-  "Limousine 24 Phòng": 24, "Giường nằm 34 chỗ": 34, "Ghế ngồi 45 chỗ": 45
-};
 
 // Sinh danh sách mã ghế tầng dưới (A) và tầng trên (B)
 function buildSequentialSeatCodes(total) {
@@ -259,20 +247,171 @@ window.addEventListener('storage', (e) => {
 
 let activePaxId = null, activeTripId = null, selectedSeats = [], tripSearchKeyword = '', customAssignPrice = null;
 
+// ===== Filter & Calendar State =====
+const DEMO_TODAY = new Date(2026, 6, 18);
+let calDate = new Date(DEMO_TODAY);
+let selectedDate = new Date(DEMO_TODAY);
+const monthNames = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
+let calendarOpen = false;
+
+let filterState = {
+  fromStation: 'all',
+  toStation: 'all',
+  timeSlot: 'all',
+  status: 'all',
+  search: ''
+};
+
+function renderCalendar() {
+  const calGrid = document.getElementById("calGrid");
+  const monthLabel = document.getElementById("calMonthLabel");
+  if (!calGrid || !monthLabel) return;
+  const y = calDate.getFullYear(), m = calDate.getMonth();
+  monthLabel.textContent = `${monthNames[m]}, ${y}`;
+  const first = new Date(y, m, 1);
+  const startOffset = (first.getDay() + 6) % 7;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const daysInPrevMonth = new Date(y, m, 0).getDate();
+  let html = "";
+  ["T2", "T3", "T4", "T5", "T6", "T7", "CN"].forEach((d) => {
+    html += `<div class="cal-dow">${d}</div>`;
+  });
+  for (let i = 0; i < startOffset; i++) {
+    html += `<div class="cal-day muted">${daysInPrevMonth - startOffset + i + 1}</div>`;
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateObj = new Date(y, m, d);
+    const isToday = dateObj.toDateString() === DEMO_TODAY.toDateString();
+    const isSelected = dateObj.toDateString() === selectedDate.toDateString();
+    const lunar = ((d + 16) % 30) + 1;
+    html += `<div class="cal-day ${isToday ? "today" : ""} ${isSelected ? "selected" : ""}" onclick="pickDate(${y},${m},${d})">${d}<span class="lunar">${lunar}/6</span></div>`;
+  }
+  const totalCells = startOffset + daysInMonth;
+  const trailing = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= trailing; i++) {
+    html += `<div class="cal-day muted">${i}</div>`;
+  }
+  calGrid.innerHTML = html;
+}
+
+function shiftMonth(dir) {
+  calDate = new Date(calDate.getFullYear(), calDate.getMonth() + dir, 1);
+  renderCalendar();
+}
+
+function goToday() {
+  calDate = new Date(DEMO_TODAY);
+  selectedDate = new Date(DEMO_TODAY);
+  renderCalendar();
+  updateCalTrigger();
+  toggleCalendar(false);
+  applyFilters();
+}
+
+function pickDate(y, m, d) {
+  selectedDate = new Date(y, m, d);
+  renderCalendar();
+  updateCalTrigger();
+  toggleCalendar(false);
+  applyFilters();
+}
+
+function updateCalTrigger() {
+  const dateLabel = document.getElementById("filterDateLabel");
+  if (!dateLabel) return;
+  const isToday = selectedDate.toDateString() === DEMO_TODAY.toDateString();
+  const d = String(selectedDate.getDate()).padStart(2, "0");
+  const m = String(selectedDate.getMonth() + 1).padStart(2, "0");
+  const y = selectedDate.getFullYear();
+  dateLabel.textContent = isToday ? `Hôm nay (${d}/${m}/${y})` : `${d}/${m}/${y}`;
+}
+
+function toggleCalendar(force) {
+  const panel = document.getElementById("calendarPanel");
+  const btn = document.getElementById("filterDateBtn");
+  if (!panel || !btn) return;
+  calendarOpen = typeof force === "boolean" ? force : !calendarOpen;
+  panel.classList.toggle("open", calendarOpen);
+  btn.classList.toggle("open", calendarOpen);
+}
+
+document.addEventListener("click", (e) => {
+  if (
+    calendarOpen &&
+    !e.target.closest("#calendarPanel") &&
+    !e.target.closest("#filterDateBtn")
+  ) {
+    toggleCalendar(false);
+  }
+});
+
+function applyFilters() {
+  const fromEl = document.getElementById('filterFromStation');
+  const toEl = document.getElementById('filterToStation');
+  const timeEl = document.getElementById('filterTimeSlot');
+  const statusEl = document.getElementById('filterStatus');
+
+  filterState.fromStation = fromEl ? fromEl.value : 'all';
+  filterState.toStation = toEl ? toEl.value : 'all';
+  filterState.timeSlot = timeEl ? timeEl.value : 'all';
+  filterState.status = statusEl ? statusEl.value : 'all';
+
+  renderPaxTable();
+}
+
+function resetFilters() {
+  filterState = { fromStation: 'all', toStation: 'all', timeSlot: 'all', status: 'all', search: '' };
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  setVal('filterFromStation', 'all');
+  setVal('filterToStation', 'all');
+  setVal('filterTimeSlot', 'all');
+  setVal('filterStatus', 'all');
+  const searchEl = document.getElementById('searchInput');
+  if (searchEl) searchEl.value = '';
+  goToday();
+}
+
+function onSearchInput(val) {
+  filterState.search = val || '';
+  renderPaxTable();
+}
+
+function toggleAll(checkAllEl) {
+  const checkboxes = document.querySelectorAll('#paxTableBody input[type="checkbox"]');
+  checkboxes.forEach(cb => cb.checked = checkAllEl.checked);
+}
+
 // ===== Passenger List View =====
 
 // Render bảng danh sách hành khách rước liền
 function renderPaxTable() {
   const tbody = document.getElementById('paxTableBody');
-  const pending = pickupPassengers.filter(p => !p.assigned).length;
-  document.getElementById('paxCountChip').textContent = pending + ' khách chờ chỉ định';
+  const gridEmpty = document.getElementById('gridEmpty');
+  if (!tbody) return;
 
-  if (pickupPassengers.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:28px;color:var(--text-sub);font-weight:600;">Chưa có khách rước liền nào</td></tr>';
+  let filtered = pickupPassengers.filter(p => {
+    if (filterState.fromStation !== 'all' && p.fromStation !== filterState.fromStation) return false;
+    if (filterState.toStation !== 'all' && p.toStation !== filterState.toStation) return false;
+    if (filterState.status === 'pending' && p.assigned) return false;
+    if (filterState.status === 'assigned' && !p.assigned) return false;
+    if (filterState.search) {
+      const kw = filterState.search.toLowerCase();
+      const matchName = p.name && p.name.toLowerCase().includes(kw);
+      const matchPhone = p.phone && p.phone.toLowerCase().includes(kw);
+      const matchTicket = p.assigned?.seat && String(p.assigned.seat).toLowerCase().includes(kw);
+      if (!matchName && !matchPhone && !matchTicket) return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    if (gridEmpty) gridEmpty.style.display = 'block';
     return;
   }
+  if (gridEmpty) gridEmpty.style.display = 'none';
 
-  tbody.innerHTML = pickupPassengers.map((p, idx) => {
+  tbody.innerHTML = filtered.map((p, idx) => {
     const luggageMark = `<span class="luggage-mark ${p.luggage ? 'yes' : ''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 13 4 4L19 7"/></svg></span>`;
     let statusCell, actionCell;
     if (p.assigned) {
@@ -280,7 +419,7 @@ function renderPaxTable() {
       const timeStr = p.assigned.time || (trip ? trip.time : '07:00');
       const plateStr = p.assigned.plate || (trip ? trip.plate : '51F-123.45');
       const seatStr = p.assigned.seat || (Array.isArray(p.assigned.seats) ? p.assigned.seats.join(', ') : 'Rước liền');
-      statusCell = `<div class="assigned-info"><b>${timeStr} - ${plateStr}</b><span>Ghế ${seatStr}</span></div>`;
+      statusCell = `<div class="assigned-info"><b style="color:var(--text-main); font-size:13.5px;">${timeStr} - ${plateStr}</b><span style="color:var(--text-sub); font-size:12.5px;">Ghế ${seatStr}</span></div>`;
       actionCell = `<button class="assign-action-btn reassign" onclick="openAssignModal(${p.id})">Đổi chỉ định</button>`;
     } else {
       statusCell = `<span class="status-tag pending">Chưa chỉ định</span>`;
@@ -289,7 +428,7 @@ function renderPaxTable() {
 
     return `
       <tr>
-        <td>${idx + 1}</td>
+        <td class="col-stt">${idx + 1}</td>
         <td><div class="pax-info"><div class="pax-name">KH: ${p.name}</div><div class="pax-phone">SĐT: ${p.phone}</div></div></td>
         <td><div class="route-tags"><span class="route-tag route-from">Trạm đi: ${p.fromStation}</span><span class="route-tag route-to">Trạm đến: ${p.toStation}</span></div></td>
         <td class="center" style="font-weight:700; font-size:13.5px; color:var(--text-main);">${p.ticketCount || p.count || 1}</td>
@@ -587,7 +726,7 @@ function pickSearchResult() {
   if (!menu || !chipBtn || !dropdown || !logoutBtn) return;
 
   try {
-    const raw = sessionStorage.getItem('hn_current_user');
+    const raw = sessionStorage.getItem(HN_CURRENT_USER_KEY);
     if (raw) {
       const user = JSON.parse(raw);
       const nameEl = document.getElementById('userName');
@@ -613,7 +752,8 @@ function pickSearchResult() {
 
   document.addEventListener('click', (e) => { if (!menu.contains(e.target)) closeMenu(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
-  logoutBtn.addEventListener('click', () => { sessionStorage.removeItem('hn_current_user'); window.location.href = 'index.html'; });
+  logoutBtn.addEventListener('click', () => { sessionStorage.removeItem(HN_CURRENT_USER_KEY); window.location.href = 'index.html'; });
 })();
 
+renderCalendar();
 renderPaxTable();

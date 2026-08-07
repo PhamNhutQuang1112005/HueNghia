@@ -2,12 +2,6 @@
 
 // ===== Storage & Data Models =====
 const staffList = ["tuyetphuong.huenghia", "minh.tran", "nguyen.long", "thi.hoa"];
-const STAFF_CODE_MAP = {
-  "tuyetphuong.huenghia": "NV01",
-  "minh.tran": "NV02",
-  "nguyen.long": "NV03",
-  "thi.hoa": "NV04"
-};
 function getStaffCode(usernameOrCode) {
   if (!usernameOrCode) return null;
   return STAFF_CODE_MAP[usernameOrCode] || usernameOrCode;
@@ -54,16 +48,6 @@ function getPastDate(daysAgo) {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
-}
-
-function fillSearchInputWithPhone(phone) {
-  if (!phone) return;
-  const cleanPhone = String(phone).trim();
-  if (!cleanPhone || cleanPhone === '—' || cleanPhone === 'undefined' || cleanPhone === 'null') return;
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    searchInput.value = cleanPhone;
-  }
 }
 
 // Mock history data (past trips)
@@ -168,26 +152,6 @@ function groupSeat(mainSeat, code, state) {
   });
 }
 
-const VEHICLE_TYPE_SEATS = {
-  "Limousine 34 giường": 34,
-  "Xe thường 36 giường": 36,
-  "Xe thường 40 giường": 40,
-  "Xe thường 41 giường": 41,
-  "Xe VIP 24 phòng": 24,
-  "Xe 44 giường": 44,
-  "Xe Limousine 9 chỗ": 9,
-  "Xe Limousine 11 chỗ": 11,
-  "Xe Limousine 19 chỗ": 19,
-  "Xe Limousine 28 chỗ": 28,
-  "Xe thường 16 chỗ": 16,
-  "Xe thường 26 chỗ": 26,
-  "Xe thường 28 chỗ": 28,
-  "Xe thường 47 chỗ": 47,
-  "Xe Limousine 18 chỗ": 18,
-  "Limousine 24 Phòng": 24,
-  "Giường nằm 34 chỗ": 34,
-  "Ghế ngồi 45 chỗ": 45
-};
 
 function buildSequentialSeatCodes(total) {
   const downCount = Math.ceil(total / 2);
@@ -241,21 +205,6 @@ let seatPlanUp = [
 // Danh sách các chuyến (khớp với data-trip trên trip-card ở Zone 1) để có thể
 // chuyển ghế của khách sang một chuyến xe khác, không chỉ trong cùng 1 chuyến.
 const todayStr = new Date().toISOString().split("T")[0];
-const HN_TRIPS_KEY = 'hn_trips_meta_v9';
-const DEFAULT_SGCD_TRIPS = [
-  { id: '1', name: 'Sài Gòn - Châu Đốc (07:00) - Xuất bến VP Q.5', time: '07:00', route: 'Sài Gòn - Châu Đốc', plate: '51F-123.45', vehicleType: 'Limousine 24 Phòng', date: todayStr, price: 280000, status: 'Đang bán', note: 'Xuất bến VP Q.5 - Tải 24 phòng VIP' },
-  { id: '2', name: 'Sài Gòn - Châu Đốc (08:30) - Chạy bến An Sương', time: '08:30', route: 'Sài Gòn - Châu Đốc', plate: '50H-678.90', vehicleType: 'Giường nằm 34 chỗ', date: todayStr, price: 250000, status: 'Đã chỉ định xe', note: 'Chạy bến An Sương - Đón dọc QL22' },
-  { id: '3', name: 'Sài Gòn - Châu Đốc (10:00) - Chuyến sáng trung tâm', time: '10:00', route: 'Sài Gòn - Châu Đốc', plate: '', vehicleType: 'Limousine 24 Phòng', date: todayStr, price: 280000, status: 'Chưa chỉ định xe', note: 'Chuyến sáng trung tâm - Đã mở bán' },
-  { id: '4', name: 'Sài Gòn - Châu Đốc (13:15) - Tăng cường xe 45 chỗ', time: '13:15', route: 'Sài Gòn - Châu Đốc', plate: '50H-345.67', vehicleType: 'Ghế ngồi 45 chỗ', date: todayStr, price: 180000, status: 'Đã chỉ định xe', note: 'Tăng cường xe 45 chỗ - Rước Kinh Dương Vương' },
-  { id: '5', name: 'Sài Gòn - Châu Đốc (15:30) - Tuyến cố định chiều', time: '15:30', route: 'Sài Gòn - Châu Đốc', plate: '', vehicleType: 'Limousine 24 Phòng', date: todayStr, price: 280000, status: 'Chưa chỉ định xe', note: 'Tuyến cố định chiều - Đón khách VP Q5' },
-  { id: '6', name: 'Sài Gòn - Châu Đốc (17:00) - Chuyến chiều tối', time: '17:00', route: 'Sài Gòn - Châu Đốc', plate: '', vehicleType: 'Giường nằm 34 chỗ', date: todayStr, price: 250000, status: 'Chưa chỉ định xe', note: 'Chuyến chiều tối - Xe giường nằm 34 chỗ' },
-];
-const DEFAULT_CDSG_TRIPS = [
-  { id: '7', name: 'Châu Đốc - Sài Gòn (06:00) - Xuất bến sớm Bến Xe CD', time: '06:00', route: 'Châu Đốc - Sài Gòn', plate: '51F-123.45', vehicleType: 'Limousine 24 Phòng', date: todayStr, price: 280000, status: 'Đã chỉ định xe', note: 'Xuất bến sớm Bến Xe CD - Trả Q.5 & An Sương' },
-  { id: '8', name: 'Châu Đốc - Sài Gòn (09:15) - Chuyến sáng Châu Đốc', time: '09:15', route: 'Châu Đốc - Sài Gòn', plate: '50H-678.90', vehicleType: 'Giường nằm 34 chỗ', date: todayStr, price: 250000, status: 'Đã chỉ định xe', note: 'Chuyến sáng Châu Đốc - Trung chuyển tận nơi' },
-  { id: '9', name: 'Châu Đốc - Sài Gòn (14:00) - Tuyến cố định rước khách', time: '14:00', route: 'Châu Đốc - Sài Gòn', plate: '', vehicleType: 'Limousine 24 Phòng', date: todayStr, price: 280000, status: 'Chưa chỉ định xe', note: 'Tuyến cố định rước khách dọc đường' },
-  { id: '10', name: 'Châu Đốc - Sài Gòn (21:00) - Chuyến đêm Limousine VIP', time: '21:00', route: 'Châu Đốc - Sài Gòn', plate: '', vehicleType: 'Giường nằm 34 chỗ', date: todayStr, price: 250000, status: 'Chưa chỉ định xe', note: 'Chuyến đêm Limousine VIP - Chạy thẳng Sài Gòn' },
-];
 
 function loadAllTrips() {
   const saved = localStorage.getItem(HN_TRIPS_KEY);
@@ -302,7 +251,6 @@ function generateTripSeatPlanForVehicleType(vehicleType, tripId = '1') {
   };
 }
 
-const HN_STORAGE_KEY = 'hn_trip_seat_bank_v12';
 let isSyncingFromStorage = false;
 
 function saveSeatBank() {
@@ -442,11 +390,8 @@ let transferSourceTripId = null; // chuyến của các ghế nguồn đang ch�
 let transferTargetTripId = null; // chuyến đang xem để chọn ghế trống làm đích (có thể khác chuyến nguồn)
 let currentPanelSeat = null;
 let currentPanelSeats = [];
-let currentCancelSeat = null;
 let currentEditSeatCode = null;
 let currentPanelMode = 'booking';
-const DEFAULT_STAFF_STATION = 'Trạm Kinh Dương Vương'; // Trạm đi mặc định theo nhân viên trạm đang đăng nhập
-const ZONE1_COLLAPSED_KEY = 'callcenter.zone1Collapsed';
 
 // ===== Tabs & Zone 3: Views =====
 
@@ -1002,7 +947,6 @@ function cancelTransferSelection() {
   showToast('Đã hủy thao tác chuyển ghế');
 }
 
-const OCCUPIED_STATES = ['sold', 'hold', 'cargo', 'free'];
 
 // ===== Seat Selection & Transfer =====
 
@@ -1185,19 +1129,6 @@ function confirmTransfer() {
   if (document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
   exitMultiSelectMode();
   showToast(`Đã chuyển ${pairCount} ghế thành công`);
-}
-
-/* ---- Modal hủy vé (BR-01) ---- */
-function openCancelModal(code) {
-  currentCancelSeat = code;
-  document.getElementById('cancelSeatCode').textContent = code;
-  document.getElementById('cancelReason').value = '';
-  document.getElementById('confirmCancelBtn').disabled = true;
-  document.getElementById('cancelModal').classList.add('open');
-}
-function checkCancelReason() {
-  const val = document.getElementById('cancelReason').value.trim();
-  document.getElementById('confirmCancelBtn').disabled = val.length === 0;
 }
 
 /* Đưa ghế về trạng thái trống hoàn toàn — không giữ lại bất kỳ thông tin khách nào */
@@ -1557,7 +1488,6 @@ function getEditedPrice() {
 }
 
 function syncRuocLienToPickupList(seats) {
-  const HN_PICKUP_PAX_KEY = 'hn_pickup_passengers_v6';
   let paxList = [];
   try {
     const saved = localStorage.getItem(HN_PICKUP_PAX_KEY);
@@ -1902,7 +1832,7 @@ function checkCancelReason() {
 }
 
 function confirmCancel() {
-  const code = currentCancelSeatCode || currentCancelSeat;
+  const code = currentCancelSeatCode;
   if (!code) return;
   const reasonEl = document.getElementById('cancelReason');
   const reason = reasonEl ? reasonEl.value.trim() : '';
@@ -1961,7 +1891,6 @@ function nextSubSeatCode() {
   return 'S' + (max + 1);
 }
 
-const DEFAULT_SUB_SEAT_PRICE = 280000;
 
 function openSubSeatModal(code) {
   editingSubSeatCode = code || null;
@@ -2476,27 +2405,35 @@ document.addEventListener('click', (e) => {
 renderCalendar();
 updateCalTrigger();
 
-/* ---- Zone 1: Time range slider ---- */
+/* ---- Zone 1: Time range slider (bấm chọn, khung 6 giờ: 0h -> 6h -> 12h -> 18h -> 24h) ---- */
 const tsTrack = document.getElementById('tsTrack');
 const tsRange = document.getElementById('tsRange');
-const TS_WINDOW_HOURS = 2;
-let tsStartHour = 5;
+let tsStartHour = 0; // 00:00 – 06:00 mặc định
 
 function updateTsUI() {
-  const pad = n => String(n).padStart(2, '0');
-  tsRange.style.left = (tsStartHour / 24 * 100) + '%';
-  tsRange.style.width = (TS_WINDOW_HOURS / 24 * 100) + '%';
-  document.getElementById('tsCurrent').textContent = `${pad(tsStartHour)}:00 – ${pad(tsStartHour + TS_WINDOW_HOURS)}:00`;
+  const leftPct = (tsStartHour / 24) * 100;
+  const widthPct = (TS_WINDOW_HOURS / 24) * 100;
+  if (tsRange) {
+    tsRange.style.left = leftPct + '%';
+    tsRange.style.width = widthPct + '%';
+  }
 }
-updateTsUI();
 
-tsTrack.addEventListener('click', (e) => {
-  const rect = tsTrack.getBoundingClientRect();
-  let pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-  let hour = Math.max(0, Math.min(24 - TS_WINDOW_HOURS, Math.round((pct / 100) * 24)));
-  tsStartHour = hour;
+if (tsTrack) {
   updateTsUI();
-});
+
+  tsTrack.addEventListener('click', (e) => {
+    const rect = tsTrack.getBoundingClientRect();
+    let pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    
+    // 4 khung giờ cách nhau 6h: 0h (0-6h), 6h (6-12h), 12h (12-18h), 18h (18-24h)
+    let slot = Math.floor(pct / 25);
+    if (slot > 3) slot = 3;
+    tsStartHour = slot * 6;
+    updateTsUI();
+    renderZone1TripList();
+  });
+}
 
 /* ===================== MODAL CHỈ ĐỊNH GHẾ DƯ CHO PHƠI KHÁC ===================== */
 let activeAssignSourceSeatCode = null;
@@ -2564,7 +2501,7 @@ function renderAssignSeatTripList() {
     const bookedSeats = plan ? [...plan.down, ...plan.up].filter(s => ['sold', 'hold', 'free', 'cargo'].includes(s.state)).length : 0;
     const selected = t.id === activeAssignTargetTripId ? 'selected' : '';
     const plate = t.plate || 'Chưa có';
-    const vehicleType = t.vehicleType || 'Chưa rõ';
+    const fullTripName = t.name ? `${t.name} • ${vehicleType}` : `${t.route} • ${vehicleType}`;
 
     return `
       <div class="trip-card ${selected}" onclick="selectAssignSeatTrip('${t.id}')">
@@ -2573,7 +2510,7 @@ function renderAssignSeatTripList() {
             <span class="trip-time">${t.time}</span>
             <span class="trip-plate-inline">${plate}</span>
           </div>
-          <div class="trip-sub">${abbrRouteName(t.route)} • ${vehicleType}</div>
+          <div class="trip-sub" title="${fullTripName}">${fullTripName}</div>
         </div>
         <div class="trip-nums">
           <div class="n1">${bookedSeats}/${totalSeats}</div>
@@ -2728,23 +2665,27 @@ function renderZone1TripList() {
 
   const mapTrip = t => {
     const plan = tripSeatBank[t.id];
-    const totalSeats = plan ? plan.down.filter(s => s.state !== 'hidden').length + plan.up.filter(s => s.state !== 'hidden').length : 0;
+    const totalSeats = plan ? plan.down.filter(s => s.state !== 'hidden').length + plan.up.filter(s => s.state !== 'hidden').length : (t.totalSeats || 24);
     const bookedSeats = plan ? [...plan.down, ...plan.up].filter(s => ['sold', 'hold', 'free', 'cargo'].includes(s.state)).length : 0;
     const selected = t.id === currentTripId ? 'selected' : '';
     const plate = plan && plan.plate ? plan.plate : (t.plate || 'Chưa có');
     const vehicleType = plan && plan.vehicleType ? plan.vehicleType : (t.vehicleType || 'Chưa rõ');
+    const isLimo = vehicleType.toLowerCase().includes('limousine') || vehicleType.toLowerCase().includes('limo');
+    const seatTagClass = isLimo ? 'tag-limo' : 'tag-normal';
+    const displayTripName = t.name || `${t.route} (${t.time})`;
+    const tooltipText = `Tên phơi: ${displayTripName}\nBiển số: ${plate}\nLoại xe: ${vehicleType}${t.note ? '\nGhi chú: ' + t.note : ''}`;
 
     return `
-      <div class="trip-card ${selected}" data-trip="${t.id}" onclick="selectTrip(this,'${t.time}','${t.route}')">
-        <div>
-          <div class="trip-time-row">
+      <div class="trip-card ${selected}" data-trip="${t.id}" onclick="selectTrip(this,'${t.time}','${t.route}')" title="${tooltipText}">
+        <div class="trip-card-row1">
+          <div class="trip-info-left">
             <span class="trip-time">${t.time}</span>
             <span class="trip-plate-inline">${plate}</span>
           </div>
-          <div class="trip-sub">${abbrRouteName(t.route)} • ${vehicleType}</div>
+          <div class="trip-seat-tag ${seatTagClass}">${bookedSeats}/${totalSeats}</div>
         </div>
-        <div class="trip-nums">
-          <div class="n1">${bookedSeats}/${totalSeats}</div>
+        <div class="trip-card-row2">
+          <span class="trip-name-text">${displayTripName}</span>
         </div>
       </div>
     `;
@@ -2765,7 +2706,7 @@ function renderZone1TripList() {
 
   // Hiển thị thông tin người dùng từ phiên đăng nhập (nếu có)
   try {
-    const raw = sessionStorage.getItem('hn_current_user');
+    const raw = sessionStorage.getItem(HN_CURRENT_USER_KEY);
     if (raw) {
       const user = JSON.parse(raw);
       const nameEl = document.getElementById('userName');
@@ -2806,7 +2747,7 @@ function renderZone1TripList() {
   });
 
   logoutBtn.addEventListener('click', () => {
-    sessionStorage.removeItem('hn_current_user');
+    sessionStorage.removeItem(HN_CURRENT_USER_KEY);
     window.location.href = 'index.html';
   });
 })();
@@ -2983,7 +2924,7 @@ function openCustomerHistory(phone, pushHistory = true) {
   setTxt('chPhone', firstResult.phone || phone);
   setTxt('chAvatar', (firstResult.name || 'K').charAt(0).toUpperCase());
 
-  renderHistoryTable(results);
+  renderHistorySeatMap(results, true);
 
   const rightCol = document.querySelector('.right-col');
   if (rightCol) {
@@ -3117,218 +3058,279 @@ function getHistoryStopsDisplay(r) {
   return { firstStopHtml, lastStopHtml };
 }
 
-function getColValueForFilter(r, colKey) {
-  if (!r) return '';
-  switch (colKey) {
-    case 'date': return formatHistoryDate(r.date);
-    case 'route': return r.route || '';
-    case 'time': return r.time || '';
-    case 'phone': return r.phone || currentSearchPhone || '';
-    case 'seat': return r.seat || '';
-    case 'firstStop': case 'lastStop': {
-      const div = document.createElement('div');
-      div.innerHTML = colKey === 'firstStop' ? getHistoryStopsDisplay(r).firstStopHtml : getHistoryStopsDisplay(r).lastStopHtml;
-      return div.textContent.trim() || '—';
-    }
-    case 'staff': {
-      const book = getStaffCode(r.bookStaff || r.staff) || 'NV01';
-      const sell = r.sellStaff ? (getStaffCode(r.sellStaff) || r.sellStaff) : (r.paid ? 'NV05' : '—');
-      return `Đặt: ${book} | Bán: ${sell}`;
-    }
-    default: return String(r[colKey] || '');
-  }
-}
+let chFilterState = { date: 'all', route: 'all', time: 'all', status: 'all' };
 
-function getFilteredHistoryResults() {
-  if (!_rawHistoryResults?.length) return [];
-  return _rawHistoryResults.filter(r => {
-    for (const colKey in historyColumnFilters) {
-      const allowedSet = historyColumnFilters[colKey];
-      if (allowedSet instanceof Set && !allowedSet.has(getColValueForFilter(r, colKey))) return false;
+function applyChFilters() {
+  const dateVal = document.getElementById('chFilterDate')?.value || 'all';
+  const routeVal = document.getElementById('chFilterRoute')?.value || 'all';
+  const timeVal = document.getElementById('chFilterTime')?.value || 'all';
+  const statusVal = document.getElementById('chFilterStatus')?.value || 'all';
+
+  chFilterState = { date: dateVal, route: routeVal, time: timeVal, status: statusVal };
+
+  const filtered = (_rawHistoryResults || []).filter(r => {
+    if (dateVal !== 'all' && r.date !== dateVal) return false;
+    if (routeVal !== 'all' && r.route !== routeVal) return false;
+    if (timeVal !== 'all') {
+      const hh = parseInt((r.time || '00:00').split(':')[0], 10);
+      if (timeVal === 'morning' && (hh < 0 || hh >= 12)) return false;
+      if (timeVal === 'afternoon' && (hh < 12 || hh >= 18)) return false;
+      if (timeVal === 'evening' && (hh < 18 || hh > 24)) return false;
+    }
+    if (statusVal !== 'all') {
+      if (statusVal === 'today' && !r.isToday) return false;
+      if (statusVal === 'past' && r.isToday) return false;
+      if (statusVal === 'sold' && r.state !== 'sold') return false;
+      if (statusVal === 'hold' && r.state !== 'hold') return false;
     }
     return true;
   });
+
+  renderHistorySeatMap(filtered, false);
 }
 
-function toggleHistoryColumnFilter(event, colKey) {
-  if (event) event.stopPropagation();
-  let popover = document.getElementById('chExcelFilterPopover');
-  if (!popover) {
-    popover = document.createElement('div');
-    popover.id = 'chExcelFilterPopover';
-    popover.className = 'ch-excel-filter-popover';
-    document.body.appendChild(popover);
-  }
-
-  if (activePopoverColKey === colKey && popover.style.display !== 'none') {
-    popover.style.display = 'none';
-    activePopoverColKey = null;
-    return;
-  }
-  activePopoverColKey = colKey;
-
-  const allValues = Array.from(new Set((_rawHistoryResults || []).map(r => getColValueForFilter(r, colKey)))).sort();
-  const currentSet = historyColumnFilters[colKey] ? new Set(historyColumnFilters[colKey]) : new Set(allValues);
-  const allChecked = currentSet.size === allValues.length;
-
-  let html = `<input type="text" class="ch-popover-search" placeholder="Tìm kiếm..." oninput="filterExcelDropdownItems(this.value)">`;
-  html += `
-    <label class="ch-popover-opt" style="font-weight:700;border-bottom:1px solid #f1f5f9;padding-bottom:6px;">
-      <input type="checkbox" class="ch-select-all" ${allChecked ? 'checked' : ''} onchange="toggleExcelSelectAll(this, '${colKey}')">
-      <span>(Chọn tất cả)</span>
-    </label>
-    <div class="ch-popover-list" id="chPopoverList">
-  `;
-
-  allValues.forEach(val => {
-    const isChecked = currentSet.has(val);
-    const escVal = escapeHtml(val);
-    html += `
-      <label class="ch-popover-opt ch-popover-item">
-        <input type="checkbox" value="${escVal}" ${isChecked ? 'checked' : ''} onchange="updateExcelSelectAllState('${colKey}')">
-        <span>${escVal}</span>
-      </label>
-    `;
-  });
-
-  html += `</div>
-    <div class="ch-popover-actions">
-      <button type="button" class="ch-popover-btn clear" onclick="clearHistoryColumnFilter('${colKey}')">Bỏ lọc</button>
-      <button type="button" class="ch-popover-btn apply" onclick="applyHistoryColumnFilter('${colKey}')">Áp dụng</button>
-    </div>
-  `;
-
-  popover.innerHTML = html;
-
-  const rect = event.currentTarget.getBoundingClientRect();
-  popover.style.display = 'block';
-  const left = Math.max(10, (rect.left + 240 > window.innerWidth) ? (window.innerWidth - 250) : rect.left);
-  popover.style.top = (rect.bottom + window.scrollY + 4) + 'px';
-  popover.style.left = left + 'px';
+function resetChFilters() {
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  setVal('chFilterDate', 'all');
+  setVal('chFilterRoute', 'all');
+  setVal('chFilterTime', 'all');
+  setVal('chFilterStatus', 'all');
+  chFilterState = { date: 'all', route: 'all', time: 'all', status: 'all' };
+  renderHistorySeatMap(_rawHistoryResults || [], false);
 }
 
-function escapeHtml(str) {
-  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-}
-
-function filterExcelDropdownItems(query) {
-  const q = query.toLowerCase().trim();
-  document.querySelectorAll('#chPopoverList .ch-popover-item').forEach(item => {
-    item.style.display = item.textContent.toLowerCase().includes(q) ? 'flex' : 'none';
-  });
-}
-
-function toggleExcelSelectAll(selectAllCb, colKey) {
-  const isChecked = selectAllCb.checked;
-  document.querySelectorAll('#chPopoverList .ch-popover-item input[type="checkbox"]').forEach(cb => {
-    if (cb.closest('.ch-popover-item').style.display !== 'none') cb.checked = isChecked;
-  });
-}
-
-function updateExcelSelectAllState(colKey) {
-  const checkboxes = Array.from(document.querySelectorAll('#chPopoverList .ch-popover-item input[type="checkbox"]'));
-  const selectAllCb = document.querySelector('.ch-select-all');
-  if (!selectAllCb) return;
-  const visibleCbs = checkboxes.filter(cb => cb.closest('.ch-popover-item').style.display !== 'none');
-  selectAllCb.checked = visibleCbs.length > 0 && visibleCbs.every(cb => cb.checked);
-}
-
-function applyHistoryColumnFilter(colKey) {
-  const checkboxes = Array.from(document.querySelectorAll('#chPopoverList .ch-popover-item input[type="checkbox"]'));
-  const selectedSet = new Set(checkboxes.filter(cb => cb.checked).map(cb => cb.value));
-  const allValuesSet = new Set((_rawHistoryResults || []).map(r => getColValueForFilter(r, colKey)));
-
-  if (selectedSet.size === allValuesSet.size) delete historyColumnFilters[colKey];
-  else historyColumnFilters[colKey] = selectedSet;
-
-  const popover = document.getElementById('chExcelFilterPopover');
-  if (popover) popover.style.display = 'none';
-  activePopoverColKey = null;
-
-  renderHistoryTable(getFilteredHistoryResults());
-}
-
-function clearHistoryColumnFilter(colKey) {
-  delete historyColumnFilters[colKey];
-  const popover = document.getElementById('chExcelFilterPopover');
-  if (popover) popover.style.display = 'none';
-  activePopoverColKey = null;
-
-  renderHistoryTable(getFilteredHistoryResults());
-}
-
-document.addEventListener('click', function (e) {
-  const popover = document.getElementById('chExcelFilterPopover');
-  if (popover && popover.style.display !== 'none') {
-    if (!e.target.closest('#chExcelFilterPopover') && !e.target.closest('.ch-col-filter-btn')) {
-      popover.style.display = 'none';
-      activePopoverColKey = null;
-    }
-  }
-});
-
-function renderHistoryTable(results) {
+function renderHistorySeatMap(results, rebuildFilterOptions = true) {
   const body = document.getElementById('chBody');
   if (!body) return;
+
   if (!results?.length) {
-    body.innerHTML = '<div class="ch-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>Không tìm thấy lịch sử</span></div>';
+    body.innerHTML = `
+      <div class="filter-toolbar ch-filter-toolbar">
+        <div class="filter-field">
+          <label>Ngày đi</label>
+          <select id="chFilterDate" onchange="applyChFilters()"><option value="all">Tất cả ngày</option></select>
+        </div>
+        <div class="filter-field">
+          <label>Tuyến đường</label>
+          <select id="chFilterRoute" onchange="applyChFilters()"><option value="all">Tất cả tuyến</option></select>
+        </div>
+        <div class="filter-field">
+          <label>Khung giờ</label>
+          <select id="chFilterTime" onchange="applyChFilters()">
+            <option value="all">Tất cả khung giờ</option>
+            <option value="morning">Sáng (00:00 - 12:00)</option>
+            <option value="afternoon">Chiều (12:00 - 18:00)</option>
+            <option value="evening">Tối (18:00 - 24:00)</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label>Trạng thái</label>
+          <select id="chFilterStatus" onchange="applyChFilters()">
+            <option value="all">Tất cả trạng thái</option>
+            <option value="today">Hôm nay</option>
+            <option value="past">Lịch sử quá khứ</option>
+            <option value="sold">Đã bán</option>
+            <option value="hold">Đã đặt</option>
+          </select>
+        </div>
+        <div class="filter-reset" style="display:flex;gap:8px;align-items:center;">
+          <button type="button" class="btn btn-secondary" onclick="resetChFilters()">Đặt lại bộ lọc</button>
+          <button type="button" class="btn btn-secondary" onclick="closeCustomerHistory()" style="display:flex;align-items:center;gap:6px;font-weight:700;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            Đóng lịch sử
+          </button>
+        </div>
+      </div>
+      <div class="ch-empty" style="text-align:center;padding:40px;color:var(--text-sub);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;margin-bottom:8px;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <div style="font-weight:600;">Không tìm thấy lịch sử phù hợp bộ lọc</div>
+      </div>`;
+
+    if (rebuildFilterOptions && _rawHistoryResults?.length) {
+      const dates = Array.from(new Set(_rawHistoryResults.map(r => r.date).filter(Boolean))).sort().reverse();
+      const routes = Array.from(new Set(_rawHistoryResults.map(r => r.route).filter(Boolean))).sort();
+      const dateOpts = `<option value="all">Tất cả ngày (${_rawHistoryResults.length} vé)</option>` +
+        dates.map(d => `<option value="${d}">${formatHistoryDate(d)}</option>`).join('');
+      const routeOpts = `<option value="all">Tất cả tuyến</option>` +
+        routes.map(r => `<option value="${r}">${r}</option>`).join('');
+      const dateEl = document.getElementById('chFilterDate');
+      const routeEl = document.getElementById('chFilterRoute');
+      if (dateEl) dateEl.innerHTML = dateOpts;
+      if (routeEl) routeEl.innerHTML = routeOpts;
+    }
     return;
   }
+
   _historyResults = results;
   window._historyResults = results;
 
-  const cols = [
-    { key: 'date', label: 'Ngày', filterable: true },
-    { key: 'route', label: 'Chuyến', filterable: true },
-    { key: 'time', label: 'Giờ', filterable: true },
-    { key: 'phone', label: 'SDT', filterable: true },
-    { key: 'seat', label: 'Ghế', filterable: true },
-    { key: 'firstStop', label: 'Trạm đi', filterable: true },
-    { key: 'lastStop', label: 'Trạm đến', filterable: true },
-    { key: 'staff', label: 'Nhân viên', filterable: true },
-    { key: 'price', label: 'Giá vé', filterable: false },
-    { key: 'actions', label: 'Chức năng', filterable: false }
-  ];
+  const firstResult = results[0];
+  const custName = firstResult.name || 'Khách hàng';
+  const custPhone = firstResult.phone || currentSearchPhone || '—';
 
-  const headers = cols.map(c => {
-    if (!c.filterable) return `<th>${c.label}</th>`;
-    const isFiltered = historyColumnFilters[c.key] !== undefined;
-    return `
-      <th class="ch-th-filterable">
-        <div class="ch-th-content">
-          <span>${c.label}</span>
-          <button type="button" class="ch-col-filter-btn ${isFiltered ? 'active' : ''}" onclick="toggleHistoryColumnFilter(event, '${c.key}')" title="Lọc ${c.label}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+  // Group results by Trip (date + route + time + tripId)
+  const tripGroupsMap = new Map();
+  results.forEach((r, idx) => {
+    const tripKey = `${r.date}_${r.route}_${r.time}_${r.tripId || ''}`;
+    if (!tripGroupsMap.has(tripKey)) {
+      tripGroupsMap.set(tripKey, {
+        date: r.date,
+        route: r.route,
+        time: r.time,
+        tripId: r.tripId,
+        plate: r.plate,
+        vehicleType: r.vehicleType,
+        driver: r.driver,
+        helper: r.helper,
+        isToday: r.isToday,
+        items: []
+      });
+    }
+    tripGroupsMap.get(tripKey).items.push({ ...r, origIdx: idx });
+  });
+
+  const tripGroups = Array.from(tripGroupsMap.values());
+
+  let cardsHtml = '';
+  tripGroups.forEach(group => {
+    const formattedDate = formatHistoryDate(group.date);
+    const plate = group.plate || '51F-123.45';
+    const vehicleType = group.vehicleType || 'Limousine 24 Phòng';
+    const driver = group.driver || 'Trần Văn Hùng';
+    const helper = group.helper || 'Nguyễn Văn Bình';
+    const firstOrigIdx = group.items[0].origIdx;
+
+    let seatCardsHtml = group.items.map(r => {
+      const { firstStopHtml, lastStopHtml } = getHistoryStopsDisplay(r);
+      const bookStaffStr = getStaffCode(r.bookStaff || r.staff) || 'NV01';
+      const sellStaffStr = r.sellStaff ? (getStaffCode(r.sellStaff) || r.sellStaff) : (r.paid ? 'NV05' : '—');
+      const stateClass = r.state === 'sold' ? 'sold' : (r.state === 'hold' ? 'hold' : 'sold');
+
+      return `
+        <div class="seat-card ${stateClass} ch-seat-card-item" data-code="${r.seat}">
+          <div class="seat-top">
+            <div>
+              <div class="seat-code" style="display:inline-block; vertical-align:middle; font-size:16px; font-weight:800;">${r.seat}</div>
+              ${r.isToday ? '<span class="ch-history-badge" style="margin-left:6px;">Hôm nay</span>' : ''}
+            </div>
+            <div class="seat-top-right">
+              <div class="seat-price-tag">${r.price ? r.price.toLocaleString('vi-VN') + 'đ' : '—'}</div>
+            </div>
+          </div>
+
+          <div class="seat-line" style="margin-top:2px;">
+            <span class="seat-label-full" style="font-weight:700;color:var(--text-sub);">Trạm đi: </span>
+            <span class="seat-stop" style="font-weight:700;">${firstStopHtml}</span>
+          </div>
+
+          <div class="seat-line" style="margin-top:2px;">
+            <span class="seat-label-full" style="font-weight:700;color:var(--text-sub);">Trạm đến: </span>
+            <span class="seat-stop" style="font-weight:700;">${lastStopHtml}</span>
+          </div>
+
+          <div class="seat-line" style="color:var(--text-main); font-weight:700; margin-top:4px;">
+            <span class="seat-label-full">Khách hàng: </span>${custName}
+          </div>
+          <div class="seat-line" style="color:var(--text-main); font-weight:700;">
+            <span class="seat-label-full">SĐT: </span>${custPhone}
+          </div>
+
+          <div class="seat-line" style="color:var(--text-sub); font-size:11.5px; margin-top:4px;">
+            <span class="seat-label-full">Nhân viên: </span>Đặt: <b>${bookStaffStr}</b> | Bán: <b class="${sellStaffStr === '—' ? 'none' : ''}">${sellStaffStr}</b>
+          </div>
+
+          <button class="seat-footbtn" type="button" onclick="event.stopPropagation(); openRebookFromHistory(${r.origIdx})">
+            <span class="foot-text-normal">ĐẶT LẠI VÉ NÀY</span>
+            <span class="foot-text-hover">ĐẶT LẠI VÉ NÀY</span>
           </button>
         </div>
-      </th>`;
-  }).join('');
+      `;
+    }).join('');
 
-  const rows = results.map((r, idx) => {
-    const todayBadge = r.isToday ? ' <span class="ch-history-badge">Hôm nay</span>' : '';
-    const dateFormatted = formatHistoryDate(r.date);
-    const phoneDisplay = r.phone || currentSearchPhone || '';
-    const { firstStopHtml, lastStopHtml } = getHistoryStopsDisplay(r);
-    const bookStaffStr = getStaffCode(r.bookStaff || r.staff) || 'NV01';
-    const sellStaffStr = r.sellStaff ? (getStaffCode(r.sellStaff) || r.sellStaff) : (r.paid ? 'NV05' : '—');
-    const staffHtml = `<div class="ch-staff-cell"><div><span class="ch-staff-lbl">Đặt:</span> <span class="ch-staff-val">${bookStaffStr}</span></div><div><span class="ch-staff-lbl">Bán:</span> <span class="ch-staff-val sell ${sellStaffStr === '—' ? 'none' : ''}">${sellStaffStr}</span></div></div>`;
+    cardsHtml += `
+      <div class="ch-trip-seatmap-card">
+        <div class="ch-trip-header">
+          <div class="ch-trip-title-info" onclick="goToTripFromHistory(event, ${firstOrigIdx})" title="Biển số xe: ${plate} • Loại xe: ${vehicleType} • Tài xế: ${driver} • Phụ xe: ${helper}">
+            <div class="ch-trip-name">
+              <span class="ch-trip-link">${group.route} — ${group.time}</span>
+              <span class="ch-date-tag">${formattedDate}</span>
+            </div>
+          </div>
+        </div>
 
-    return `
-    <tr data-idx="${idx}" onclick="fillSearchInputWithPhone('${phoneDisplay}')" style="cursor:pointer;">
-      <td class="ch-date">${dateFormatted}${todayBadge}</td>
-      <td class="ch-route"><span class="ch-trip-link" onclick="goToTripFromHistory(event, ${idx})" title="Nhấp để chuyển sang phơi chuyến này">${r.route}</span></td>
-      <td>${r.time}</td>
-      <td>${phoneDisplay}</td>
-      <td><span class="ch-seat-code">${r.seat}</span></td>
-      <td>${firstStopHtml}</td>
-      <td>${lastStopHtml}</td>
-      <td>${staffHtml}</td>
-      <td style="font-weight:700;">${r.price ? r.price.toLocaleString('vi-VN') + 'đ' : '—'}</td>
-      <td><button type="button" class="ch-btn-rebook-row" onclick="event.stopPropagation(); openRebookFromHistory(${idx})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Đặt lại</button></td>
-    </tr>`;
-  }).join('');
+        <div class="ch-seat-cards-grid">
+          ${seatCardsHtml}
+        </div>
+      </div>
+    `;
+  });
 
-  body.innerHTML = `<table class="ch-history-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+  const bannerHtml = `
+    <!-- Bộ lọc dữ liệu kiểu trang Shuttle -->
+    <div class="filter-toolbar ch-filter-toolbar">
+      <div class="filter-field">
+        <label>Ngày đi</label>
+        <select id="chFilterDate" onchange="applyChFilters()">
+          <!-- JS dynamic -->
+        </select>
+      </div>
+      <div class="filter-field">
+        <label>Tuyến đường</label>
+        <select id="chFilterRoute" onchange="applyChFilters()">
+          <!-- JS dynamic -->
+        </select>
+      </div>
+      <div class="filter-field">
+        <label>Khung giờ</label>
+        <select id="chFilterTime" onchange="applyChFilters()">
+          <option value="all" ${chFilterState.time === 'all' ? 'selected' : ''}>Tất cả khung giờ</option>
+          <option value="morning" ${chFilterState.time === 'morning' ? 'selected' : ''}>Sáng (00:00 - 12:00)</option>
+          <option value="afternoon" ${chFilterState.time === 'afternoon' ? 'selected' : ''}>Chiều (12:00 - 18:00)</option>
+          <option value="evening" ${chFilterState.time === 'evening' ? 'selected' : ''}>Tối (18:00 - 24:00)</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label>Trạng thái</label>
+        <select id="chFilterStatus" onchange="applyChFilters()">
+          <option value="all" ${chFilterState.status === 'all' ? 'selected' : ''}>Tất cả trạng thái</option>
+          <option value="today" ${chFilterState.status === 'today' ? 'selected' : ''}>Hôm nay</option>
+          <option value="past" ${chFilterState.status === 'past' ? 'selected' : ''}>Lịch sử quá khứ</option>
+          <option value="sold" ${chFilterState.status === 'sold' ? 'selected' : ''}>Đã bán</option>
+          <option value="hold" ${chFilterState.status === 'hold' ? 'selected' : ''}>Đã đặt</option>
+        </select>
+      </div>
+      <div class="filter-reset" style="display:flex;gap:8px;align-items:center;">
+        <button type="button" class="btn btn-secondary" onclick="resetChFilters()">Đặt lại bộ lọc</button>
+        <button type="button" class="btn btn-secondary" onclick="closeCustomerHistory()" style="display:flex;align-items:center;gap:6px;font-weight:700;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          Đóng lịch sử
+        </button>
+      </div>
+    </div>
+
+    <div class="ch-seatmaps-list" id="chSeatmapsList">${cardsHtml}</div>
+  `;
+
+  body.innerHTML = bannerHtml;
+
+  if (rebuildFilterOptions && _rawHistoryResults?.length) {
+    const dates = Array.from(new Set(_rawHistoryResults.map(r => r.date).filter(Boolean))).sort().reverse();
+    const routes = Array.from(new Set(_rawHistoryResults.map(r => r.route).filter(Boolean))).sort();
+
+    const dateOpts = `<option value="all">Tất cả ngày (${_rawHistoryResults.length} vé)</option>` +
+      dates.map(d => `<option value="${d}">${formatHistoryDate(d)}</option>`).join('');
+    const routeOpts = `<option value="all">Tất cả tuyến</option>` +
+      routes.map(r => `<option value="${r}">${r}</option>`).join('');
+
+    const dateEl = document.getElementById('chFilterDate');
+    const routeEl = document.getElementById('chFilterRoute');
+    if (dateEl) dateEl.innerHTML = dateOpts;
+    if (routeEl) routeEl.innerHTML = routeOpts;
+  }
+}
+
+function renderHistoryTable(results) {
+  renderHistorySeatMap(results, true);
 }
 
 function formatHistoryDate(dateStr) {
@@ -3665,3 +3667,34 @@ function renderLiveSearchResults(query) {
     });
   }
 })();
+
+function updateHeaderPickupBadge() {
+  const badge = document.getElementById('headerPickupBadge');
+  if (!badge) return;
+  let storedPax = [];
+  try {
+    const saved = localStorage.getItem(HN_PICKUP_PAX_KEY) || localStorage.getItem('hn_pickup_passengers_v5');
+    if (saved) storedPax = JSON.parse(saved);
+  } catch (e) {}
+
+  if (!Array.isArray(storedPax) || storedPax.length === 0) {
+    storedPax = [
+      { id: 1, assigned: null },
+      { id: 2, assigned: { tripId: '1' } },
+      { id: 3, assigned: null },
+      { id: 4, assigned: null },
+      { id: 5, assigned: null }
+    ];
+  }
+
+  const pendingCount = storedPax.filter(p => !p.assigned).length;
+  badge.textContent = pendingCount;
+  badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+}
+
+updateHeaderPickupBadge();
+window.addEventListener('storage', (e) => {
+  if (!e.key || e.key === HN_PICKUP_PAX_KEY) {
+    updateHeaderPickupBadge();
+  }
+});

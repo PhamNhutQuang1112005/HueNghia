@@ -3,17 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Danh sách khách rước liền — Nhà xe Huệ Nghĩa Express</title>
+<title>Danh sách hành khách rước liền — Nhà xe Huệ Nghĩa Express</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shuttle.css?v=31">
 <link rel="stylesheet" href="../css/pickup-list.css?v=31">
 </head>
 <body>
 
 <div class="app">
 
-  <!-- ============ TOPBAR / SIDEBAR NGANG (y chang trang ticketstaff) ============ -->
+  <!-- ============ TOPBAR / SIDEBAR NGANG ============ -->
   <header class="topbar">
     <div class="brand">
       <div class="brand-badge">
@@ -25,7 +26,7 @@
     <div class="topbar-align-group">
       <div class="search-wrap">
         <div class="search-box">
-          <input id="searchInput" type="text" placeholder="Tìm kiếm theo SĐT, Mã vé, Tên hành khách...">
+          <input id="searchInput" type="text" placeholder="Tìm kiếm theo SĐT, Mã vé, Tên..." oninput="onSearchInput(this.value)">
           <button class="search-btn" type="button" aria-label="Tìm kiếm">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
           </button>
@@ -68,34 +69,118 @@
     </div>
   </header>
 
-  <div class="main">
-    <div class="page-head">
-      <div class="page-head-row">
-        <div>
-          <h1>Danh sách hành khách rước liền</h1>
-        </div>
-        <div class="pax-count-chip" id="paxCountChip">0 khách chờ chỉ định</div>
-      </div>
-    </div>
+  <div class="main" style="padding:0; overflow:hidden;">
+    <div class="content">
 
-    <div class="pax-table-wrap">
-      <table class="pax-table">
-        <thead>
-          <tr>
-            <th style="text-align:center; width:45px;">STT</th>
-            <th style="text-align:left;">Khách hàng</th>
-            <th style="text-align:left;">Trạm đi / Trạm đến</th>
-            <th style="text-align:center; width:75px;">SL vé</th>
-            <th style="text-align:left;">Trung chuyển đi</th>
-            <th style="text-align:left;">Trung chuyển đến</th>
-            <th style="text-align:left;">Ghi chú</th>
-            <th style="text-align:center; width:65px;">Baga</th>
-            <th style="text-align:center; width:130px;">Trạng thái</th>
-            <th style="text-align:center; width:110px;">Thao tác</th>
-          </tr>
-        </thead>
-        <tbody id="paxTableBody"></tbody>
-      </table>
+
+
+      <!-- FR-03: Bộ lọc dữ liệu (y chang trang shuttle) -->
+      <div class="filter-toolbar">
+        <div class="filter-field filter-field-date">
+          <label>Ngày</label>
+          <button type="button" class="filter-select" id="filterDateBtn" onclick="toggleCalendar()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+              <rect x="3" y="5" width="18" height="16" rx="2" />
+              <path d="M16 3v4" />
+              <path d="M8 3v4" />
+              <path d="M3 10h18" />
+            </svg>
+            <span id="filterDateLabel">Hôm nay (18/07/2026)</span>
+            <svg class="filter-date-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+          <div class="calendar calendar-popover" id="calendarPanel">
+            <div class="cal-head">
+              <div class="cal-nav"><button type="button" onclick="shiftMonth(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6" /></svg></button></div>
+              <b id="calMonthLabel">Tháng 7, 2026</b>
+              <div class="cal-head-right">
+                <button type="button" class="cal-today-btn" onclick="goToday()">Hôm nay</button>
+                <div class="cal-nav"><button type="button" onclick="shiftMonth(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6" /></svg></button></div>
+              </div>
+            </div>
+            <div class="cal-grid" id="calGrid"></div>
+          </div>
+        </div>
+
+        <div class="filter-field">
+          <label>Trạm đi</label>
+          <select id="filterFromStation" onchange="applyFilters()">
+            <option value="all">Tất cả trạm đi</option>
+            <option value="Trạm Kinh Dương Vương">Trạm Kinh Dương Vương</option>
+            <option value="Trạm An Sương">Trạm An Sương</option>
+            <option value="Trạm Q.5">Trạm Q.5</option>
+            <option value="Văn phòng trung tâm">Văn phòng trung tâm</option>
+          </select>
+        </div>
+
+        <div class="filter-field">
+          <label>Trạm đến</label>
+          <select id="filterToStation" onchange="applyFilters()">
+            <option value="all">Tất cả trạm đến</option>
+            <option value="Trạm Châu Đốc">Trạm Châu Đốc</option>
+            <option value="Trạm Long Xuyên">Trạm Long Xuyên</option>
+            <option value="Trạm Tân Châu">Trạm Tân Châu</option>
+            <option value="Bến xe Châu Đốc">Bến xe Châu Đốc</option>
+            <option value="Trạm Cần Thơ">Trạm Cần Thơ</option>
+          </select>
+        </div>
+
+        <div class="filter-field">
+          <label>Khung giờ</label>
+          <select id="filterTimeSlot" onchange="applyFilters()">
+            <option value="all">Tất cả khung giờ</option>
+            <option value="morning">Sáng (05:00 - 12:00)</option>
+            <option value="afternoon">Chiều (12:00 - 18:00)</option>
+            <option value="evening">Tối (18:00 - 24:00)</option>
+          </select>
+        </div>
+
+        <div class="filter-field">
+          <label>Trạng thái</label>
+          <select id="filterStatus" onchange="applyFilters()">
+            <option value="all">Tất cả trạng thái</option>
+            <option value="pending">Chưa chỉ định</option>
+            <option value="assigned">Đã chỉ định xe</option>
+          </select>
+        </div>
+
+        <div class="filter-reset">
+          <button type="button" class="btn btn-secondary" onclick="resetFilters()">Đặt lại bộ lọc</button>
+        </div>
+      </div>
+
+      <!-- Chú giải trạng thái -->
+      <div class="status-legend" aria-label="Chú giải trạng thái">
+        <span class="status-legend-title">Chú giải trạng thái</span>
+        <div class="legend-row"><span class="status-dot" style="background:#B45309;"></span>Chưa chỉ định</div>
+        <div class="legend-row"><span class="status-dot" style="background:var(--green);"></span>Đã chỉ định xe</div>
+      </div>
+
+      <!-- Bảng danh sách hành khách dạng shuttle-table -->
+      <div class="grid-wrap" style="padding-bottom: 24px;">
+        <table class="shuttle-table">
+          <thead>
+            <tr>
+              <th class="col-stt">STT</th>
+              <th style="width: 170px;">Khách hàng</th>
+              <th style="width: 190px;">Trạm đi / Trạm đến</th>
+              <th style="width: 70px; text-align: center;">SL vé</th>
+              <th style="width: 180px;">Trung chuyển đi</th>
+              <th style="width: 180px;">Trung chuyển đến</th>
+              <th style="width: 160px;">Ghi chú</th>
+              <th style="width: 65px; text-align: center;">Baga</th>
+              <th class="col-status" style="width: 150px; text-align: center;">Trạng thái</th>
+              <th style="width: 110px; text-align: center;">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="paxTableBody"></tbody>
+        </table>
+        <div class="grid-empty" id="gridEmpty" style="display:none;">
+          Không có hành khách nào phù hợp với điều kiện lọc hiện tại.
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -172,6 +257,8 @@
 
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg><span id="toastText"></span></div>
 
-<script src="../js/pickup-list.js?v=36"></script>
+<script src="../js/shared/storage-keys.js?v=1"></script>
+<script src="../js/shared/constants.js?v=1"></script>
+<script src="../js/pickup-list.js?v=38"></script>
 </body>
 </html>

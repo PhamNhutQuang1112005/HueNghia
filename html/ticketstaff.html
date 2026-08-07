@@ -7,7 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/ticketstaff.css?v=34">
+<link rel="stylesheet" href="../css/shared/variables.css?v=1">
+<link rel="stylesheet" href="../css/shared/base.css?v=1">
+<link rel="stylesheet" href="../css/shared/booking-ui.css?v=1">
+<link rel="stylesheet" href="../css/ticketstaff.css?v=35">
 </head>
 <body>
 
@@ -42,7 +45,7 @@
 
       <div class="tab-btn-group">
         <button class="pill-btn active" type="button" onclick="window.location.href='pickup-list.html'">
-          Rước liền
+          Rước liền <span class="badge" id="headerPickupBadge" style="background:white; color:var(--red); border-radius:999px; padding:1px 6px; font-size:11px; font-weight:800; margin-left:5px; display:inline-block;">4</span>
         </button>
       </div>
     </div>
@@ -134,7 +137,6 @@
             <div class="ts-range" id="tsRange"></div>
           </div>
           <div class="ts-labels"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span></div>
-          <div class="ts-current" id="tsCurrent">05:00 – 08:00</div>
         </div>
       </div>
 
@@ -143,54 +145,54 @@
 
         <div id="tripListSGCD">
           <div class="trip-card selected" data-trip="1" onclick="selectTrip(this,'07:00','Sài Gòn - Châu Đốc')">
-              <div><div class="trip-time-row"><span class="trip-time">07:00</span><span class="trip-plate-inline">51F-123.45</span></div><div class="trip-sub">Sài Gòn - Châu Đốc • Limousine 24 Phòng</div></div>
+              <div><div class="trip-time-row"><span class="trip-time">07:00</span><span class="trip-plate-inline">51F-123.45</span></div><div class="trip-sub" title="Sài Gòn - Châu Đốc (07:00) - Xuất bến VP Q.5 • Limousine 24 Phòng">Sài Gòn - Châu Đốc (07:00) - Xuất bến VP Q.5 • Limousine 24 Phòng</div></div>
             <div class="trip-nums"><div class="n1">10/32</div></div>
           </div>
 
           <div class="trip-card" data-trip="2" onclick="selectTrip(this,'08:30','Sài Gòn - Châu Đốc')">
-              <div><div class="trip-time-row"><span class="trip-time">08:30</span><span class="trip-plate-inline">50H-678.90</span></div><div class="trip-sub">Sài Gòn - Châu Đốc • Giường nằm 34 chỗ</div></div>
+              <div><div class="trip-time-row"><span class="trip-time">08:30</span><span class="trip-plate-inline">50H-678.90</span></div><div class="trip-sub" title="Sài Gòn - Châu Đốc (08:30) - Chạy bến An Sương • Giường nằm 34 chỗ">Sài Gòn - Châu Đốc (08:30) - Chạy bến An Sương • Giường nằm 34 chỗ</div></div>
             <div class="trip-nums"><div class="n1">22/34</div></div>
           </div>
 
           <div class="trip-card" data-trip="3" onclick="selectTrip(this,'10:00','Sài Gòn - Châu Đốc')">
-              <div><div class="trip-time-row"><span class="trip-time">10:00</span><span class="trip-plate-inline">51F-234.56</span></div><div class="trip-sub">Sài Gòn - Châu Đốc • Limousine 24 Phòng</div></div>
+              <div><div class="trip-time-row"><span class="trip-time">10:00</span><span class="trip-plate-inline">51F-234.56</span></div><div class="trip-sub" title="Sài Gòn - Châu Đốc (10:00) - Chuyến sáng trung tâm • Limousine 24 Phòng">Sài Gòn - Châu Đốc (10:00) - Chuyến sáng trung tâm • Limousine 24 Phòng</div></div>
             <div class="trip-nums"><div class="n1">6/24</div></div>
           </div>
 
           <div class="trip-card" data-trip="4" onclick="selectTrip(this,'13:15','Sài Gòn - Châu Đốc')">
-              <div><div class="trip-time-row"><span class="trip-time">13:15</span><span class="trip-plate-inline">50H-345.67</span></div><div class="trip-sub">Sài Gòn - Châu Đốc • Ghế ngồi 45 chỗ</div></div>
+              <div><div class="trip-time-row"><span class="trip-time">13:15</span><span class="trip-plate-inline">50H-345.67</span></div><div class="trip-sub" title="Sài Gòn - Châu Đốc (13:15) - Tăng cường xe 45 chỗ • Ghế ngồi 45 chỗ">Sài Gòn - Châu Đốc (13:15) - Tăng cường xe 45 chỗ • Ghế ngồi 45 chỗ</div></div>
             <div class="trip-nums"><div class="n1">30/45</div></div>
           </div>
 
           <div class="trip-card" data-trip="5" onclick="selectTrip(this,'15:30','Sài Gòn - Châu Đốc')">
-              <div><div class="trip-time-row"><span class="trip-time">15:30</span><span class="trip-plate-inline">51F-456.78</span></div><div class="trip-sub">Sài Gòn - Châu Đốc • Limousine 24 Phòng</div></div>
+              <div><div class="trip-time-row"><span class="trip-time">15:30</span><span class="trip-plate-inline">51F-456.78</span></div><div class="trip-sub" title="Sài Gòn - Châu Đốc (15:30) - Tuyến cố định chiều • Limousine 24 Phòng">Sài Gòn - Châu Đốc (15:30) - Tuyến cố định chiều • Limousine 24 Phòng</div></div>
             <div class="trip-nums"><div class="n1">18/24</div></div>
           </div>
 
           <div class="trip-card" data-trip="6" onclick="selectTrip(this,'17:00','Sài Gòn - Châu Đốc')">
-              <div><div class="trip-time-row"><span class="trip-time">17:00</span><span class="trip-plate-inline">50H-567.89</span></div><div class="trip-sub">Sài Gòn - Châu Đốc • Giường nằm 34 chỗ</div></div>
+              <div><div class="trip-time-row"><span class="trip-time">17:00</span><span class="trip-plate-inline">50H-567.89</span></div><div class="trip-sub" title="Sài Gòn - Châu Đốc (17:00) - Chuyến chiều tối • Giường nằm 34 chỗ">Sài Gòn - Châu Đốc (17:00) - Chuyến chiều tối • Giường nằm 34 chỗ</div></div>
             <div class="trip-nums"><div class="n1">5/34</div></div>
           </div>
         </div>
 
         <div id="tripListCDSG" style="display:none;">
           <div class="trip-card selected" data-trip="7" onclick="selectTrip(this,'06:00','Châu Đốc - Sài Gòn')">
-              <div><div class="trip-time-row"><span class="trip-time">06:00</span><span class="trip-plate-inline">51F-123.45</span></div><div class="trip-sub">Châu Đốc - Sài Gòn • Limousine 24 Phòng</div></div>
+              <div><div class="trip-time-row"><span class="trip-time">06:00</span><span class="trip-plate-inline">51F-123.45</span></div><div class="trip-sub" title="Châu Đốc - Sài Gòn (06:00) - Xuất bến sớm Bến Xe CD • Limousine 24 Phòng">Châu Đốc - Sài Gòn (06:00) - Xuất bến sớm Bến Xe CD • Limousine 24 Phòng</div></div>
             <div class="trip-nums"><div class="n1">14/32</div></div>
           </div>
 
           <div class="trip-card" data-trip="8" onclick="selectTrip(this,'09:15','Châu Đốc - Sài Gòn')">
-              <div><div class="trip-time-row"><span class="trip-time">09:15</span><span class="trip-plate-inline">50H-678.90</span></div><div class="trip-sub">Châu Đốc - Sài Gòn • Giường nằm 34 chỗ</div></div>
+              <div><div class="trip-time-row"><span class="trip-time">09:15</span><span class="trip-plate-inline">50H-678.90</span></div><div class="trip-sub" title="Châu Đốc - Sài Gòn (09:15) - Chuyến sáng Châu Đốc • Giường nằm 34 chỗ">Châu Đốc - Sài Gòn (09:15) - Chuyến sáng Châu Đốc • Giường nằm 34 chỗ</div></div>
             <div class="trip-nums"><div class="n1">20/34</div></div>
           </div>
 
           <div class="trip-card" data-trip="9" onclick="selectTrip(this,'14:00','Châu Đốc - Sài Gòn')">
-              <div><div class="trip-time-row"><span class="trip-time">14:00</span><span class="trip-plate-inline">51F-234.56</span></div><div class="trip-sub">Châu Đốc - Sài Gòn • Limousine 24 Phòng</div></div>
+              <div><div class="trip-time-row"><span class="trip-time">14:00</span><span class="trip-plate-inline">51F-234.56</span></div><div class="trip-sub" title="Châu Đốc - Sài Gòn (14:00) - Tuyến cố định rước khách • Limousine 24 Phòng">Châu Đốc - Sài Gòn (14:00) - Tuyến cố định rước khách • Limousine 24 Phòng</div></div>
             <div class="trip-nums"><div class="n1">9/24</div></div>
           </div>
 
           <div class="trip-card" data-trip="10" onclick="selectTrip(this,'21:00','Châu Đốc - Sài Gòn')">
-              <div><div class="trip-time-row"><span class="trip-time">21:00</span><span class="trip-plate-inline">50H-567.89</span></div><div class="trip-sub">Châu Đốc - Sài Gòn • Giường nằm 34 chỗ</div></div>
+              <div><div class="trip-time-row"><span class="trip-time">21:00</span><span class="trip-plate-inline">50H-567.89</span></div><div class="trip-sub" title="Châu Đốc - Sài Gòn (21:00) - Chuyến đêm Limousine VIP • Giường nằm 34 chỗ">Châu Đốc - Sài Gòn (21:00) - Chuyến đêm Limousine VIP • Giường nằm 34 chỗ</div></div>
             <div class="trip-nums"><div class="n1">7/34</div></div>
           </div>
         </div>
@@ -888,11 +890,11 @@
           <div class="form-row" style="--cols:3;">
             <div class="form-field">
               <label>Họ và tên <span style="color:var(--red);">*</span></label>
-              <input type="text" id="rbName" placeholder="Nguyễn Văn A" oninput="updateRebookPreview()">
+              <input type="text" id="rbName" placeholder="Nguyễn Văn A">
             </div>
             <div class="form-field">
               <label>Số điện thoại <span style="color:var(--red);">*</span></label>
-              <input type="tel" id="rbPhone" placeholder="09xxxxxxxx" oninput="updateRebookPreview()">
+              <input type="tel" id="rbPhone" placeholder="09xxxxxxxx">
             </div>
             <div class="form-field">
               <label>Loại khách</label>
@@ -908,7 +910,7 @@
           <div class="form-row" id="rbStationRow" style="--cols:1;">
             <div class="form-field">
               <label id="rbStationLabel">Trạm đi</label>
-              <select id="rbFirstStop" onchange="updateRebookPreview()">
+              <select id="rbFirstStop">
                 <option value="Trạm Kinh Dương Vương">Trạm Kinh Dương Vương</option>
                 <option value="Trạm An Sương">Trạm An Sương</option>
                 <option value="Trạm Q.5">Trạm Q.5</option>
@@ -917,7 +919,7 @@
             </div>
             <div class="form-field" id="rbTransshipWrap" style="display:none;">
               <label id="rbTransshipLabel">Trung chuyển đi <span style="color:var(--red);">*</span></label>
-              <select id="rbTransshipSelect" style="display:none;" onchange="updateRebookPreview()">
+              <select id="rbTransshipSelect" style="display:none;">
                 <option value="">Chọn điểm rước</option>
                 <option value="Ngã tư Bình Phước">Ngã tư Bình Phước</option>
                 <option value="Cầu vượt Sóng Thần">Cầu vượt Sóng Thần</option>
@@ -926,14 +928,14 @@
                 <option value="Vòng xoay Phú Lâm">Vòng xoay Phú Lâm</option>
                 <option value="Ngã tư Ga">Ngã tư Ga</option>
               </select>
-              <input type="text" id="rbTransshipInput" placeholder="Nơi trung chuyển..." oninput="updateRebookPreview()" style="display:none;">
+              <input type="text" id="rbTransshipInput" placeholder="Nơi trung chuyển..." style="display:none;">
             </div>
           </div>
 
           <div class="form-row" style="--cols:2;">
             <div class="form-field">
               <label>Trạm đến</label>
-              <select id="rbLastStop" onchange="updateRebookPreview()">
+              <select id="rbLastStop">
                 <option value="Trạm Châu Đốc">Trạm Châu Đốc</option>
                 <option value="Trạm Tân Châu">Trạm Tân Châu</option>
                 <option value="Bến xe Châu Đốc">Bến xe Châu Đốc</option>
@@ -943,19 +945,19 @@
             </div>
             <div class="form-field">
               <label>Trung chuyển đến</label>
-              <input type="text" id="rbArrivalTransfer" placeholder="Nhập trung chuyển đến..." oninput="updateRebookPreview()">
+              <input type="text" id="rbArrivalTransfer" placeholder="Nhập trung chuyển đến...">
             </div>
           </div>
 
           <div class="form-row" style="--cols:2;">
             <div class="form-field">
               <label>Ghi chú</label>
-              <input type="text" id="rbNote" placeholder="Ghi chú thêm..." oninput="updateRebookPreview()">
+              <input type="text" id="rbNote" placeholder="Ghi chú thêm...">
             </div>
             <div class="form-field checkbox-field">
               <label>&nbsp;</label>
               <label class="checkbox-inline">
-                <input type="checkbox" id="rbLuggage" onchange="updateRebookPreview()">
+                <input type="checkbox" id="rbLuggage">
                 Có baga kèm theo
               </label>
             </div>
@@ -993,6 +995,8 @@
 <div class="seat-menu" id="seatMenu"></div>
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg><span id="toastText"></span></div>
 
-<script src="../js/ticketstaff.js?v=36"></script>
+<script src="../js/shared/storage-keys.js?v=1"></script>
+<script src="../js/shared/constants.js?v=1"></script>
+<script src="../js/ticketstaff.js?v=38"></script>
 </body>
 </html>
