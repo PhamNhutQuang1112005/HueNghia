@@ -12,8 +12,8 @@
     rel="stylesheet">
   <link rel="stylesheet" href="../css/shared/variables.css?v=1">
   <link rel="stylesheet" href="../css/shared/base.css?v=1">
-  <link rel="stylesheet" href="../css/shared/booking-ui.css?v=1">
-  <link rel="stylesheet" href="../css/callcenter.css?v=26">
+  <link rel="stylesheet" href="../css/shared/booking-ui.css?v=74">
+  <link rel="stylesheet" href="../css/callcenter.css?v=28">
 </head>
 
 <body>
@@ -46,13 +46,13 @@
             </button>
           </div>
           <div class="search-results" id="searchResults">
-            <div class="search-result-row" onclick="pickSearchResult()">
+            <div class="search-result-row" data-action="pickSearchResult">
               <div>
                 <div class="src-name">Nguyễn Văn Long</div>
                 <div class="src-meta">SG - Châu Đốc • 07:00 • 08/07/2026</div>
               </div>
             </div>
-            <div class="search-result-row" onclick="pickSearchResult()">
+            <div class="search-result-row" data-action="pickSearchResult">
               <div>
                 <div class="src-name">Trần Thị Mai</div>
                 <div class="src-meta">SG - Châu Đốc • 22:00 • 08/07/2026</div>
@@ -62,14 +62,17 @@
         </div>
 
         <div class="tab-btn-group">
-          <button id="tabBooking" class="pill-btn active" type="button" onclick="switchView('booking')">
+          <button id="tabBooking" class="pill-btn active" type="button" data-action="switchView" data-args='["booking"]'>
             Đặt vé
           </button>
-          <button id="tabPhoi" class="pill-btn" type="button" onclick="switchView('phoi')">
+          <button id="tabPhoi" class="pill-btn" type="button" data-action="switchView" data-args='["phoi"]'>
             Phơi xe
           </button>
+          <button id="tabHistory" class="pill-btn" type="button" data-action="switchView" data-args='["history"]'>
+            Lịch sử
+          </button>
         </div>
-        <button id="ruocLienBtn" class="pill-btn-original" type="button" onclick="openPickupModal()"
+        <button id="ruocLienBtn" class="pill-btn-original" type="button" data-action="openPickupModal"
           style="margin-left: 8px;">
           Rước liền
         </button>
@@ -109,19 +112,19 @@
         <!-- ===== ZONE 1 ===== -->
         <aside class="zone1">
           <div style="position:relative;">
-            <label class="field-label">Hướng đi</label>
-            <div class="select-fake dropdown-trigger" id="directionTrigger" onclick="toggleDirectionDropdown(event)">
-              <span id="directionValue">Sài Gòn → Châu Đốc</span>
+            <label class="field-label" for="directionTrigger">Hướng đi</label>
+            <div class="combo-input-wrap">
+              <input type="text" class="combo-input" id="directionTrigger" autocomplete="off" placeholder="Tìm hướng đi..." value="Sài Gòn → Châu Đốc">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="m6 9 6 6 6-6" />
               </svg>
             </div>
             <div class="dropdown-panel" id="directionDropdown">
-              <div class="dropdown-item active" data-dir="sg-cd" onclick="toggleDirection('sg-cd')">
+              <div class="dropdown-item active" data-dir="sg-cd" data-action="toggleDirection" data-args='["sg-cd"]'>
                 <span>Sài Gòn → Châu Đốc</span>
                 <span class="dropdown-item-check">✓</span>
               </div>
-              <div class="dropdown-item" data-dir="cd-sg" onclick="toggleDirection('cd-sg')">
+              <div class="dropdown-item" data-dir="cd-sg" data-action="toggleDirection" data-args='["cd-sg"]'>
                 <span>Châu Đốc → Sài Gòn</span>
                 <span class="dropdown-item-check">✓</span>
               </div>
@@ -130,8 +133,8 @@
 
           <div style="position:relative;">
             <div class="field-label-row">
-              <label class="field-label" style="margin-bottom:0;">Tuyến</label>
-              <button class="date-btn" id="calTrigger" onclick="toggleCalendar()">
+              <label class="field-label" style="margin-bottom:0;" for="routeTrigger">Tuyến</label>
+              <button class="date-btn" id="calTrigger" data-action="toggleCalendar">
                 <svg class="date-btn-ico" viewBox="0 0 24 24" fill="none" stroke-width="2">
                   <rect x="3" y="5" width="18" height="16" rx="2" />
                   <path d="M16 3v4" />
@@ -144,32 +147,32 @@
                 </svg>
               </button>
             </div>
-            <div class="select-fake dropdown-trigger" id="routeTrigger" onclick="toggleRouteDropdown(event)">
-              <span id="routeValue">Tất cả tuyến</span>
+            <div class="combo-input-wrap">
+              <input type="text" class="combo-input" id="routeTrigger" autocomplete="off" placeholder="Tìm tuyến..." value="Tất cả tuyến">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="m6 9 6 6 6-6" />
               </svg>
             </div>
             <div class="dropdown-panel" id="routeDropdown">
-              <div class="dropdown-item active" data-route="all" onclick="selectRoute('all')">
+              <div class="dropdown-item active" data-route="all" data-action="selectRoute" data-args='["all"]'>
                 <span>Tất cả tuyến</span>
                 <span class="dropdown-item-check">✓</span>
               </div>
-              <div class="dropdown-item" data-route="sg-cd" onclick="selectRoute('sg-cd')">
+              <div class="dropdown-item" data-route="sg-cd" data-action="selectRoute" data-args='["sg-cd"]'>
                 <span>Sài Gòn - Châu Đốc</span>
                 <span class="dropdown-item-check">✓</span>
               </div>
             </div>
             <div class="calendar calendar-popover" id="calendarPanel">
               <div class="cal-head">
-                <div class="cal-nav"><button onclick="shiftMonth(-1)"><svg viewBox="0 0 24 24" fill="none"
+                <div class="cal-nav"><button data-action="shiftMonth" data-args='[-1]'><svg viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" stroke-width="2.5">
                       <path d="m15 18-6-6 6-6" />
                     </svg></button></div>
                 <b id="calMonthLabel">Tháng 7, 2026</b>
                 <div style="display:flex;gap:4px;">
-                  <button class="cal-today-btn" onclick="goToday()">Hôm nay</button>
-                  <div class="cal-nav"><button onclick="shiftMonth(1)"><svg viewBox="0 0 24 24" fill="none"
+                  <button class="cal-today-btn" data-action="goToday">Hôm nay</button>
+                  <div class="cal-nav"><button data-action="shiftMonth" data-args='[1]'><svg viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2.5">
                         <path d="m9 18 6-6-6-6" />
                       </svg></button></div>
@@ -180,21 +183,41 @@
           </div>
 
           <div>
-            <label class="field-label">Khung giờ</label>
-            <div class="timeslider">
-              <div class="ts-track" id="tsTrack">
-                <div class="ts-range" id="tsRange"></div>
-              </div>
-              <div class="ts-labels"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span>
-              </div>
-            </div>
+            <label class="field-label" for="zone1HourFilter">Khung giờ</label>
+            <select id="zone1HourFilter" data-change-action="onZone1HourFilterChange">
+              <option value="all">Tất cả các giờ</option>
+              <option value="0">00:00</option>
+              <option value="1">01:00</option>
+              <option value="2">02:00</option>
+              <option value="3">03:00</option>
+              <option value="4">04:00</option>
+              <option value="5">05:00</option>
+              <option value="6">06:00</option>
+              <option value="7">07:00</option>
+              <option value="8">08:00</option>
+              <option value="9">09:00</option>
+              <option value="10">10:00</option>
+              <option value="11">11:00</option>
+              <option value="12">12:00</option>
+              <option value="13">13:00</option>
+              <option value="14">14:00</option>
+              <option value="15">15:00</option>
+              <option value="16">16:00</option>
+              <option value="17">17:00</option>
+              <option value="18">18:00</option>
+              <option value="19">19:00</option>
+              <option value="20">20:00</option>
+              <option value="21">21:00</option>
+              <option value="22">22:00</option>
+              <option value="23">23:00</option>
+            </select>
           </div>
 
           <div style="display:flex;flex-direction:column;gap:6px;">
             <div class="trip-list-head"><span>Danh sách phơi xe</span></div>
 
             <div id="tripListSGCD">
-              <div class="trip-card selected" data-trip="1" onclick="selectTrip(this,'07:00','Sài Gòn - Châu Đốc')">
+              <div class="trip-card selected" data-trip="1" data-action="selectTrip" data-args='["__this__", "07:00", "Sài Gòn - Châu Đốc"]'>
                 <div>
                   <div class="trip-time-row"><span class="trip-time">07:00</span><span
                       class="trip-plate-inline">51F-123.45</span></div>
@@ -205,7 +228,7 @@
                 </div>
               </div>
 
-              <div class="trip-card" data-trip="2" onclick="selectTrip(this,'08:30','Sài Gòn - Châu Đốc')">
+              <div class="trip-card" data-trip="2" data-action="selectTrip" data-args='["__this__", "08:30", "Sài Gòn - Châu Đốc"]'>
                 <div>
                   <div class="trip-time-row"><span class="trip-time">08:30</span><span
                       class="trip-plate-inline">50H-678.90</span></div>
@@ -216,7 +239,7 @@
                 </div>
               </div>
 
-              <div class="trip-card" data-trip="3" onclick="selectTrip(this,'10:00','Sài Gòn - Châu Đốc')">
+              <div class="trip-card" data-trip="3" data-action="selectTrip" data-args='["__this__", "10:00", "Sài Gòn - Châu Đốc"]'>
                 <div>
                   <div class="trip-time-row"><span class="trip-time">10:00</span><span
                       class="trip-plate-inline">51F-234.56</span></div>
@@ -227,7 +250,7 @@
                 </div>
               </div>
 
-              <div class="trip-card" data-trip="4" onclick="selectTrip(this,'13:15','Sài Gòn - Châu Đốc')">
+              <div class="trip-card" data-trip="4" data-action="selectTrip" data-args='["__this__", "13:15", "Sài Gòn - Châu Đốc"]'>
                 <div>
                   <div class="trip-time-row"><span class="trip-time">13:15</span><span
                       class="trip-plate-inline">50H-345.67</span></div>
@@ -238,7 +261,7 @@
                 </div>
               </div>
 
-              <div class="trip-card" data-trip="5" onclick="selectTrip(this,'15:30','Sài Gòn - Châu Đốc')">
+              <div class="trip-card" data-trip="5" data-action="selectTrip" data-args='["__this__", "15:30", "Sài Gòn - Châu Đốc"]'>
                 <div>
                   <div class="trip-time-row"><span class="trip-time">15:30</span><span
                       class="trip-plate-inline">51F-456.78</span></div>
@@ -249,7 +272,7 @@
                 </div>
               </div>
 
-              <div class="trip-card" data-trip="6" onclick="selectTrip(this,'17:00','Sài Gòn - Châu Đốc')">
+              <div class="trip-card" data-trip="6" data-action="selectTrip" data-args='["__this__", "17:00", "Sài Gòn - Châu Đốc"]'>
                 <div>
                   <div class="trip-time-row"><span class="trip-time">17:00</span><span
                       class="trip-plate-inline">50H-567.89</span></div>
@@ -262,7 +285,7 @@
             </div>
 
             <div id="tripListCDSG" style="display:none;">
-              <div class="trip-card selected" data-trip="7" onclick="selectTrip(this,'06:00','Châu Đốc - Sài Gòn')">
+              <div class="trip-card selected" data-trip="7" data-action="selectTrip" data-args='["__this__", "06:00", "Châu Đốc - Sài Gòn"]'>
                 <div>
                   <div class="trip-time-row"><span class="trip-time">06:00</span><span
                       class="trip-plate-inline">51F-123.45</span></div>
@@ -273,7 +296,7 @@
                 </div>
               </div>
 
-              <div class="trip-card" data-trip="8" onclick="selectTrip(this,'09:15','Châu Đốc - Sài Gòn')">
+              <div class="trip-card" data-trip="8" data-action="selectTrip" data-args='["__this__", "09:15", "Châu Đốc - Sài Gòn"]'>
                 <div>
                   <div class="trip-time-row"><span class="trip-time">09:15</span><span
                       class="trip-plate-inline">50H-678.90</span></div>
@@ -284,7 +307,7 @@
                 </div>
               </div>
 
-              <div class="trip-card" data-trip="9" onclick="selectTrip(this,'14:00','Châu Đốc - Sài Gòn')">
+              <div class="trip-card" data-trip="9" data-action="selectTrip" data-args='["__this__", "14:00", "Châu Đốc - Sài Gòn"]'>
                 <div>
                   <div class="trip-time-row"><span class="trip-time">14:00</span><span
                       class="trip-plate-inline">51F-234.56</span></div>
@@ -295,7 +318,7 @@
                 </div>
               </div>
 
-              <div class="trip-card" data-trip="10" onclick="selectTrip(this,'21:00','Châu Đốc - Sài Gòn')">
+              <div class="trip-card" data-trip="10" data-action="selectTrip" data-args='["__this__", "21:00", "Châu Đốc - Sài Gòn"]'>
                 <div>
                   <div class="trip-time-row"><span class="trip-time">21:00</span><span
                       class="trip-plate-inline">50H-567.89</span></div>
@@ -314,7 +337,7 @@
           </div>
         </aside>
 
-        <button type="button" class="zone1-toggle-handle" id="zone1ToggleBtn" onclick="toggleZone1()"
+        <button type="button" class="zone1-toggle-handle" id="zone1ToggleBtn" data-action="toggleZone1"
           aria-label="Ẩn hoặc hiện zone 1" title="Ẩn hoặc hiện zone 1">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
             stroke-linejoin="round">
@@ -349,7 +372,7 @@
                     <path d="m9 18 6-6-6-6" />
                   </svg></a>
               </div>
-              <button type="button" class="z2-collapse-btn" onclick="toggleZone2Grid()" title="Thu gọn thông tin xe">
+              <button type="button" class="z2-collapse-btn" data-action="toggleZone2Grid" title="Thu gọn thông tin xe">
                 <span class="collapse-text">Thu gọn</span>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                   stroke-linejoin="round">
@@ -440,12 +463,12 @@
 
           <!-- TABS -->
           <nav class="tabs">
-            <span class="tab-item active" onclick="switchTab('seatmap', this)">Sơ đồ ghế</span>
-            <span class="tab-item" onclick="switchTab('passengers', this)">Hành khách <span class="cnt"
+            <span class="tab-item active" data-action="switchTab" data-args='["seatmap", "__this__"]'>Sơ đồ ghế</span>
+            <span class="tab-item" data-action="switchTab" data-args='["passengers", "__this__"]'>Hành khách <span class="cnt"
                 id="passengerTabCnt">(24)</span></span>
-            <span class="tab-item" onclick="switchTab('transship', this)">Trung chuyển <span class="cnt"
+            <span class="tab-item" data-action="switchTab" data-args='["transship", "__this__"]'>Trung chuyển <span class="cnt"
                 id="transshipTabCnt">(0 | 0)</span></span>
-            <span class="tab-item" onclick="switchTab('cancelled', this)">Ghế hủy <span class="cnt"
+            <span class="tab-item" data-action="switchTab" data-args='["cancelled", "__this__"]'>Ghế hủy <span class="cnt"
                 id="cancelledTabCnt">(0)</span></span>
             <span class="tab-item">Thống kê</span>
           </nav>
@@ -499,7 +522,7 @@
             <div class="pax-toolbar">
               <div class="pax-toolbar-left">
                 <div class="pax-filter-wrap">
-                  <button class="btn btn-secondary" id="paxFilterBtn" onclick="togglePaxFilter()">
+                  <button class="btn btn-secondary" id="paxFilterBtn" data-action="togglePaxFilter">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
                     </svg>
@@ -510,26 +533,26 @@
                     <div class="pax-filter-group">
                       <div class="pax-filter-title">Thanh toán</div>
                       <label class="pax-filter-opt"><input type="checkbox" value="paid"
-                          onchange="renderPassengerList()"> Đã thu</label>
+                          data-change-action="renderPassengerList"> Đã thu</label>
                       <label class="pax-filter-opt"><input type="checkbox" value="debt"
-                          onchange="renderPassengerList()"> Còn nợ</label>
+                          data-change-action="renderPassengerList"> Còn nợ</label>
                     </div>
                     <div class="pax-filter-group">
                       <div class="pax-filter-title">Vị trí</div>
                       <label class="pax-filter-opt"><input type="checkbox" value="down"
-                          onchange="renderPassengerList()"> Tầng dưới</label>
-                      <label class="pax-filter-opt"><input type="checkbox" value="up" onchange="renderPassengerList()">
+                          data-change-action="renderPassengerList"> Tầng dưới</label>
+                      <label class="pax-filter-opt"><input type="checkbox" value="up" data-change-action="renderPassengerList">
                         Tầng trên</label>
                     </div>
                     <div class="pax-filter-actions">
-                      <button class="pax-filter-clear" onclick="clearPaxFilter()">Bỏ lọc</button>
+                      <button class="pax-filter-clear" data-action="clearPaxFilter">Bỏ lọc</button>
                     </div>
                   </div>
                 </div>
                 <span class="pax-toolbar-hint" id="paxResultHint"></span>
               </div>
               <div class="pax-toolbar-actions">
-                <button class="btn btn-secondary btn-action-red" onclick="showToast('Đang in danh sách hành khách...')">
+                <button class="btn btn-secondary btn-action-red" data-action="showToast" data-args='["Đang in danh sách hành khách..."]'>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M6 9V2h12v7" />
                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
@@ -537,7 +560,7 @@
                   </svg>
                   In danh sách
                 </button>
-                <button class="btn btn-secondary btn-action-red" onclick="showToast('Đang xuất file Excel...')">
+                <button class="btn btn-secondary btn-action-red" data-action="showToast" data-args='["Đang xuất file Excel..."]'>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
                     <path d="M14 2v6h6" />
@@ -558,7 +581,8 @@
                     <th>Điểm đến</th>
                     <th>Số vé</th>
                     <th>Vị trí</th>
-                    <th>Thanh toán</th>
+                    <th>Đã thu</th>
+                    <th>Còn nợ</th>
                     <th>Baga</th>
                     <th>Ghi chú</th>
                   </tr>
@@ -596,7 +620,7 @@
                   <thead>
                     <tr>
                       <th width="50">STT</th>
-                      <th>Tài (tài xế)</th>
+                      <th>Tài xế</th>
                       <th>Địa chỉ đón</th>
                       <th>Số ghế</th>
                       <th>Tên HK</th>
@@ -652,7 +676,7 @@
                 <span class="pax-toolbar-hint" id="cancelledResultHint">Danh sách ghế đã hủy của chuyến</span>
               </div>
               <div class="pax-toolbar-actions">
-                <button class="btn btn-secondary btn-action-red" onclick="showToast('Đang in danh sách ghế hủy...')">
+                <button class="btn btn-secondary btn-action-red" data-action="showToast" data-args='["Đang in danh sách ghế hủy..."]'>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M6 9V2h12v7" />
                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
@@ -660,7 +684,7 @@
                   </svg>
                   In danh sách
                 </button>
-                <button class="btn btn-secondary btn-action-red" onclick="showToast('Đang xuất file Excel...')">
+                <button class="btn btn-secondary btn-action-red" data-action="showToast" data-args='["Đang xuất file Excel..."]'>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
                     <path d="M14 2v6h6" />
@@ -671,11 +695,11 @@
             </div>
 
             <div class="pax-table-wrap">
-              <table class="pax-table">
+              <table class="pax-table pax-table--cancelled">
                 <thead>
                   <tr>
-                    <th width="50">STT</th>
-                    <th width="80">Vị trí</th>
+                    <th>STT</th>
+                    <th>Vị trí</th>
                     <th>Họ và tên</th>
                     <th>SĐT</th>
                     <th>Chặng đi</th>
@@ -692,8 +716,8 @@
           <div class="sticky-actions" style="display:none;">
             <span class="hint" id="stickyHint"></span>
             <div style="display:flex;gap:8px;">
-              <button class="btn btn-secondary" type="button" onclick="cancelTransferSelection()">Hủy</button>
-              <button class="btn btn-secondary" id="stickyActionBtn" type="button" onclick="confirmSelectionAction()">
+              <button class="btn btn-secondary" type="button" data-action="cancelTransferSelection">Hủy</button>
+              <button class="btn btn-secondary" id="stickyActionBtn" type="button" data-action="confirmSelectionAction">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M17 3v18" />
                   <path d="m21 7-4-4-4 4" />
@@ -721,7 +745,7 @@
           </div>
           <div class="filter-field">
             <label for="filterDirection">Hướng đi</label>
-            <select id="filterDirection" onchange="onFilterDirectionChange()">
+            <select id="filterDirection" data-change-action="onFilterDirectionChange">
               <option value="">Tất cả</option>
               <option value="chieu-di">Chiều đi</option>
               <option value="chieu-ve">Chiều về</option>
@@ -729,13 +753,13 @@
           </div>
           <div class="filter-field">
             <label for="filterRoute">Tuyến đi</label>
-            <select id="filterRoute" onchange="applyFilters()">
+            <select id="filterRoute" data-change-action="applyFilters">
               <option value="">Tất cả tuyến</option>
             </select>
           </div>
           <div class="filter-field">
             <label for="filterStatus">Trạng thái</label>
-            <select id="filterStatus" onchange="applyFilters()">
+            <select id="filterStatus" data-change-action="applyFilters">
               <option value="">Tất cả trạng thái</option>
               <option value="Chưa chỉ định xe">Chưa chỉ định xe</option>
               <option value="Đã chỉ định xe">Đã chỉ định xe</option>
@@ -744,25 +768,25 @@
               <option value="Đã hủy">Đã hủy</option>
             </select>
           </div>
-          <button class="btn btn-primary" id="btnSearch" onclick="applyFilters()" style="height: 35px; border-radius: var(--radius-md); padding: 0 14px; font-size: 12.5px;">
+          <button class="btn btn-primary" id="btnSearch" data-action="applyFilters" style="height: 35px; border-radius: var(--radius-md); padding: 0 14px; font-size: 12.5px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 14px; height: 14px;">
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.3-4.3" />
             </svg>
             Tìm kiếm
           </button>
-          <button class="btn btn-secondary" style="height: 35px; border-radius: var(--radius-md); padding: 0 12px; font-size: 12px;">
+          <button class="btn btn-secondary" data-action="resetPhoiFilters" style="height: 35px; border-radius: var(--radius-md); padding: 0 12px; font-size: 12px;">
             Đặt lại
           </button>
           <div style="flex-grow: 1;"></div>
-          <button class="btn btn-secondary" id="btnBulkCreate" onclick="openBulkModal()" style="height: 35px; border-radius: var(--radius-md); padding: 0 14px; font-size: 12.5px;">
+          <button class="btn btn-secondary" id="btnBulkCreate" data-action="openBulkModal" style="height: 35px; border-radius: var(--radius-md); padding: 0 14px; font-size: 12.5px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
               <rect x="3" y="3" width="18" height="18" rx="2" />
               <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
             </svg>
             Tạo phơi xe hàng loạt
           </button>
-          <button class="btn btn-primary" id="btnSingleCreate" onclick="openSingleModal()" style="height: 35px; border-radius: var(--radius-md); padding: 0 14px; font-size: 12.5px;">
+          <button class="btn btn-primary" id="btnSingleCreate" data-action="openSingleModal" style="height: 35px; border-radius: var(--radius-md); padding: 0 14px; font-size: 12.5px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" style="width: 14px; height: 14px;">
               <path d="M12 5v14M5 12h14" />
             </svg>
@@ -798,6 +822,107 @@
           </div>
         </div>
       </div>
+
+      <!-- ===== TRANG LỊCH SỬ HÀNH KHÁCH (bảng đầy đủ, bộ lọc ở đầu) ===== -->
+      <div id="historyView" class="main-view-container"
+        style="display: none; flex-direction: column; flex: 1; overflow: hidden; background: var(--white);">
+        <div class="filter-toolbar">
+          <div class="filter-field">
+            <label for="phSearchInput">Tìm kiếm</label>
+            <input type="text" id="phSearchInput" placeholder="Tên, SĐT khách..." data-input-action="phOnSearchInput" data-args='["__this_value__"]' style="height:35px; border:1px solid var(--border-gray); border-radius:var(--radius-md); padding:0 10px; font-size:13px; font-family:inherit;">
+          </div>
+          <div class="filter-field filter-field-date">
+            <label>Ngày đi</label>
+            <button type="button" class="filter-select" id="phFilterDateBtn" data-action="phToggleCalendar">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                <rect x="3" y="5" width="18" height="16" rx="2" />
+                <path d="M16 3v4" />
+                <path d="M8 3v4" />
+                <path d="M3 10h18" />
+              </svg>
+              <span id="phFilterDateLabel">Tất cả ngày</span>
+              <svg class="filter-date-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            <div class="calendar calendar-popover" id="phCalendarPanel">
+              <div class="cal-head">
+                <div class="cal-nav"><button type="button" data-action="phShiftMonth" data-args="[-1]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6" /></svg></button></div>
+                <b id="phCalMonthLabel">Tháng 7, 2026</b>
+                <div class="cal-head-right">
+                  <button type="button" class="cal-today-btn" data-action="phClearDateFilter">Tất cả</button>
+                  <button type="button" class="cal-today-btn" data-action="phGoToday">Hôm nay</button>
+                  <div class="cal-nav"><button type="button" data-action="phShiftMonth" data-args="[1]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6" /></svg></button></div>
+                </div>
+              </div>
+              <div class="cal-grid" id="phCalGrid"></div>
+            </div>
+          </div>
+          <div class="filter-field">
+            <label for="phFilterRoute">Tuyến đường</label>
+            <select id="phFilterRoute" data-change-action="renderPassengerHistoryTable">
+              <option value="all">Tất cả tuyến</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <label for="phFilterTime">Khung giờ</label>
+            <select id="phFilterTime" data-change-action="renderPassengerHistoryTable">
+              <option value="all">Tất cả khung giờ</option>
+              <option value="morning">Sáng (00:00 - 12:00)</option>
+              <option value="afternoon">Chiều (12:00 - 18:00)</option>
+              <option value="evening">Tối (18:00 - 24:00)</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <label for="phFilterStatus">Trạng thái</label>
+            <select id="phFilterStatus" data-change-action="renderPassengerHistoryTable">
+              <option value="all">Tất cả trạng thái</option>
+              <option value="today">Hôm nay</option>
+              <option value="past">Lịch sử quá khứ</option>
+              <option value="sold">Đã bán</option>
+              <option value="hold">Đã đặt</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <label for="phFilterStaff">Nhân viên</label>
+            <select id="phFilterStaff" data-change-action="renderPassengerHistoryTable">
+              <option value="all">Tất cả nhân viên</option>
+            </select>
+          </div>
+          <button type="button" class="btn btn-secondary" data-action="resetPhFilters" style="height: 35px; border-radius: var(--radius-md); padding: 0 12px; font-size: 12px;">
+            Đặt lại bộ lọc
+          </button>
+        </div>
+
+        <div class="grid-wrap" style="flex: 1; overflow: auto; padding: 0 20px 20px;">
+          <div class="pax-table-wrap">
+            <table class="pax-table pax-table--history">
+              <thead>
+                <tr>
+                  <th>Ngày</th>
+                  <th>Tên phơi</th>
+                  <th>Hành khách</th>
+                  <th>Số điện thoại</th>
+                  <th>Trạm đi</th>
+                  <th>Trạm đến</th>
+                  <th>SL</th>
+                  <th>Giá vé</th>
+                  <th>Nhân viên</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="phHistoryTableBody"></tbody>
+            </table>
+          </div>
+          <div class="grid-empty" id="phHistoryEmpty" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
+            </svg>
+            <p>Không có lịch sử phù hợp với bộ lọc hiện tại.</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ===== ZONE 4: SLIDE PANEL ĐẶT VÉ ===== -->
@@ -806,9 +931,9 @@
         <div class="panel-head">
           <div>
             <h2><span id="panelTitleMode">Đặt vé</span> - Ghế <span id="panelSeatCode">A1</span></h2>
-            <div class="sub">07:00 - Sài Gòn - Châu Đốc • 08/07/2026</div>
+            <div class="sub" id="panelHeadSub">07:00 - Sài Gòn - Châu Đốc • 08/07/2026</div>
           </div>
-          <button class="icon-close" onclick="closePanel()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          <button class="icon-close" data-action="closePanel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2.4">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -822,15 +947,19 @@
             <div class="form-row" style="--cols:3;">
               <div class="form-field">
                 <label>Họ và tên</label>
-                <input type="text" id="f_name" placeholder="Nguyễn Văn A" oninput="refreshTicket()">
+                <input type="text" id="f_name" placeholder="Nguyễn Văn A" data-input-action="refreshTicket">
               </div>
               <div class="form-field">
                 <label>Số điện thoại</label>
-                <input type="tel" id="f_phone" placeholder="09xxxxxxxx" oninput="refreshTicket()">
+                <div class="phone-input-row">
+                  <input type="tel" id="f_phone" placeholder="09xxxxxxxx" data-input-action="refreshTicket">
+                  <button type="button" class="phone-add-btn" data-action="addExtraPhoneField" data-args='["f_phone_extra","refreshTicket"]' title="Thêm số điện thoại khác">+</button>
+                </div>
+                <div class="phone-extra-list" id="f_phone_extra"></div>
               </div>
               <div class="form-field">
                 <label>Loại khách</label>
-                <select id="f_type" onchange="onGuestTypeChange()">
+                <select id="f_type" data-change-action="onGuestTypeChange">
                   <option>Khách trạm</option>
                   <option>Trung chuyển</option>
                   <option>Rước liền</option>
@@ -842,14 +971,14 @@
             <div class="form-row" id="f_station_row" style="--cols:2;">
               <div class="form-field">
                 <label id="f_station_label">Trạm đi</label>
-                <select id="f_station_select" onchange="refreshTicket()">
+                <select id="f_station_select" data-change-action="refreshTicket">
                   <option>Trạm Kinh Dương Vương</option>
                   <option>Trạm An Sương</option>
                   <option>Trạm Q.5</option>
                   <option>Văn phòng trung tâm</option>
                 </select>
                 <input type="text" id="f_station_input" list="stopPointList" placeholder="Nhập điểm đón..."
-                  oninput="refreshTicket()" style="display:none;">
+                  data-input-action="refreshTicket" style="display:none;">
                 <datalist id="stopPointList">
                   <option value="Ngã tư Bình Phước">
                   <option value="Cầu vượt Sóng Thần">
@@ -861,7 +990,7 @@
               </div>
               <div class="form-field" id="f_transship_wrap" style="display:none;">
                 <label id="f_transship_label">Trung chuyển đi <span style="color:var(--red);">*</span></label>
-                <select id="f_transship_select" style="display:none;" onchange="refreshTicket()">
+                <select id="f_transship_select" style="display:none;" data-change-action="refreshTicket">
                   <option value="">Chọn điểm rước</option>
                   <option>Ngã tư Bình Phước</option>
                   <option>Cầu vượt Sóng Thần</option>
@@ -870,7 +999,7 @@
                   <option>Vòng xoay Phú Lâm</option>
                   <option>Ngã tư Ga</option>
                 </select>
-                <input type="text" id="f_transship" placeholder="Nơi trung chuyển..." oninput="refreshTicket()"
+                <input type="text" id="f_transship" placeholder="Nơi trung chuyển..." data-input-action="refreshTicket"
                   style="display:none;">
               </div>
             </div>
@@ -878,7 +1007,7 @@
             <div class="form-row" style="--cols:2;">
               <div class="form-field">
                 <label>Trạm đến</label>
-                <select id="f_destination" onchange="refreshTicket()">
+                <select id="f_destination" data-change-action="refreshTicket">
                   <option value="">Chọn trạm đến</option>
                   <option>Trạm Châu Đốc</option>
                   <option>Trạm Tân Châu</option>
@@ -890,19 +1019,19 @@
               <div class="form-field">
                 <label>Trung chuyển đến</label>
                 <input type="text" id="f_arrival_transfer" placeholder="Nhập trung chuyển đến..."
-                  oninput="refreshTicket()">
+                  data-input-action="refreshTicket">
               </div>
             </div>
 
             <div class="form-row" style="--cols:2;">
               <div class="form-field">
                 <label>Ghi chú</label>
-                <input type="text" id="f_note" placeholder="Ghi chú thêm..." oninput="refreshTicket()">
+                <input type="text" id="f_note" placeholder="Ghi chú thêm..." data-input-action="refreshTicket">
               </div>
               <div class="form-field checkbox-field">
                 <label>&nbsp;</label>
                 <label class="checkbox-inline">
-                  <input type="checkbox" id="f_luggage" onchange="refreshTicket()">
+                  <input type="checkbox" id="f_luggage" data-change-action="refreshTicket">
                   Có baga kèm theo
                 </label>
               </div>
@@ -911,8 +1040,8 @@
 
           <div class="panel-ticket-wrap">
             <div class="ticket">
-              <div class="route">Sài Gòn - Châu Đốc</div>
-              <div class="datetime">07:00 • 08/07/2026</div>
+              <div class="route" id="t_route">Sài Gòn - Châu Đốc</div>
+              <div class="datetime" id="t_datetime">07:00 • 08/07/2026</div>
               <div class="seatno" id="t_seat">A1</div>
               <div class="ticket-dash"></div>
               <div class="kv"><span>Khách</span><span id="t_name">—</span></div>
@@ -921,19 +1050,43 @@
               <div class="kv"><span>Trạm đến</span><span id="t_destination">—</span></div>
               <div class="kv" id="t_transship_row" style="display:none;"><span id="t_transship_label">Trạm trung
                   chuyển</span><span id="t_transship">—</span></div>
-              <div class="kv" id="t_arrival_transfer_row" style="display:none;"><span>Trung chuyển</span><span
+              <div class="kv" id="t_arrival_transfer_row" style="display:none;"><span>TC đến</span><span
                   id="t_arrival_transfer">—</span></div>
               <div class="kv" id="t_luggage_row" style="display:none;"><span>Baga</span><span>Có</span></div>
               <div class="kv"><span>Ghi chú</span><span id="t_note">—</span></div>
+              <div class="kv" id="t_deposit_row" style="display:none;"><span>Đã cọc</span><span id="t_deposit">—</span></div>
               <div class="ticket-dash"></div>
               <div class="price-row">
                 <span style="font-size:11.5px;color:var(--text-sub);font-weight:600;">Giá vé</span>
                 <div class="price-row" style="gap:6px;">
-                  <span class="price" id="t_price" contenteditable="true" onblur="onPriceEdit()">280.000đ</span>
+                  <span class="price" id="t_price" contenteditable="true" data-blur-action="onPriceEdit">280.000đ</span>
                   <svg class="edit-price" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z" />
                   </svg>
+                </div>
+              </div>
+              <div class="zero-price-reason" id="zeroPriceReasonWrap" style="display:none;">
+                <label for="f_zero_price_reason">Lý do giá 0đ <span style="color:var(--red);">*</span></label>
+                <input type="text" id="f_zero_price_reason" placeholder="VD: Vé mời, khách nội bộ..." data-input-action="refreshTicket">
+              </div>
+              <div class="deposit-block">
+                <label class="checkbox-inline">
+                  <input type="checkbox" id="f_deposit_enabled" data-change-action="refreshTicket">
+                  Đặt cọc
+                </label>
+                <div class="deposit-fields" id="depositFieldsWrap" style="display:none;">
+                  <div>
+                    <label for="f_deposit_amount">Số tiền cọc <span style="color:var(--red);">*</span></label>
+                    <input type="number" id="f_deposit_amount" min="0" step="10000" placeholder="VD: 100000" data-input-action="refreshTicket">
+                  </div>
+                  <div>
+                    <label>Phương thức</label>
+                    <div class="deposit-method-row">
+                      <label class="radio-inline"><input type="radio" name="f_deposit_method" value="Tiền mặt" checked data-change-action="refreshTicket"> Tiền mặt</label>
+                      <label class="radio-inline"><input type="radio" name="f_deposit_method" value="Chuyển khoản" data-change-action="refreshTicket"> Chuyển khoản</label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -941,8 +1094,8 @@
         </div>
 
         <div class="panel-footer">
-          <button class="btn btn-secondary" onclick="closePanel()">Hủy</button>
-          <button class="btn btn-primary" id="savePanelBtn" onclick="saveTicket()">
+          <button class="btn btn-secondary" data-action="closePanel">Hủy</button>
+          <button class="btn btn-primary" id="savePanelBtn" data-action="saveTicket">
             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
               <path d="M17 21v-8H7v8" />
@@ -962,7 +1115,7 @@
             <h2>Đặt lại vé</h2>
             <div class="sub" id="rbSubtitle">Chọn phơi xe và vị trí ghế mới</div>
           </div>
-          <button class="icon-close" type="button" onclick="closeRebookModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+          <button class="icon-close" type="button" data-action="closeRebookModal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
 
         <div class="rebook-panel-body">
@@ -980,7 +1133,7 @@
                 </div>
                 <div class="form-field">
                   <label>Loại khách</label>
-                  <select id="rbGuestType" onchange="onRebookGuestTypeChange()">
+                  <select id="rbGuestType" data-change-action="onRebookGuestTypeChange">
                     <option value="Khách trạm">Khách trạm</option>
                     <option value="Trung chuyển">Trung chuyển</option>
                     <option value="Rước liền">Rước liền</option>
@@ -1048,6 +1201,39 @@
 
             <div class="rebook-form-section">
               <h3 class="rebook-section-title">Chọn phơi xe</h3>
+              <div class="rb-trip-filter-row">
+                <div class="rb-date-filter-wrap">
+                  <button type="button" class="filter-select" id="rbFilterDateBtn" data-action="rbToggleCalendar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                      <rect x="3" y="5" width="18" height="16" rx="2" />
+                      <path d="M16 3v4" />
+                      <path d="M8 3v4" />
+                      <path d="M3 10h18" />
+                    </svg>
+                    <span id="rbFilterDateLabel">Tất cả ngày</span>
+                    <svg class="filter-date-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                  <div class="calendar calendar-popover" id="rbCalendarPanel">
+                    <div class="cal-head">
+                      <div class="cal-nav"><button type="button" data-action="rbShiftMonth" data-args="[-1]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6" /></svg></button></div>
+                      <b id="rbCalMonthLabel">Tháng 7, 2026</b>
+                      <div class="cal-head-right">
+                        <button type="button" class="cal-today-btn" data-action="rbGoToday">Hôm nay</button>
+                        <div class="cal-nav"><button type="button" data-action="rbShiftMonth" data-args="[1]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6" /></svg></button></div>
+                      </div>
+                    </div>
+                    <div class="cal-grid" id="rbCalGrid"></div>
+                  </div>
+                </div>
+                <select id="rbFilterTime" data-change-action="renderRebookTripList">
+                  <option value="all">Tất cả khung giờ</option>
+                  <option value="morning">Sáng (00:00 - 12:00)</option>
+                  <option value="afternoon">Chiều (12:00 - 18:00)</option>
+                  <option value="evening">Tối (18:00 - 24:00)</option>
+                </select>
+              </div>
               <div class="ch-trip-list" id="rbTripList"></div>
             </div>
           </div>
@@ -1061,12 +1247,12 @@
         </div>
 
         <div class="panel-footer">
-          <button class="btn btn-secondary" type="button" onclick="closeRebookModal()">Hủy</button>
-          <button class="btn btn-primary" id="rbConfirmBtn" type="button" onclick="confirmRebook()" disabled>
+          <button class="btn btn-secondary" type="button" data-action="closeRebookModal">Hủy</button>
+          <button class="btn btn-primary" id="rbConfirmBtn" type="button" data-action="confirmRebook" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
             <span>Đặt vé</span>
           </button>
-          <button class="btn btn-sell" id="rbSellBtn" type="button" onclick="confirmRebookAndSell()" disabled>
+          <button class="btn btn-sell" id="rbSellBtn" type="button" data-action="confirmRebookAndSell" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg>
             Bán vé
           </button>
@@ -1088,8 +1274,8 @@
           <textarea id="subSeatNote" rows="3" placeholder="Nhập ghi chú..."></textarea>
         </div>
         <div class="modal-actions">
-          <button class="btn btn-secondary" onclick="closeModal('subSeatModal')">Đóng</button>
-          <button class="btn btn-primary" onclick="saveSubSeat()">Lưu</button>
+          <button class="btn btn-secondary" data-action="closeModal" data-args='["subSeatModal"]'>Đóng</button>
+          <button class="btn btn-primary" data-action="saveSubSeat">Lưu</button>
         </div>
       </div>
     </div>
@@ -1100,7 +1286,7 @@
         <h3>Hủy vé — Ghế <span id="cancelSeatCode">B3</span></h3>
         <div class="form-field">
           <label>Lý do hủy <span style="color:var(--red);">*</span></label>
-          <textarea id="cancelReason" placeholder="Nhập lý do hủy vé..." oninput="checkCancelReason()"></textarea>
+          <textarea id="cancelReason" placeholder="Nhập lý do hủy vé..." data-input-action="checkCancelReason"></textarea>
         </div>
         <div class="warn-box">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1111,11 +1297,12 @@
           Không thể xác nhận nếu chưa nhập lý do hủy (BR-01).
         </div>
         <div class="modal-actions">
-          <button class="btn btn-secondary" onclick="closeModal('cancelModal')">Đóng</button>
-          <button class="btn btn-primary" id="confirmCancelBtn" disabled onclick="confirmCancel()">Xác nhận hủy</button>
+          <button class="btn btn-secondary" data-action="closeModal" data-args='["cancelModal"]'>Đóng</button>
+          <button class="btn btn-primary" id="confirmCancelBtn" disabled data-action="confirmCancel">Xác nhận hủy</button>
         </div>
       </div>
     </div>
+
 
     <!-- ===== MODAL: THÔNG TIN KHÁCH RƯỚC ===== -->
     <div class="overlay" id="pickupModal">
@@ -1125,7 +1312,7 @@
             <h2>Thông tin khách rước</h2>
             <div class="sub">Nhập thông tin khách rước để lưu vào hệ thống</div>
           </div>
-          <button class="icon-close" onclick="closeModal('pickupModal')"><svg viewBox="0 0 24 24" fill="none"
+          <button class="icon-close" data-action="closeModal" data-args='["pickupModal"]'><svg viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2.4">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -1137,18 +1324,22 @@
             <div class="form-row" style="--cols:2;">
               <div class="form-field">
                 <label>Họ và tên <span style="color:var(--red);">*</span></label>
-                <input type="text" id="pickupCustomerName" placeholder="Nguyễn Văn A" oninput="refreshPickupPreview()">
+                <input type="text" id="pickupCustomerName" placeholder="Nguyễn Văn A" data-input-action="refreshPickupPreview">
               </div>
               <div class="form-field">
                 <label>Số điện thoại <span style="color:var(--red);">*</span></label>
-                <input type="tel" id="pickupPhone" placeholder="09xxxxxxxx" oninput="refreshPickupPreview()">
+                <div class="phone-input-row">
+                  <input type="tel" id="pickupPhone" placeholder="09xxxxxxxx" data-input-action="refreshPickupPreview">
+                  <button type="button" class="phone-add-btn" data-action="addExtraPhoneField" data-args='["pickup_phone_extra","refreshPickupPreview"]' title="Thêm số điện thoại khác">+</button>
+                </div>
+                <div class="phone-extra-list" id="pickup_phone_extra"></div>
               </div>
             </div>
 
             <div class="form-row" style="--cols:2;">
               <div class="form-field">
                 <label>Trạm đi</label>
-                <select id="pickupStation" onchange="refreshPickupPreview(); refreshPickupPrice()">
+                <select id="pickupStation" data-change-action="refreshPickupPreviewAndPrice">
                   <option value="">Chọn trạm đi</option>
                   <option>Trạm Kinh Dương Vương</option>
                   <option>Trạm An Sương</option>
@@ -1159,14 +1350,14 @@
               <div class="form-field">
                 <label>Trung chuyển đi</label>
                 <input type="text" id="pickupAddress" placeholder="Nhập trung chuyển đi"
-                  oninput="refreshPickupPreview(); refreshPickupPrice()">
+                  data-input-action="refreshPickupPreviewAndPrice">
               </div>
             </div>
 
             <div class="form-row" style="--cols:2;">
               <div class="form-field">
                 <label>Trạm đến</label>
-                <select id="pickupDestination" onchange="refreshPickupPreview(); refreshPickupPrice()">
+                <select id="pickupDestination" data-change-action="refreshPickupPreviewAndPrice">
                   <option value="">Chọn trạm đến</option>
                   <option>Trạm Châu Đốc</option>
                   <option>Trạm Tân Châu</option>
@@ -1178,7 +1369,7 @@
               <div class="form-field">
                 <label>Trung chuyển đến</label>
                 <input type="text" id="pickupTrip" placeholder="Nhập trung chuyển đến"
-                  oninput="refreshPickupPreview(); refreshPickupPrice()">
+                  data-input-action="refreshPickupPreviewAndPrice">
               </div>
             </div>
 
@@ -1186,17 +1377,17 @@
               <div class="form-field">
                 <label>Số lượng vé <span style="color:var(--red);">*</span></label>
                 <input type="number" id="pickupTicketCount" min="1" max="10" value="1"
-                  oninput="refreshPickupPreview(); refreshPickupPrice()">
+                  data-input-action="refreshPickupPreviewAndPrice">
               </div>
               <div class="form-field">
                 <label>Ghi chú</label>
-                <input type="text" id="pickupNote" placeholder="Ghi chú thêm..." oninput="refreshPickupPreview()">
+                <input type="text" id="pickupNote" placeholder="Ghi chú thêm..." data-input-action="refreshPickupPreview">
               </div>
             </div>
             <div class="form-row" style="--cols:1;">
               <div class="form-field checkbox-field" style="margin-top:-4px;">
                 <label class="checkbox-inline">
-                  <input type="checkbox" id="pickupLuggage" onchange="refreshPickupPreview()">
+                  <input type="checkbox" id="pickupLuggage" data-change-action="refreshPickupPreview">
                   Có baga kèm theo
                 </label>
               </div>
@@ -1233,8 +1424,8 @@
         </div>
 
         <div class="panel-footer">
-          <button class="btn btn-secondary" onclick="closeModal('pickupModal')">Đóng</button>
-          <button class="btn btn-primary" onclick="savePickupInfo()">Lưu thông tin</button>
+          <button class="btn btn-secondary" data-action="closeModal" data-args='["pickupModal"]'>Đóng</button>
+          <button class="btn btn-primary" data-action="savePickupInfo">Lưu thông tin</button>
         </div>
       </div>
     </div>
@@ -1244,14 +1435,14 @@
       <div class="modal-card">
         <div class="modal-header">
           <h2 id="singleModalTitle">Tạo phơi xe mới</h2>
-          <button class="close-btn" onclick="closeSingleModal()">
+          <button class="close-btn" data-action="closeSingleModal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
         <div class="modal-body">
-          <form id="singleForm" onsubmit="saveSingleTrip(event)">
+          <form id="singleForm" data-submit-action="saveSingleTrip" data-args='["__event__"]'>
             <input type="hidden" id="editTripId">
             <div class="modal-row">
               <div class="form-group flex-1">
@@ -1266,7 +1457,7 @@
             <div class="modal-row">
               <div class="form-group flex-1">
                 <label for="tripDirection">Hướng đi <span class="required">*</span></label>
-                <select id="tripDirection" required onchange="onModalDirectionChange('single')">
+                <select id="tripDirection" required data-change-action="onModalDirectionChange" data-args='["single"]'>
                   <option value="">-- Chọn hướng --</option>
                   <option value="chieu-di">Chiều đi</option>
                   <option value="chieu-ve">Chiều về</option>
@@ -1274,7 +1465,7 @@
               </div>
               <div class="form-group flex-1">
                 <label for="tripRoute">Tuyến đi <span class="required">*</span></label>
-                <select id="tripRoute" required onchange="onRouteSelect('single')">
+                <select id="tripRoute" required data-change-action="onRouteSelect" data-args='["single"]'>
                   <option value="">-- Chọn tuyến --</option>
                 </select>
               </div>
@@ -1320,7 +1511,7 @@
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" onclick="closeSingleModal()">Hủy</button>
+              <button type="button" class="btn btn-secondary" data-action="closeSingleModal">Hủy</button>
               <button type="submit" class="btn btn-primary" id="btnSaveSingle">Lưu</button>
             </div>
           </form>
@@ -1333,18 +1524,18 @@
       <div class="modal-card">
         <div class="modal-header">
           <h2>Tạo phơi xe hàng loạt</h2>
-          <button class="close-btn" onclick="closeBulkModal()">
+          <button class="close-btn" data-action="closeBulkModal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
         <div class="modal-body">
-          <form id="bulkForm" onsubmit="generateBulkTrips(event)">
+          <form id="bulkForm" data-submit-action="generateBulkTrips" data-args='["__event__"]'>
             <div class="modal-row">
               <div class="form-group flex-1">
                 <label for="bulkDirection">Hướng đi <span class="required">*</span></label>
-                <select id="bulkDirection" required onchange="onModalDirectionChange('bulk')">
+                <select id="bulkDirection" required data-change-action="onModalDirectionChange" data-args='["bulk"]'>
                   <option value="">-- Chọn hướng --</option>
                   <option value="chieu-di">Chiều đi</option>
                   <option value="chieu-ve">Chiều về</option>
@@ -1352,7 +1543,7 @@
               </div>
               <div class="form-group flex-1">
                 <label for="bulkRoute">Tuyến đi <span class="required">*</span></label>
-                <select id="bulkRoute" required onchange="onRouteSelect('bulk')">
+                <select id="bulkRoute" required data-change-action="onRouteSelect" data-args='["bulk"]'>
                   <option value="">-- Chọn tuyến --</option>
                 </select>
               </div>
@@ -1394,7 +1585,7 @@
                 <label>Danh sách giờ khởi hành <span class="required">*</span></label>
                 <div class="time-adder-input">
                   <input type="time" id="bulkTimeInput">
-                  <button type="button" class="btn btn-secondary btn-icon" onclick="addBulkTime()">
+                  <button type="button" class="btn btn-secondary btn-icon" data-action="addBulkTime">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <path d="M12 5v14M5 12h14" />
                     </svg>
@@ -1410,7 +1601,7 @@
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" onclick="closeBulkModal()">Hủy</button>
+              <button type="button" class="btn btn-secondary" data-action="closeBulkModal">Hủy</button>
               <button type="submit" class="btn btn-primary">Tạo hàng loạt</button>
             </div>
           </form>
@@ -1420,8 +1611,8 @@
 
     <!-- ===== ROW ACTION CONTEXT MENU ===== -->
     <div class="context-menu" id="rowContextMenu">
-      <button onclick="onContextEdit()">Chỉnh sửa</button>
-      <button class="danger" onclick="onContextDelete()">Hủy phơi xe</button>
+      <button data-action="onContextEdit">Chỉnh sửa</button>
+      <button class="danger" data-action="onContextDelete">Hủy phơi xe</button>
     </div>
 
     <div class="seat-menu" id="seatMenu"></div>
@@ -1429,9 +1620,14 @@
         <path d="m5 13 4 4L19 7" />
       </svg><span id="toastText"></span></div>
 
-    <script src="../js/shared/storage-keys.js?v=1"></script>
-    <script src="../js/shared/constants.js?v=1"></script>
-    <script src="../js/callcenter.js?v=41"></script>
+    <script src="../js/shared/storage-keys.js?v=2"></script>
+    <script src="../js/shared/format.js?v=5"></script>
+    <script src="../js/shared/constants.js?v=3"></script>
+    <script src="../js/shared/seat-bank.js?v=2"></script>
+    <script src="../js/shared/ui.js?v=10"></script>
+    <script src="../js/shared/booking.js?v=37"></script>
+    <script src="../js/callcenter.js?v=71"></script>
+    <script src="../js/shared/events.js?v=2"></script>
 </body>
 
 </html>

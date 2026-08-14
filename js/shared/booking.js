@@ -1,0 +1,1534 @@
+// shared/booking.js — Panel đặt vé, ghế phụ, menu ghế, chuyển ghế, lịch sử khách, đặt lại vé. Dùng chung callcenter/ticketstaff.
+// Nạp bằng <script> thường TRƯỚC script chính của trang — không dùng export/import.
+
+// ===== Trang "Lịch sử hành khách" (Zone header, dạng bảng đầy đủ + bộ lọc ở đầu) — khác với view "Tìm
+// kiếm vé khách hàng" (customerHistoryView) ở chỗ hiển thị TẤT CẢ khách chứ không theo 1 SĐT cụ thể. =====
+let _allPassengerHistoryRaw = [];
+
+// ===== Lịch chọn ngày cho bộ lọc "Ngày đi" trang Lịch sử hành khách — cùng dạng lịch chọn-ngày-bất-kỳ
+// như #pkCalendarPanel (trang Rước liền), nhưng GIỮ nút "Tất cả" (khác #rbCalendarPanel ở modal Đặt lại
+// vé, nơi đã bỏ nút này) vì trang này về bản chất là xem toàn bộ lịch sử — "Tất cả ngày" là trạng thái
+// mặc định có ý nghĩa, không phải trường hợp biên. =====
+const PH_MONTH_NAMES = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
+let phCalDate = new Date();
+let phSelectedDateStr = null; // null = "Tất cả ngày"
+let phCalendarOpen = false;
+
+function phRenderCalendar() {
+  const calGrid = document.getElementById('phCalGrid');
+  const monthLabel = document.getElementById('phCalMonthLabel');
+  if (!calGrid || !monthLabel) return;
+  const today = new Date();
+  const y = phCalDate.getFullYear(), m = phCalDate.getMonth();
+  monthLabel.textContent = `${PH_MONTH_NAMES[m]}, ${y}`;
+  const first = new Date(y, m, 1);
+  const startOffset = (first.getDay() + 6) % 7;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const daysInPrevMonth = new Date(y, m, 0).getDate();
+  let html = '';
+  ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].forEach(d => { html += `<div class="cal-dow">${d}</div>`; });
+  for (let i = 0; i < startOffset; i++) {
+    html += `<div class="cal-day muted">${daysInPrevMonth - startOffset + i + 1}</div>`;
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateObj = new Date(y, m, d);
+    const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const isToday = dateObj.toDateString() === today.toDateString();
+    const isSelected = dateStr === phSelectedDateStr;
+    html += `<div class="cal-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-action="phPickDate" data-args='[${y},${m},${d}]'>${d}</div>`;
+  }
+  const totalCells = startOffset + daysInMonth;
+  const trailing = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= trailing; i++) {
+    html += `<div class="cal-day muted">${i}</div>`;
+  }
+  calGrid.innerHTML = html;
+}
+
+function phShiftMonth(dir) {
+  phCalDate = new Date(phCalDate.getFullYear(), phCalDate.getMonth() + dir, 1);
+  phRenderCalendar();
+}
+
+function phGoToday() {
+  const today = new Date();
+  phCalDate = new Date(today);
+  phSelectedDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  phRenderCalendar();
+  phUpdateCalTrigger();
+  phToggleCalendar(false);
+  renderPassengerHistoryTable();
+}
+
+function phPickDate(y, m, d) {
+  phSelectedDateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  phRenderCalendar();
+  phUpdateCalTrigger();
+  phToggleCalendar(false);
+  renderPassengerHistoryTable();
+}
+
+function phClearDateFilter() {
+  phSelectedDateStr = null;
+  phRenderCalendar();
+  phUpdateCalTrigger();
+  phToggleCalendar(false);
+  renderPassengerHistoryTable();
+}
+
+function phUpdateCalTrigger() {
+  const label = document.getElementById('phFilterDateLabel');
+  if (!label) return;
+  label.textContent = phSelectedDateStr ? formatHistoryDate(phSelectedDateStr) : 'Tất cả ngày';
+}
+
+function phToggleCalendar(force) {
+  const panel = document.getElementById('phCalendarPanel');
+  const btn = document.getElementById('phFilterDateBtn');
+  if (!panel || !btn) return;
+  phCalendarOpen = typeof force === 'boolean' ? force : !phCalendarOpen;
+  panel.classList.toggle('open', phCalendarOpen);
+  btn.classList.toggle('open', phCalendarOpen);
+}
+
+document.addEventListener('click', (e) => {
+  if (phCalendarOpen && !e.target.closest('#phCalendarPanel') && !e.target.closest('#phFilterDateBtn')) {
+    phToggleCalendar(false);
+  }
+});
+
+function openPassengerHistoryView() {
+  _allPassengerHistoryRaw = loadAllPassengerHistory();
+  rebuildPhFilterOptions();
+  phRenderCalendar();
+  phUpdateCalTrigger();
+  renderPassengerHistoryTable();
+}
+
+function rebuildPhFilterOptions() {
+  const routeEl = document.getElementById('phFilterRoute');
+  const staffEl = document.getElementById('phFilterStaff');
+  if (!routeEl) return;
+  const routes = Array.from(new Set(_allPassengerHistoryRaw.map(r => r.route).filter(Boolean))).sort();
+  routeEl.innerHTML = `<option value="all">Tất cả tuyến</option>` +
+    routes.map(r => `<option value="${r}">${r}</option>`).join('');
+  if (staffEl) {
+    // Nhân viên "Đặt" và "Bán" có thể khác nhau trên cùng 1 vé (bookStaff/sellStaff) — gộp chung 1 danh
+    // sách lựa chọn, lọc thì khớp với 1 trong 2 vai trò (xem renderPassengerHistoryTable()).
+    const staffCodes = Array.from(new Set(
+      _allPassengerHistoryRaw.flatMap(r => [r.bookStaff, r.sellStaff]).filter(s => s && s !== '—')
+    )).sort();
+    staffEl.innerHTML = `<option value="all">Tất cả nhân viên</option>` +
+      staffCodes.map(s => `<option value="${s}">${s}</option>`).join('');
+  }
+}
+
+function resetPhFilters() {
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  setVal('phSearchInput', '');
+  phSelectedDateStr = null;
+  phCalDate = new Date();
+  phUpdateCalTrigger();
+  phRenderCalendar();
+  setVal('phFilterRoute', 'all');
+  setVal('phFilterTime', 'all');
+  setVal('phFilterStatus', 'all');
+  setVal('phFilterStaff', 'all');
+  renderPassengerHistoryTable();
+}
+
+let phSearchInputDebounceTimer = null;
+function phOnSearchInput(val) {
+  clearTimeout(phSearchInputDebounceTimer);
+  phSearchInputDebounceTimer = setTimeout(renderPassengerHistoryTable, 300);
+}
+
+function renderPassengerHistoryTable() {
+  const searchVal = (document.getElementById('phSearchInput')?.value || '').trim().toLowerCase();
+  const routeVal = document.getElementById('phFilterRoute')?.value || 'all';
+  const timeVal = document.getElementById('phFilterTime')?.value || 'all';
+  const statusVal = document.getElementById('phFilterStatus')?.value || 'all';
+  const staffVal = document.getElementById('phFilterStaff')?.value || 'all';
+
+  const filtered = (_allPassengerHistoryRaw || []).filter(r => {
+    if (searchVal) {
+      const matchName = r.name && r.name.toLowerCase().includes(searchVal);
+      const matchPhone = r.phone && r.phone.toLowerCase().includes(searchVal);
+      if (!matchName && !matchPhone) return false;
+    }
+    if (phSelectedDateStr && r.date !== phSelectedDateStr) return false;
+    if (routeVal !== 'all' && r.route !== routeVal) return false;
+    if (timeVal !== 'all') {
+      const hh = parseInt((r.time || '00:00').split(':')[0], 10);
+      if (timeVal === 'morning' && (hh < 0 || hh >= 12)) return false;
+      if (timeVal === 'afternoon' && (hh < 12 || hh >= 18)) return false;
+      if (timeVal === 'evening' && (hh < 18 || hh > 24)) return false;
+    }
+    if (statusVal !== 'all') {
+      if (statusVal === 'today' && !r.isToday) return false;
+      if (statusVal === 'past' && r.isToday) return false;
+      if (statusVal === 'sold' && r.state !== 'sold') return false;
+      if (statusVal === 'hold' && r.state !== 'hold') return false;
+    }
+    if (staffVal !== 'all' && r.bookStaff !== staffVal && r.sellStaff !== staffVal) return false;
+    return true;
+  });
+
+  // idx phải trỏ đúng vị trí trong mảng ĐANG HIỂN THỊ (đã lọc) — openEditFromHistory/goToTripFromHistory
+  // đọc lại đúng mảng này qua window._historyResults, cùng quy ước với customerHistoryView.
+  window._historyResults = filtered;
+  _historyResults = filtered;
+
+  const tbody = document.getElementById('phHistoryTableBody');
+  const emptyEl = document.getElementById('phHistoryEmpty');
+  if (tbody) tbody.innerHTML = filtered.map((r, idx) => renderPassengerHistoryRowHtml(r, idx)).join('');
+  if (emptyEl) emptyEl.style.display = filtered.length ? 'none' : 'block';
+}
+
+function renderPassengerHistoryRowHtml(r, idx) {
+  const { firstStopHtml, lastStopHtml } = getHistoryStopsDisplay(r);
+  const formattedDate = formatHistoryDate(r.date);
+  const plate = r.plate || '51F-123.45';
+  const vehicleType = r.vehicleType || 'Limousine 24 Phòng';
+  const driver = r.driver || 'Trần Văn Hùng';
+  const helper = r.helper || 'Nguyễn Văn Bình';
+  const bookStaffStr = getStaffCode(r.bookStaff || r.staff) || 'NV01';
+  const sellStaffStr = r.sellStaff ? (getStaffCode(r.sellStaff) || r.sellStaff) : (r.paid ? 'NV05' : '—');
+  const priceStr = r.price ? r.price.toLocaleString('vi-VN') + 'đ' : '—';
+  const seatCount = r.seat ? r.seat.split(',').map(s => s.trim()).filter(Boolean).length : 0;
+
+  return `
+    <tr>
+      <td class="mono ch-col-nowrap">${formattedDate}</td>
+      <td>
+        <span class="ch-trip-link" data-action="goToTripFromHistory" data-args='${JSON.stringify(["__event__", idx])}' title="Biển số xe: ${plate} • Loại xe: ${vehicleType} • Tài xế: ${driver} • Phụ xe: ${helper}">${r.route} — ${r.time}</span>
+      </td>
+      <td class="ch-col-ellipsis" title="${r.name || '—'}">${r.name || '—'}</td>
+      <td class="mono ch-col-nowrap">${r.phone || '—'}</td>
+      <td>${firstStopHtml}</td>
+      <td>${lastStopHtml}</td>
+      <td class="mono" title="${r.seat || '—'}">${seatCount || '—'}</td>
+      <td style="text-align:right;">${priceStr}</td>
+      <td style="font-size:11.5px;color:var(--text-sub);">Đặt: <b>${bookStaffStr}</b><br>Bán: <b>${sellStaffStr}</b></td>
+      <td><button type="button" class="btn ph-rebook-btn" data-action="openRebookFromHistory" data-args='${JSON.stringify([idx])}'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Đặt lại</button></td>
+    </tr>
+  `;
+}
+
+function cancelTransferSelection() {
+  exitMultiSelectMode();
+  showToast('Đã hủy thao tác chuyển ghế');
+}
+
+// Chặn các thao tác đơn lẻ trên 1 ghế (đặt vé, sửa vé, hủy vé, mở menu ghế) trong lúc đang chọn nhiều
+// ghế để chuyển ghế/đặt vé nhóm — trước đây các nút này không kiểm tra multiSelectMode nên bấm được
+// song song, gây lẫn lộn trạng thái. Trả về true nếu đã chặn (gọi nơi dùng: if (blockIfMultiSelectActive()) return;).
+function blockIfMultiSelectActive() {
+  if (!multiSelectMode) return false;
+  const modeLabel = selectionMode === 'transfer' ? 'chuyển ghế' : 'đặt vé nhóm';
+  showToast(`Đang chọn ghế để ${modeLabel} — vui lòng hoàn tất hoặc hủy thao tác này trước`);
+  return true;
+}
+
+function cancelledSeatCard(seat) {
+  const firstStopShort = shortenStopName(seat.firstStop) || '—';
+  const lastStopShort = shortenStopName(seat.lastStop) || '—';
+  const routeStr = `${firstStopShort} → ${lastStopShort}`;
+  const custName = seat.customerName || '—';
+  const custPhone = seat.phone || '—';
+  const noteStr = seat.note || '—';
+  const priceStr = seat.price ? seat.price.toLocaleString('vi-VN') + 'đ' : '—';
+
+  return `
+  <div class="seat-card cancelled" data-code="${seat.code}">
+    <div class="seat-top">
+      <div>
+        <div class="seat-code">${seat.code}</div>
+      </div>
+      <div class="seat-top-right">
+        <div class="seat-price-tag">${priceStr}</div>
+      </div>
+    </div>
+    <div class="seat-body">
+      <div class="seat-line route-single-line"><span class="seat-label-full">Chặng đi: </span><span class="seat-stop" title="${routeStr}">${routeStr}</span></div>
+      <div class="route-split-line">
+        <div class="route-split-row"><span class="route-split-label">Đi:</span><span class="seat-stop" title="${firstStopShort}">${firstStopShort}</span></div>
+        <div class="route-split-row"><span class="route-split-label">Đến:</span><span class="seat-stop" title="${lastStopShort}">${lastStopShort}</span></div>
+      </div>
+      <div class="seat-line" style="color:var(--text-main); font-weight:700;"><span class="seat-label-full">Khách hàng: </span><span class="seat-label-short">KH: </span>${custName}</div>
+      <div class="seat-line" style="color:var(--text-main); font-weight:700;"><span class="seat-label-full">Số điện thoại: </span><span class="seat-label-short">SĐT: </span>${custPhone}</div>
+      <div class="seat-note" title="${noteStr}"><span class="seat-label-full">Ghi chú: </span><span class="seat-label-short">GC: </span>${noteStr}</div>
+    </div>
+    <button type="button" class="seat-footbtn cancelled" data-action="startTransferFromCancelled" data-stop-propagation="1" data-args='${JSON.stringify([seat.id])}'>
+      <span class="foot-text-normal">GHẾ ĐÃ HỦY</span><span class="foot-text-hover">CHUYỂN GHẾ</span>
+    </button>
+  </div>`;
+}
+
+function clearPaxFilter() {
+  document.querySelectorAll('.pax-filter-opt input').forEach(cb => cb.checked = false);
+  renderPassengerList();
+}
+
+function closeCustomerHistory() {
+  customerHistoryActive = false;
+  currentSearchPhone = '';
+  const chView = document.getElementById('customerHistoryView');
+  if (chView) chView.style.display = 'none';
+  const rightCol = document.querySelector('.right-col');
+  if (rightCol) {
+    ['.zone2', '.tabs'].forEach(sel => {
+      const el = rightCol.querySelector(sel);
+      if (el) el.style.display = '';
+    });
+  }
+  const activeTabEl = document.querySelector('.tabs .tab-item.active');
+  const match = activeTabEl ? /switchTab\('([^']+)'/.exec(activeTabEl.getAttribute('onclick') || '') : null;
+  switchTab(match ? match[1] : 'seatmap', activeTabEl || document.querySelector('.tabs .tab-item'));
+
+  const si = document.getElementById('searchInput');
+  if (si) si.value = '';
+}
+
+function closeRebookModal() {
+  const modal = document.getElementById('rebookModal');
+  if (modal) {
+    modal.classList.remove('open');
+    modal.style.display = 'none';
+    modal.style.setProperty('display', 'none', 'important');
+  }
+}
+
+function closeSeatMenu() { document.getElementById('seatMenu').classList.remove('open'); }
+
+function startTransferMode(sourceCode) {
+  const seat = findSeat(sourceCode);
+  if (!seat) return;
+  multiSelectMode = true;
+  selectionMode = 'transfer';
+  selectedSourceSeats = [sourceCode];
+  selectedTargetSeats = [];
+  transferSourceTripId = currentTripId;
+  transferTargetTripId = currentTripId;
+  document.querySelectorAll('.seat-card').forEach(c => { c.style.outline = 'none'; });
+  const sourceCard = document.querySelector(`.seat-card[data-code="${sourceCode}"]`);
+  if (sourceCard) { sourceCard.style.outline = '2.5px solid var(--red)'; sourceCard.style.outlineOffset = '1px'; }
+  updateTransferHint();
+  showToast(`Đã chọn ghế ${sourceCode}. Bấm ghế trống để chuyển sang (có thể chọn chuyến khác ở Zone 1).`);
+}
+
+function confirmSelectionAction() {
+  if (transferSourceCancelId) {
+    confirmRestoreFromCancelled();
+    return;
+  }
+  if (selectedSourceSeats.length > 0) {
+    confirmTransfer();
+    return;
+  }
+  openGroupBookingFromSelection();
+}
+
+function deleteSubSeat(code) {
+  subSeats = subSeats.filter(s => s.code !== code);
+  if (tripSeatBank[currentTripId]) tripSeatBank[currentTripId].subSeats = subSeats;
+  saveSeatBank();
+  renderSubSeats();
+  updateTripStats();
+  updatePassengerTabCount();
+  showToast('Đã xóa ghế phụ');
+}
+
+function exitMultiSelectMode() {
+  multiSelectMode = false;
+  selectionMode = null;
+  selectedSourceSeats = [];
+  selectedTargetSeats = [];
+  transferSourceTripId = null;
+  transferTargetTripId = null;
+  transferSourceCancelId = null;
+  document.querySelectorAll('.seat-card').forEach(c => {
+    c.style.outline = 'none';
+    c.style.boxShadow = 'none';
+  });
+  document.getElementById('stickyHint').textContent = '';
+  updateTransferBarVisibility();
+}
+
+function findSeat(code) {
+  return seatPlanDown.find(s => s.code === code) || seatPlanUp.find(s => s.code === code) || extraLeftoverSeats.find(s => s.code === code);
+}
+
+function findSeatInTrip(tripId, code) {
+  const bank = tripSeatBank[tripId];
+  if (!bank) return null;
+  return bank.down.find(s => s.code === code) || bank.up.find(s => s.code === code) || (bank.extraSeats || []).find(s => s.code === code);
+}
+
+function getHistoryStopsDisplay(r) {
+  if (!r) return { firstStopHtml: '—', lastStopHtml: '—' };
+  const type = r.guestType || 'Khách trạm';
+  let firstStopHtml = r.firstStop || '—';
+  let lastStopHtml = r.lastStop || '—';
+
+  const pickupLoc = r.transshipStation || r.transship || r.pickupAddress || r.fromTransfer || '';
+  const dropLoc = r.dropoffAddress || r.arrivalTransfer || (type === 'Trung chuyển' ? (r.transshipStation || r.transship || '') : '');
+
+  if (type === 'Rước liền' && pickupLoc) {
+    firstStopHtml = `${r.firstStop || 'Trạm đi'}<div class="ch-sub-address" style="font-size:12px;color:var(--text-sub);margin-top:2px;">Rước liền: ${pickupLoc}</div>`;
+  } else if (type === 'Rước đường' && pickupLoc) {
+    firstStopHtml = `${r.firstStop || 'Trạm đi'}<div class="ch-sub-address" style="font-size:12px;color:var(--text-sub);margin-top:2px;">Rước: ${pickupLoc}</div>`;
+  } else if (type === 'Trung chuyển' && pickupLoc) {
+    firstStopHtml = `${r.firstStop || 'Trạm đi'}<div class="ch-sub-address" style="font-size:12px;color:var(--text-sub);margin-top:2px;">Đón: ${pickupLoc}</div>`;
+  }
+  // Tách riêng khỏi nhánh trên (thay vì if/else-if chung 1 chuỗi): trước đây "Rước liền"/"Rước đường" khớp
+  // nhánh của mình rồi dừng, không bao giờ chạy tới đây nên "Trung chuyển đến" (dropLoc) bị bỏ sót dù đã nhập.
+  if (dropLoc) {
+    const dropLabel = type === 'Trung chuyển' ? 'TC: ' : '';
+    lastStopHtml = `${r.lastStop || 'Trạm đến'}<div class="ch-sub-address" style="font-size:12px;color:var(--text-sub);margin-top:2px;">${dropLabel}${dropLoc}</div>`;
+  }
+
+  return { firstStopHtml, lastStopHtml };
+}
+
+// Trả về true nếu chuyển phơi thành công, false nếu chuyến quá cũ/không còn — openEditFromHistory() dựa
+// vào giá trị này để biết có nên tiếp tục mở panel sửa ghế hay không (tránh sửa nhầm ghế của phơi khác
+// nếu chuyển phơi thất bại). Các nơi gọi hàm này từ trước (link tên phơi) không đọc giá trị trả về, không
+// ảnh hưởng hành vi cũ.
+function goToTripFromHistory(e, idx, pushHistory = true) {
+  if (e) e.stopPropagation();
+  const list = window._historyResults || _historyResults || [];
+  const r = list[idx];
+  if (!r) return false;
+
+  const prevPhone = currentSearchPhone || r.phone;
+  closeCustomerHistory();
+
+  if (typeof currentView !== 'undefined' && currentView !== 'booking' && typeof switchView === 'function') {
+    switchView('booking');
+  }
+
+  let targetTripId = r.tripId || allTripsMeta?.find(t => t.route === r.route && (t.time === r.time || !r.time))?.id;
+  if (!targetTripId || !tripSeatBank[targetTripId]) {
+    showToast(`Chuyến "${r.route} (${r.time})" đã quá cũ, không còn phơi xe để hiển thị`, 'warning');
+    return false;
+  }
+
+  if (pushHistory) {
+    try { history.pushState({ view: 'trip', tripId: targetTripId, phone: prevPhone }, '', '#trip-' + targetTripId); } catch (err) { }
+  }
+
+  const targetDir = r.route?.trim().startsWith('Châu Đốc') ? 'cd-sg' : 'sg-cd';
+  if (typeof selectedDirection !== 'undefined' && selectedDirection !== targetDir && directionLabels?.[targetDir]) {
+    selectedDirection = targetDir;
+    selectedRoute = 'all';
+    const dVal = document.getElementById('directionTrigger');
+    if (dVal) dVal.value = directionLabels[targetDir];
+    const rVal = document.getElementById('routeTrigger');
+    if (rVal) rVal.value = 'Tất cả tuyến';
+    document.querySelectorAll('#directionDropdown .dropdown-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.dir === targetDir);
+    });
+    if (typeof renderRouteOptions === 'function') renderRouteOptions();
+    const sgList = document.getElementById('tripListSGCD');
+    const cdList = document.getElementById('tripListCDSG');
+    if (sgList && cdList) {
+      sgList.style.display = targetDir === 'cd-sg' ? 'none' : '';
+      cdList.style.display = targetDir === 'cd-sg' ? '' : 'none';
+    }
+  }
+
+  const card = document.querySelector(`.trip-card[data-trip="${targetTripId}"]`);
+  if (card) {
+    selectTrip(card, r.time, r.route);
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } else if (typeof selectTrip === 'function') {
+    const tripMeta = allTripsMeta.find(t => t.id === targetTripId);
+    if (tripMeta) {
+      const dummy = document.createElement('div');
+      dummy.dataset.trip = targetTripId;
+      selectTrip(dummy, tripMeta.time, tripMeta.route);
+    }
+  }
+  showToast(`Đã chuyển sang phơi chuyến: ${r.route} (${r.time})`);
+  return true;
+}
+
+function renderHistorySeatCardHtml(r, custName, custPhone) {
+  const { firstStopHtml, lastStopHtml } = getHistoryStopsDisplay(r);
+  const bookStaffStr = getStaffCode(r.bookStaff || r.staff) || 'NV01';
+  const sellStaffStr = r.sellStaff ? (getStaffCode(r.sellStaff) || r.sellStaff) : (r.paid ? 'NV05' : '—');
+  const stateClass = r.state === 'sold' ? 'sold' : (r.state === 'hold' ? 'hold' : 'sold');
+  // Cùng quy ước nhãn nút footer với thẻ ghế bên sơ đồ ghế chính (seatCard() trong callcenter.js/
+  // ticketstaff.js) — ghế đã bán hiện "THÔNG TIN" khi hover (mở panel chỉ xem, không sửa được), ghế
+  // "hold" hiện "CHỈNH SỬA".
+  const footLabel = 'KDV - CHÂU ĐỐC';
+  const footHoverLabel = r.state === 'sold' ? 'THÔNG TIN' : 'CHỈNH SỬA';
+
+  return `
+    <div class="seat-card ${stateClass} ch-seat-card-item" data-code="${r.seat}">
+      <div class="seat-top">
+        <div>
+          <div class="seat-code" style="display:inline-block; vertical-align:middle; font-size:16px; font-weight:800;">${r.seat}</div>
+          ${r.isToday ? '<span class="ch-history-badge" style="margin-left:6px;">Hôm nay</span>' : ''}
+        </div>
+        <div class="seat-top-right">
+          <div class="seat-price-tag">${r.price ? r.price.toLocaleString('vi-VN') + 'đ' : '—'}</div>
+        </div>
+      </div>
+
+      <div class="seat-line" style="margin-top:2px;">
+        <span class="seat-label-full" style="font-weight:700;color:var(--text-sub);">Trạm đi: </span>
+        <span class="seat-stop" style="font-weight:700;">${firstStopHtml}</span>
+      </div>
+
+      <div class="seat-line" style="margin-top:2px;">
+        <span class="seat-label-full" style="font-weight:700;color:var(--text-sub);">Trạm đến: </span>
+        <span class="seat-stop" style="font-weight:700;">${lastStopHtml}</span>
+      </div>
+
+      <div class="seat-line" style="color:var(--text-main); font-weight:700; margin-top:4px;">
+        <span class="seat-label-full">Khách hàng: </span>${custName}
+      </div>
+      <div class="seat-line" style="color:var(--text-main); font-weight:700;">
+        <span class="seat-label-full">SĐT: </span>${custPhone}
+      </div>
+
+      <div class="seat-line" style="color:var(--text-sub); font-size:11.5px; margin-top:4px;">
+        <span class="seat-label-full">Nhân viên: </span>Đặt: <b>${bookStaffStr}</b> | Bán: <b class="${sellStaffStr === '—' ? 'none' : ''}">${sellStaffStr}</b>
+      </div>
+
+      <button class="seat-footbtn" type="button" data-action="openEditFromHistory" data-stop-propagation="1" data-args='${JSON.stringify([r.origIdx])}'>
+        <span class="foot-text-normal">${footLabel}</span>
+        <span class="foot-text-hover">${footHoverLabel}</span>
+      </button>
+    </div>
+  `;
+}
+
+// 1 thẻ cho MỖI lần đặt vé trong lịch sử — không gom theo tuyến nữa, hiện đầy đủ toàn bộ (đã bỏ icon "i"
+// + modal xem thêm). idx là vị trí của r trong mảng results gốc, dùng cho goToTripFromHistory/rebook.
+function renderHistoryCardHtml(r, idx, custName, custPhone) {
+  const formattedDate = formatHistoryDate(r.date);
+  const plate = r.plate || '51F-123.45';
+  const vehicleType = r.vehicleType || 'Limousine 24 Phòng';
+  const driver = r.driver || 'Trần Văn Hùng';
+  const helper = r.helper || 'Nguyễn Văn Bình';
+
+  return `
+    <div class="ch-trip-seatmap-card">
+      <div class="ch-trip-header">
+        <div class="ch-trip-title-info" data-action="goToTripFromHistory" data-args='${JSON.stringify(["__event__", idx])}' title="Biển số xe: ${plate} • Loại xe: ${vehicleType} • Tài xế: ${driver} • Phụ xe: ${helper}">
+          <div class="ch-trip-name">
+            <span class="ch-trip-link">${r.route} — ${r.time}</span>
+            <span class="ch-date-tag">${formattedDate}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ch-seat-cards-grid">
+        ${renderHistorySeatCardHtml({ ...r, origIdx: idx }, custName, custPhone)}
+      </div>
+    </div>
+  `;
+}
+
+// callcenter và ticketstaff dùng CHUNG hàm này (nội dung gốc giống hệt nhau, chỉ khác 1 chỗ kiểm tra
+// firstResult thừa không ảnh hưởng hành vi vì luôn có results.length > 0 tại điểm đó — đã đối chiếu bằng
+// diff trước khi gộp).
+function renderHistorySeatMap(results) {
+  const body = document.getElementById('chBody');
+  if (!body) return;
+
+  const headerHtml = `
+    <div class="ch-search-header">
+      <h3 class="ch-search-title">Tìm kiếm vé khách hàng</h3>
+      <button type="button" class="btn btn-secondary" data-action="closeCustomerHistory">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        Đóng
+      </button>
+    </div>
+  `;
+
+  if (!results?.length) {
+    body.innerHTML = headerHtml + `
+      <div class="ch-empty" style="text-align:center;padding:40px;color:var(--text-sub);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;margin-bottom:8px;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <div style="font-weight:600;">Không tìm thấy vé phù hợp</div>
+      </div>`;
+    return;
+  }
+  _historyResults = results;
+  window._historyResults = results;
+
+  const firstResult = results[0];
+  const custName = firstResult ? (firstResult.name || 'Khách hàng') : 'Khách hàng';
+  const custPhone = firstResult ? (firstResult.phone || currentSearchPhone || '—') : '—';
+
+  const cardsHtml = results.map((r, idx) => renderHistoryCardHtml(r, idx, custName, custPhone)).join('');
+
+  body.innerHTML = headerHtml + `<div class="ch-seatmaps-list" id="chSeatmapsList">${cardsHtml}</div>`;
+}
+
+function groupHistoryResults(rawResults) {
+  if (!rawResults?.length) return [];
+  const map = new Map();
+
+  rawResults.forEach(item => {
+    const phone = (item.phone || '').replace(/[\s.\-]/g, '');
+    const name = (item.name || '').trim().toLowerCase();
+    const tripKey = item.tripId || `${item.date}_${item.route}_${item.time}`;
+    const groupKey = `${tripKey}_${phone}_${name}_${item.state}_${!!item.paid}`;
+
+    if (!map.has(groupKey)) {
+      map.set(groupKey, {
+        ...item,
+        seatsArray: item.seat ? item.seat.split(',').map(s => s.trim()) : [],
+        ticketsArray: item.ticketNo ? [item.ticketNo] : [],
+        totalPrice: Number(item.price) || 0
+      });
+    } else {
+      const g = map.get(groupKey);
+      if (item.seat) {
+        item.seat.split(',').forEach(s => {
+          const t = s.trim();
+          if (t && !g.seatsArray.includes(t)) g.seatsArray.push(t);
+        });
+      }
+      if (item.ticketNo && !g.ticketsArray.includes(item.ticketNo)) g.ticketsArray.push(item.ticketNo);
+      g.totalPrice += Number(item.price) || 0;
+      if (!g.pickupAddress && item.pickupAddress) g.pickupAddress = item.pickupAddress;
+      if (!g.dropoffAddress && item.dropoffAddress) g.dropoffAddress = item.dropoffAddress;
+    }
+  });
+
+  return Array.from(map.values()).map(g => {
+    g.seat = g.seatsArray.join(', ');
+    g.ticketNo = g.ticketsArray.join(', ');
+    g.price = g.totalPrice;
+    delete g.seatsArray;
+    delete g.ticketsArray;
+    delete g.totalPrice;
+    return g;
+  });
+}
+
+function miniSeatHtml(seat, tripId) {
+  if (seat.state === 'hidden') return '<div class="ch-mini-seat hidden-placeholder"></div>';
+  const isAvailable = seat.state === 'empty' && !seat.locked;
+  const stateClass = seat.locked ? 'locked' : seat.state;
+  const selectedClass = rebookSelectedSeats.includes(seat.code) ? 'selected' : '';
+  const clickHandler = isAvailable ? `data-action="toggleRebookSeat" data-args='${JSON.stringify([seat.code, tripId])}'` : '';
+  return `<div class="ch-mini-seat ${stateClass} ${selectedClass}" ${clickHandler}>${seat.code}</div>`;
+}
+
+function nextSubSeatCode() {
+  let max = 0;
+  subSeats.forEach(s => {
+    const m = /^S(\d+)$/.exec(s.code);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  });
+  return 'S' + (max + 1);
+}
+
+function onGuestTypeChange() {
+  const type = document.getElementById('f_type').value;
+  const stationLabel = document.getElementById('f_station_label');
+  const selectEl = document.getElementById('f_station_select');
+  const inputEl = document.getElementById('f_station_input');
+  const transshipWrap = document.getElementById('f_transship_wrap');
+  const transshipLabel = document.getElementById('f_transship_label');
+  const transshipSelect = document.getElementById('f_transship_select');
+  const transshipInput = document.getElementById('f_transship');
+  const stationRow = document.getElementById('f_station_row');
+
+  const isTransshipLike = (type === 'Trung chuyển' || type === 'Rước liền');
+  if (type === 'Rước đường') {
+    stationLabel.textContent = 'Trạm đi';
+    selectEl.style.display = 'block';
+    inputEl.style.display = 'none';
+    transshipLabel.textContent = 'Địa điểm rước';
+    transshipSelect.style.display = 'block';
+    transshipInput.style.display = 'none';
+    transshipWrap.style.display = 'flex';
+  } else {
+    stationLabel.textContent = 'Trạm đi';
+    selectEl.style.display = 'block';
+    inputEl.style.display = 'none';
+    transshipSelect.style.display = 'none';
+    transshipInput.style.display = isTransshipLike ? 'block' : 'none';
+    transshipLabel.textContent = isTransshipLike ? (type === 'Rước liền' ? 'Rước liền đi' : 'Trung chuyển đi') : 'Địa điểm rước';
+    transshipInput.placeholder = isTransshipLike ? (type === 'Rước liền' ? 'Nhập địa chỉ rước liền...' : 'Nơi trung chuyển...') : 'Nhập địa điểm rước...';
+    transshipWrap.style.display = isTransshipLike ? 'flex' : 'none';
+  }
+  stationRow.style.setProperty('--cols', transshipWrap.style.display === 'none' ? 1 : 2);
+  refreshTicket();
+}
+
+function onRebookGuestTypeChange() {
+  const type = document.getElementById('rbGuestType')?.value || 'Khách trạm';
+  const stationLabel = document.getElementById('rbStationLabel');
+  const transshipWrap = document.getElementById('rbTransshipWrap');
+  const transshipLabel = document.getElementById('rbTransshipLabel');
+  const transshipSelect = document.getElementById('rbTransshipSelect');
+  const transshipInput = document.getElementById('rbTransshipInput');
+  const stationRow = document.getElementById('rbStationRow');
+
+  const isTransshipLike = (type === 'Trung chuyển' || type === 'Rước liền');
+  if (type === 'Rước đường') {
+    if (stationLabel) stationLabel.textContent = 'Trạm đi';
+    if (transshipLabel) transshipLabel.textContent = 'Địa điểm rước';
+    if (transshipSelect) transshipSelect.style.display = 'block';
+    if (transshipInput) transshipInput.style.display = 'none';
+    if (transshipWrap) transshipWrap.style.display = 'flex';
+  } else {
+    if (stationLabel) stationLabel.textContent = 'Trạm đi';
+    if (transshipSelect) transshipSelect.style.display = 'none';
+    if (transshipInput) {
+      transshipInput.style.display = isTransshipLike ? 'block' : 'none';
+      transshipInput.placeholder = isTransshipLike ? (type === 'Rước liền' ? 'Nhập địa chỉ rước liền...' : 'Nơi trung chuyển...') : 'Nhập địa điểm rước...';
+    }
+    if (transshipLabel) transshipLabel.textContent = isTransshipLike ? (type === 'Rước liền' ? 'Rước liền đi' : 'Trung chuyển đi') : 'Địa điểm rước';
+    if (transshipWrap) transshipWrap.style.display = isTransshipLike ? 'flex' : 'none';
+  }
+  if (stationRow) stationRow.style.setProperty('--cols', (!transshipWrap || transshipWrap.style.display === 'none') ? 1 : 2);
+}
+
+function openCustomerHistory(phone, pushHistory = true) {
+  fillSearchInputWithPhone(phone);
+  historyColumnFilters = {};
+  const results = searchCustomerByPhone(phone);
+  _rawHistoryResults = results;
+
+  if (!results.length) {
+    showToast('Không tìm thấy vé phù hợp với: ' + phone, 'error');
+    return;
+  }
+  customerHistoryActive = true;
+  currentSearchPhone = phone;
+
+  if (pushHistory) {
+    try {
+      if (!history.state || history.state.view !== 'customerHistory' || history.state.phone !== phone) {
+        history.pushState({ view: 'customerHistory', phone }, '', '#history-' + encodeURIComponent(phone));
+      }
+    } catch (err) { }
+  }
+
+  const firstResult = results[0];
+  const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  setTxt('chName', firstResult.name || 'Khách hàng');
+  setTxt('chPhone', firstResult.phone || phone);
+  setTxt('chAvatar', (firstResult.name || 'K').charAt(0).toUpperCase());
+
+  renderHistorySeatMap(results);
+
+  const rightCol = document.querySelector('.right-col');
+  if (rightCol) {
+    ['.zone2', '.tabs', '.sticky-actions'].forEach(sel => {
+      const el = rightCol.querySelector(sel);
+      if (el) el.style.display = 'none';
+    });
+    rightCol.querySelectorAll('.zone3').forEach(el => el.style.display = 'none');
+  }
+
+  const chView = document.getElementById('customerHistoryView');
+  if (chView) chView.style.display = 'flex';
+  const sr = document.getElementById('searchResults');
+  if (sr) sr.classList.remove('open');
+}
+
+function openGroupBookingFromSelection() {
+  if (!multiSelectMode || selectedTargetSeats.length === 0) {
+    showToast('Vui lòng chọn ít nhất 1 ghế trống để đặt vé nhóm');
+    return;
+  }
+  const seats = selectedTargetSeats.map(code => findSeat(code)).filter(Boolean);
+  if (seats.length === 0) {
+    showToast('Không tìm thấy ghế đã chọn');
+    return;
+  }
+  openBookingPanel(seats);
+}
+
+// Nút "Chỉnh sửa" trên thẻ vé ở view "Tìm kiếm vé khách hàng" (renderHistorySeatCardHtml — chỉ chứa vé
+// TRONG NGÀY, xem searchCustomerByPhone) gọi hàm này — chuyển đúng phơi (dùng lại goToTripFromHistory)
+// rồi mở panel sửa ghế y hệt bên sơ đồ vé (openBookingPanel mode 'edit'), thay vì mở form đặt lại vé mới.
+// Trang "Lịch sử hành khách" (renderPassengerHistoryRowHtml) KHÔNG dùng hàm này — trang đó gồm cả vé quá
+// khứ đã kết thúc (CUSTOMER_HISTORY_DATA, không còn ghế sống để sửa) nên vẫn dùng openRebookFromHistory.
+function openEditFromHistory(idx) {
+  const list = window._historyResults || _historyResults || _rawHistoryResults || [];
+  const r = list[idx];
+  if (!r) { showToast('Không tìm thấy dữ liệu vé để sửa', 'error'); return; }
+
+  const switched = goToTripFromHistory(null, idx, false);
+  if (!switched) return; // goToTripFromHistory đã tự báo toast lỗi (chuyến quá cũ/không còn phơi)
+
+  const codes = (r.seat || '').split(',').map(s => s.trim()).filter(Boolean);
+  const seats = codes.map(c => findSeat(c)).filter(Boolean);
+  if (!seats.length) { showToast('Không tìm thấy ghế để sửa', 'error'); return; }
+  openBookingPanel(seats, { mode: 'edit' });
+}
+
+// Nút "Đặt lại vé" trong bảng trang "Lịch sử hành khách" (renderPassengerHistoryRowHtml) gọi hàm này —
+// trang đó gồm cả vé quá khứ đã kết thúc, không còn ghế sống để "sửa" nên tạo vé đặt lại mới thay vì mở
+// panel sửa (khác với view "Tìm kiếm vé khách hàng", chỉ vé trong ngày, dùng openEditFromHistory).
+function openRebookFromHistory(idx) {
+  try {
+    // idx là vị trí trong mảng kết quả lịch sử (window._historyResults) — mỗi thẻ lịch sử render trực
+    // tiếp từ mảng này (renderHistoryCardHtml), nên idx của mỗi thẻ trùng đúng vị trí trong mảng.
+    const list = window._historyResults || _historyResults || _rawHistoryResults || [];
+    const r = list[idx];
+    if (!r) { showToast('Không tìm thấy dữ liệu vé để đặt lại', 'error'); return; }
+
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    setVal('rbName', r.name || '');
+    setVal('rbPhone', r.phone || currentSearchPhone || '');
+
+    const guestType = r.guestType || 'Khách trạm';
+    setVal('rbGuestType', guestType);
+    onRebookGuestTypeChange();
+
+    setSelectOptionValue('rbFirstStop', r.firstStop || 'Trạm Kinh Dương Vương');
+    // Cùng công thức fallback với getHistoryStopsDisplay() — giữ nhất quán giữa thông tin hiển thị ở
+    // danh sách lịch sử và thông tin điền sẵn vào form đặt lại vé (trước đây thiếu transshipStation/
+    // fromTransfer nên có trường hợp danh sách hiện thông tin nhưng form đặt lại vé lại trống).
+    const pickupVal = r.transshipStation || r.transship || r.pickupAddress || r.fromTransfer || '';
+    const transshipInput = document.getElementById('rbTransshipInput');
+    const transshipSelect = document.getElementById('rbTransshipSelect');
+    if (guestType === 'Rước đường' && transshipSelect) setSelectOptionValue('rbTransshipSelect', pickupVal);
+    if (transshipInput) transshipInput.value = pickupVal;
+
+    setSelectOptionValue('rbLastStop', r.lastStop || 'Trạm Châu Đốc');
+    const arrTransEl = document.getElementById('rbArrivalTransfer');
+    if (arrTransEl) arrTransEl.value = r.dropoffAddress || r.arrivalTransfer || (guestType === 'Trung chuyển' ? (r.transshipStation || r.transship || '') : '');
+
+    setVal('rbNote', r.note || '');
+    const luggageEl = document.getElementById('rbLuggage');
+    if (luggageEl) luggageEl.checked = !!r.hasLuggage;
+
+    const subEl = document.getElementById('rbSubtitle');
+    if (subEl) subEl.textContent = `Đặt lại từ vé cũ: ${r.route} (${r.time}) — Ghế ${r.seat}`;
+
+    rebookSelectedSeats = [];
+    rebookSelectedTripId = null;
+    rbSelectedDateStr = rbTodayStr();
+    rbCalDate = new Date();
+    rbUpdateCalTrigger();
+    rbRenderCalendar();
+    setVal('rbFilterTime', 'all');
+    renderRebookTripList();
+
+    const mapEl = document.getElementById('rbSeatMap');
+    if (mapEl) mapEl.innerHTML = '<p class="ch-seat-placeholder">Vui lòng chọn phơi xe trước</p>';
+
+    updateRebookBtn();
+
+    const modal = document.getElementById('rebookModal');
+    if (modal) {
+      modal.classList.add('open');
+      modal.style.display = 'flex';
+      modal.style.setProperty('display', 'flex', 'important');
+    } else {
+      showToast('Không tìm thấy giao diện đặt lại vé (rebookModal)', 'error');
+    }
+  } catch (err) {
+    console.error('Error opening rebook modal:', err);
+    showToast('Lỗi mở khung đặt lại vé: ' + err.message, 'error');
+  }
+}
+
+function openSeatMenu(ev, seat) {
+  if (blockIfMultiSelectActive()) return;
+  const menu = document.getElementById('seatMenu');
+  menu.innerHTML = `
+    <button data-action="closeSeatMenuAndStartTransfer" data-args='${JSON.stringify([seat.code])}'>Chuyển vé</button>
+  `;
+  const rect = ev.target.closest('.seat-card').getBoundingClientRect();
+  menu.style.top = (window.scrollY + rect.bottom + 4) + 'px';
+  menu.style.left = (window.scrollX + rect.left) + 'px';
+  menu.classList.add('open');
+  ev.stopPropagation();
+}
+
+function openSubSeatModal(code) {
+  editingSubSeatCode = code || null;
+  const titleEl = document.getElementById('subSeatModalTitle');
+  const noteEl = document.getElementById('subSeatNote');
+  const priceDisplayEl = document.getElementById('subSeatPriceDisplay');
+  if (editingSubSeatCode) {
+    const seat = subSeats.find(s => s.code === editingSubSeatCode);
+    if (!seat) return;
+    if (titleEl) titleEl.textContent = `Sửa ghế phụ ${seat.code}`;
+    if (noteEl) noteEl.value = seat.note || '';
+    if (priceDisplayEl) priceDisplayEl.textContent = (seat.price || DEFAULT_SUB_SEAT_PRICE).toLocaleString('vi-VN') + 'đ';
+  } else {
+    if (titleEl) titleEl.textContent = 'Thêm ghế phụ';
+    if (noteEl) noteEl.value = '';
+    if (priceDisplayEl) priceDisplayEl.textContent = DEFAULT_SUB_SEAT_PRICE.toLocaleString('vi-VN') + 'đ';
+  }
+  document.getElementById('subSeatModal').classList.add('open');
+}
+
+function renderCancelledSeats() {
+  const section = document.getElementById('cancelledSeatsSection');
+  const list = document.getElementById('cancelledSeatsList');
+  if (!section || !list) return;
+
+  // Danh sách rút gọn cuối Zone 3 chỉ hiện vé hủy CHƯA được chuyển ghế (còn cần xử lý) — vé đã chuyển
+  // vẫn còn nguyên trong cancelledSeats và vẫn hiện đủ ở tab "Ghế hủy" (Zone 2) để lưu vết lịch sử.
+  const activeCancelled = (cancelledSeats || []).filter(c => !c.restored);
+  if (activeCancelled.length === 0) {
+    section.style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+  section.style.display = '';
+
+  const totalSeats = [...seatPlanDown, ...seatPlanUp].filter(s => s.state !== 'hidden').length;
+  const useThreeCols = totalSeats >= 34;
+  list.classList.toggle('cols-3', useThreeCols);
+
+  list.innerHTML = activeCancelled.map(cancelledSeatCard).join('');
+}
+
+/* ---- Chuyển ghế từ danh sách ghế hủy sang 1 ghế trống ở phơi bất kỳ — tái dùng nguyên cơ chế
+   "chuyển ghế" sẵn có (multiSelectMode/selectionMode='transfer', thanh .sticky-actions, chọn phơi
+   khác ở Zone 1 trong lúc chọn). Khác transfer thường ở chỗ nguồn là 1 bản ghi trong cancelledSeats
+   (không phải ghế đang có khách) nên KHÔNG xoá/clear gì ở "nguồn" — chỉ áp dữ liệu vào ghế đích, giữ
+   nguyên bản ghi trong cancelledSeats để lưu vết (không xoá). */
+// Tra bản ghi vé hủy theo ĐÚNG phơi nguồn (transferSourceTripId), không dùng biến toàn cục
+// cancelledSeats trực tiếp — biến đó phản ánh phơi ĐANG XEM, mà trong lúc chuyển ghế người dùng có
+// thể đã bấm sang phơi khác ở Zone 1 (để chọn ghế đích) nên cancelledSeats lúc đó là của phơi đích.
+function findCancelledRecordInTrip(tripId, cancelId) {
+  const bank = tripSeatBank[tripId];
+  const list = (bank && bank.cancelledSeats) || (tripId === currentTripId ? cancelledSeats : null) || [];
+  return list.find(c => c.id === cancelId);
+}
+
+function startTransferFromCancelled(cancelId) {
+  if (blockIfMultiSelectActive()) return;
+  const record = (cancelledSeats || []).find(c => c.id === cancelId);
+  if (!record) { showToast('Không tìm thấy vé đã hủy này'); return; }
+  multiSelectMode = true;
+  selectionMode = 'transfer';
+  selectedSourceSeats = [];
+  selectedTargetSeats = [];
+  transferSourceCancelId = cancelId;
+  transferSourceTripId = currentTripId;
+  transferTargetTripId = currentTripId;
+  document.querySelectorAll('.seat-card').forEach(c => { c.style.outline = 'none'; });
+  updateTransferHint();
+  showToast(`Đã chọn vé hủy của ${record.customerName || 'khách'}. Bấm ghế trống để chuyển sang (có thể chọn chuyến khác ở Zone 1).`);
+}
+
+function confirmRestoreFromCancelled() {
+  const record = findCancelledRecordInTrip(transferSourceTripId, transferSourceCancelId);
+  if (!record || selectedTargetSeats.length === 0) {
+    showToast('Vui lòng chọn 1 ghế trống để chuyển vé hủy sang');
+    return;
+  }
+  const targetTripId = transferTargetTripId || currentTripId;
+  const targetCode = selectedTargetSeats[0];
+  const targetSeat = findSeatInTrip(targetTripId, targetCode);
+  if (!targetSeat || targetSeat.state !== 'empty') {
+    showToast('Ghế đích không còn trống, vui lòng chọn ghế khác');
+    return;
+  }
+
+  Object.assign(targetSeat, {
+    state: 'hold',
+    customerName: record.customerName,
+    phone: record.phone,
+    firstStop: record.firstStop,
+    lastStop: record.lastStop,
+    price: record.price,
+    note: record.note,
+    ticketNo: record.ticketNo,
+    paid: false,
+    count: 1
+  });
+  // Không xoá record khỏi cancelledSeats — giữ lại để lưu vết theo yêu cầu nghiệp vụ (tab "Ghế hủy"
+  // vẫn hiện đủ mọi bản ghi). Chỉ đánh dấu "restored" để danh sách rút gọn cuối Zone 3 (nơi để bấm
+  // chuyển ghế) ẩn bớt các vé đã xử lý xong, tránh chuyển nhầm lần 2 vào cùng 1 vé hủy.
+  const trip = allTripsMeta.find(t => t.id === targetTripId);
+  record.restored = true;
+  record.restoredToSeat = targetCode;
+  record.restoredToTripLabel = trip ? trip.time : '';
+  record.restoredAt = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('vi-VN');
+
+  saveSeatBank();
+  if (targetTripId === currentTripId) renderSeats();
+  if (document.getElementById('zone3Passengers') && document.getElementById('zone3Passengers').style.display !== 'none' && typeof renderPassengerList === 'function') {
+    renderPassengerList();
+  }
+  if (typeof renderCancelledListTable === 'function') renderCancelledListTable();
+
+  const restoredName = record.customerName;
+  exitMultiSelectMode();
+  showToast(`Đã chuyển vé hủy của ${restoredName || 'khách'} sang ghế ${targetCode}${trip ? ' · phơi ' + trip.time : ''}`);
+}
+
+function renderLiveSearchResults(query) {
+  const dropdown = document.getElementById('searchResults');
+  if (!dropdown) return;
+  if (!query || !query.trim().length) {
+    dropdown.classList.remove('open');
+    return;
+  }
+
+  const custMatches = searchCustomerByPhone(query);
+  const customerMap = new Map();
+  custMatches.forEach(m => {
+    const key = `${m.phone || ''}_${m.name || ''}`;
+    if (!customerMap.has(key)) customerMap.set(key, m);
+  });
+  const topCustMatches = Array.from(customerMap.values()).slice(0, 5);
+
+  let html = '';
+  if (topCustMatches.length) {
+    html += topCustMatches.map(m => {
+      const phoneDisp = m.phone ? ` (<span style="color:var(--red);font-weight:700;">${m.phone}</span>)` : '';
+      return `
+        <div class="search-result-row" data-action="searchResultRowClick" data-args='${JSON.stringify([m.phone || '', m.phone || m.name])}'>
+          <div>
+            <div class="src-name">${m.name || 'Khách hàng'}${phoneDisp}</div>
+            <div class="src-meta">${m.route} • ${m.time} • Ghế ${m.seat}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+  if (!html) {
+    html = '<div class="search-result-row" style="color:var(--text-sub);justify-content:center;padding:12px;">Không tìm thấy kết quả phù hợp</div>';
+  }
+  dropdown.innerHTML = html;
+  dropdown.classList.add('open');
+}
+
+function renderMiniSeatMap(tripId) {
+  const container = document.getElementById('rbSeatMap');
+  if (!container) return;
+  const bank = tripSeatBank?.[tripId];
+  if (!bank) {
+    container.innerHTML = '<p class="ch-seat-placeholder">Không có dữ liệu phơi xe</p>';
+    return;
+  }
+  const downSeats = bank.down || [];
+  const upSeats = bank.up || [];
+  const validDown = downSeats.filter(s => s.state !== 'hidden');
+  const validUp = upSeats.filter(s => s.state !== 'hidden');
+  const colsClass = (validDown.length + validUp.length) >= 34 ? 'cols-3' : '';
+
+  container.innerHTML = `
+    <div class="ch-mini-floors">
+      <div class="ch-mini-floor">
+        <div class="ch-mini-floor-title">TẦNG DƯỚI</div>
+        <div class="ch-mini-grid ${colsClass}">${downSeats.map(s => miniSeatHtml(s, tripId)).join('')}</div>
+      </div>
+      <div class="ch-mini-floor">
+        <div class="ch-mini-floor-title">TẦNG TRÊN</div>
+        <div class="ch-mini-grid ${colsClass}">${upSeats.map(s => miniSeatHtml(s, tripId)).join('')}</div>
+      </div>
+    </div>`;
+}
+
+// ===== Lịch chọn ngày cho bộ lọc "Chọn phơi xe" trong modal Đặt lại vé =====
+// Đặt lại vé có thể chuyển khách sang MỘT NGÀY KHÁC (không chỉ trong các ngày đã có sẵn phơi), nên dùng
+// lịch chọn-ngày-bất-kỳ (giống #calTrigger Zone 1 / #pkFilterDateBtn trang Rước liền) thay vì <select>
+// chỉ liệt kê những ngày đã có dữ liệu. Đây là lịch RIÊNG (tiền tố "rb"), không dùng chung toggleCalendar()
+// của js/shared/ui.js vì hàm đó gắn cứng vào #calendarPanel/#calTrigger của Zone 1.
+const RB_MONTH_NAMES = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
+function rbTodayStr() {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+}
+let rbCalDate = new Date();
+let rbSelectedDateStr = rbTodayStr(); // null = "Tất cả ngày"; mặc định = hôm nay, giống mọi lịch khác trong app
+let rbCalendarOpen = false;
+
+function rbRenderCalendar() {
+  const calGrid = document.getElementById('rbCalGrid');
+  const monthLabel = document.getElementById('rbCalMonthLabel');
+  if (!calGrid || !monthLabel) return;
+  const today = new Date();
+  const y = rbCalDate.getFullYear(), m = rbCalDate.getMonth();
+  monthLabel.textContent = `${RB_MONTH_NAMES[m]}, ${y}`;
+  const first = new Date(y, m, 1);
+  const startOffset = (first.getDay() + 6) % 7;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const daysInPrevMonth = new Date(y, m, 0).getDate();
+  let html = '';
+  ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].forEach(d => { html += `<div class="cal-dow">${d}</div>`; });
+  for (let i = 0; i < startOffset; i++) {
+    html += `<div class="cal-day muted">${daysInPrevMonth - startOffset + i + 1}</div>`;
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateObj = new Date(y, m, d);
+    const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const isToday = dateObj.toDateString() === today.toDateString();
+    const isSelected = dateStr === rbSelectedDateStr;
+    html += `<div class="cal-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-action="rbPickDate" data-args='[${y},${m},${d}]'>${d}</div>`;
+  }
+  const totalCells = startOffset + daysInMonth;
+  const trailing = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= trailing; i++) {
+    html += `<div class="cal-day muted">${i}</div>`;
+  }
+  calGrid.innerHTML = html;
+}
+
+function rbShiftMonth(dir) {
+  rbCalDate = new Date(rbCalDate.getFullYear(), rbCalDate.getMonth() + dir, 1);
+  rbRenderCalendar();
+}
+
+function rbGoToday() {
+  rbCalDate = new Date();
+  rbSelectedDateStr = rbTodayStr();
+  rbRenderCalendar();
+  rbUpdateCalTrigger();
+  rbToggleCalendar(false);
+  renderRebookTripList();
+}
+
+function rbPickDate(y, m, d) {
+  rbSelectedDateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  rbRenderCalendar();
+  rbUpdateCalTrigger();
+  rbToggleCalendar(false);
+  renderRebookTripList();
+}
+
+function rbUpdateCalTrigger() {
+  const label = document.getElementById('rbFilterDateLabel');
+  if (!label) return;
+  if (!rbSelectedDateStr) { label.textContent = 'Tất cả ngày'; return; }
+  label.textContent = rbSelectedDateStr === rbTodayStr() ? `Hôm nay (${formatHistoryDate(rbSelectedDateStr)})` : formatHistoryDate(rbSelectedDateStr);
+}
+
+function rbToggleCalendar(force) {
+  const panel = document.getElementById('rbCalendarPanel');
+  const btn = document.getElementById('rbFilterDateBtn');
+  if (!panel || !btn) return;
+  rbCalendarOpen = typeof force === 'boolean' ? force : !rbCalendarOpen;
+  panel.classList.toggle('open', rbCalendarOpen);
+  btn.classList.toggle('open', rbCalendarOpen);
+}
+
+document.addEventListener('click', (e) => {
+  if (rbCalendarOpen && !e.target.closest('#rbCalendarPanel') && !e.target.closest('#rbFilterDateBtn')) {
+    rbToggleCalendar(false);
+  }
+});
+
+function renderRebookTripList() {
+  const container = document.getElementById('rbTripList');
+  if (!container) return;
+  const timeVal = document.getElementById('rbFilterTime')?.value || 'all';
+  let html = '';
+  (allTripsMeta || []).forEach(trip => {
+    if (trip.status === 'Đã hủy') return;
+    if (rbSelectedDateStr && trip.date !== rbSelectedDateStr) return;
+    if (timeVal !== 'all') {
+      const hh = parseInt((trip.time || '00:00').split(':')[0], 10);
+      if (timeVal === 'morning' && (hh < 0 || hh >= 12)) return;
+      if (timeVal === 'afternoon' && (hh < 12 || hh >= 18)) return;
+      if (timeVal === 'evening' && (hh < 18 || hh > 24)) return;
+    }
+    const bank = tripSeatBank?.[trip.id];
+    const totalSeats = bank ? bank.down.filter(s => s.state !== 'hidden').length + bank.up.filter(s => s.state !== 'hidden').length : 0;
+    const bookedSeats = bank ? [...bank.down, ...bank.up].filter(s => ['sold', 'hold', 'free', 'cargo'].includes(s.state)).length : 0;
+    const selected = trip.id === rebookSelectedTripId ? 'selected' : '';
+    const plate = trip.plate || 'Chưa có';
+    const vehicleType = trip.vehicleType || 'Chưa rõ';
+    const isLimo = vehicleType.toLowerCase().includes('limousine') || vehicleType.toLowerCase().includes('limo');
+    const seatTagClass = isLimo ? 'tag-limo' : 'tag-normal';
+    const displayTripName = trip.name || `${trip.route} (${trip.time})`;
+
+    // Dùng nguyên .trip-card/.trip-card-row1/.trip-card-row2/.trip-seat-tag của renderZone1TripList()
+    // (js/callcenter.js, js/ticketstaff.js) để danh sách phơi trong modal "Đặt lại vé" giống y hệt danh
+    // sách phơi Zone 1, không phải bản .ch-trip-card riêng nữa.
+    html += `
+      <div class="trip-card ${selected}" data-trip="${trip.id}" data-action="selectRebookTrip" data-args='${JSON.stringify([trip.id])}'>
+        <div class="trip-card-row1">
+          <div class="trip-info-left">
+            <span class="trip-time">${trip.time}</span>
+            <span class="trip-plate-inline">${plate}</span>
+          </div>
+          <div class="trip-seat-tag ${seatTagClass}">${bookedSeats}/${totalSeats}</div>
+        </div>
+        <div class="trip-card-row2">
+          <span class="trip-name-text">${displayTripName}</span>
+        </div>
+      </div>`;
+  });
+  container.innerHTML = html || `<div class="ch-trip-empty">Không có phơi xe phù hợp với bộ lọc.</div>`;
+}
+
+function renderRouteOptions(filterText) {
+  const container = document.getElementById('routeDropdown');
+  if (!container) return;
+  const kw = normalizeSearchText(filterText || '');
+  const routes = routeOptions[selectedDirection].filter(route => !kw || normalizeSearchText(route.label).includes(kw));
+  container.innerHTML = routes.length ? routes.map(route => `
+    <div class="dropdown-item ${route.id === selectedRoute ? 'active' : ''}" data-route="${route.id}" data-action="selectRoute" data-args='${JSON.stringify([route.id])}'>
+      <span>${route.label}</span>
+      <span class="dropdown-item-check">✓</span>
+    </div>
+  `).join('') : `<div class="dropdown-empty">Không tìm thấy tuyến phù hợp</div>`;
+}
+
+function renderDirectionOptions(filterText) {
+  const container = document.getElementById('directionDropdown');
+  if (!container) return;
+  const kw = normalizeSearchText(filterText || '');
+  const dirs = Object.keys(directionLabels).filter(dir => !kw || normalizeSearchText(directionLabels[dir]).includes(kw));
+  container.innerHTML = dirs.length ? dirs.map(dir => `
+    <div class="dropdown-item ${dir === selectedDirection ? 'active' : ''}" data-dir="${dir}" data-action="toggleDirection" data-args='${JSON.stringify([dir])}'>
+      <span>${directionLabels[dir]}</span>
+      <span class="dropdown-item-check">✓</span>
+    </div>
+  `).join('') : `<div class="dropdown-empty">Không tìm thấy hướng phù hợp</div>`;
+}
+
+// Combobox tìm-để-chọn cho "Hướng đi"/"Tuyến" ở Zone 1 — gõ để lọc realtime trong danh sách lựa chọn,
+// để trống ô thì hiện lại toàn bộ. Dùng addEventListener trực tiếp (không qua data-action) vì cần bắt
+// sự kiện focus/blur — dispatcher dùng chung chỉ hỗ trợ click/change/input/blur/submit qua data-*-action,
+// còn ở đây phải tự quản lý theo từng ô nên gắn thẳng cho gọn, giống cách #searchInput đã làm.
+(function initZone1ComboBoxes() {
+  const directionInput = document.getElementById('directionTrigger');
+  const directionPanel = document.getElementById('directionDropdown');
+  if (directionInput && directionPanel) {
+    directionInput.addEventListener('focus', function () {
+      renderDirectionOptions('');
+      directionPanel.classList.add('open');
+    });
+    directionInput.addEventListener('input', function () {
+      renderDirectionOptions(this.value);
+      directionPanel.classList.add('open');
+    });
+    directionInput.addEventListener('blur', function () {
+      // Trễ 150ms: nếu blur là do bấm 1 mục trong danh sách, click đó chạy trước và đã cập nhật
+      // selectedDirection/giá trị ô — lúc đó gán lại canonical value chỉ là no-op, không đè mất lựa chọn.
+      setTimeout(function () {
+        directionPanel.classList.remove('open');
+        directionInput.value = directionLabels[selectedDirection] || '';
+      }, 150);
+    });
+  }
+
+  const routeInput = document.getElementById('routeTrigger');
+  const routePanel = document.getElementById('routeDropdown');
+  if (routeInput && routePanel) {
+    routeInput.addEventListener('focus', function () {
+      renderRouteOptions('');
+      routePanel.classList.add('open');
+    });
+    routeInput.addEventListener('input', function () {
+      renderRouteOptions(this.value);
+      routePanel.classList.add('open');
+    });
+    routeInput.addEventListener('blur', function () {
+      setTimeout(function () {
+        routePanel.classList.remove('open');
+        const item = routeOptions[selectedDirection].find(r => r.id === selectedRoute);
+        routeInput.value = item ? item.label : '';
+      }, 150);
+    });
+  }
+})();
+
+function renderSubSeats() {
+  const section = document.getElementById('subSeatsSection');
+  const list = document.getElementById('subSeatsList');
+  if (!section || !list) return;
+
+  const totalSeats = [...seatPlanDown, ...seatPlanUp].filter(s => s.state !== 'hidden').length;
+  const useThreeCols = totalSeats >= 34;
+  list.classList.toggle('cols-3', useThreeCols);
+
+  list.innerHTML = subSeats.map(subSeatCard).join('') + subSeatAddTile();
+}
+
+// Quét tripSeatBank (phơi đang có trong ngày), trả về danh sách vé đã đặt/bán/rước dạng phẳng (chưa gom
+// nhóm) — dùng chung cho tìm kiếm theo SĐT/tên (searchCustomerByPhone, chỉ lấy khớp matchSeatFn) và trang
+// "Lịch sử hành khách" (loadAllPassengerHistory, lấy hết không lọc).
+function scanTripSeatBankHistory(matchSeatFn) {
+  const rawResults = [];
+  Object.keys(tripSeatBank).forEach(tripId => {
+    const bank = tripSeatBank[tripId];
+    const tripMeta = allTripsMeta.find(t => t.id === tripId);
+    if (!bank || !tripMeta) return;
+
+    [...(bank.down || []), ...(bank.up || []), ...(bank.subSeats || [])].forEach(seat => {
+      if (['sold', 'hold', 'free', 'cargo'].includes(seat.state) && matchSeatFn(seat)) {
+        rawResults.push({
+          date: tripMeta.date || todayStr,
+          phone: seat.phone,
+          name: seat.customerName,
+          guestType: seat.guestType || 'Khách trạm',
+          transship: seat.transshipStation || seat.transship || '',
+          pickupAddress: seat.pickupAddress || '',
+          dropoffAddress: seat.dropoffAddress || '',
+          ticketNo: seat.ticketNo,
+          route: tripMeta.route,
+          time: tripMeta.time,
+          seat: seat.code,
+          firstStop: seat.firstStop,
+          lastStop: seat.lastStop,
+          state: seat.state,
+          paid: seat.paid,
+          price: seat.price,
+          plate: bank.plate || tripMeta.plate,
+          vehicleType: bank.vehicleType || tripMeta.vehicleType,
+          driver: bank.driver || '',
+          helper: bank.helper || '',
+          bookStaff: getStaffCode(seat.staff) || 'NV01',
+          sellStaff: seat.paid ? (getStaffCode(seat.staff) || 'NV05') : '—',
+          isToday: true,
+          tripId
+        });
+      }
+    });
+  });
+  return rawResults;
+}
+
+function searchCustomerByPhone(query) {
+  const raw = (query || '').toString().trim();
+  if (!raw) return [];
+
+  const rawNoSpace = raw.replace(/[\s.\-]/g, '');
+  const isPhone = /^\+?[0-9]+$/.test(rawNoSpace);
+  const normPhone = rawNoSpace.replace(/^\+84/, '0');
+  const normText = normalizeSearchText(raw);
+
+  const isMatch = (p, n, t) => isPhone
+    ? (p || '').replace(/[\s.\-]/g, '').replace(/^\+84/, '0').includes(normPhone)
+    : (n && normalizeSearchText(n).includes(normText)) || (t && t.toLowerCase().includes(normText));
+
+  // Tìm kiếm lịch sử từ thanh tìm kiếm header chỉ lấy phơi đang có trong ngày (tripSeatBank), không lấy
+  // dữ liệu lịch sử quá khứ (CUSTOMER_HISTORY_DATA) theo yêu cầu — trước đây có gộp cả 2 nguồn. Muốn xem
+  // cả lịch sử quá khứ của TẤT CẢ khách thì dùng trang "Lịch sử hành khách" (loadAllPassengerHistory).
+  const rawResults = scanTripSeatBankHistory(seat => isMatch(seat.phone, seat.customerName, seat.ticketNo));
+  return groupHistoryResults(rawResults).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+// Toàn bộ lịch sử vé của TẤT CẢ khách (không lọc theo SĐT/tên) cho trang "Lịch sử hành khách" — gồm cả
+// phơi đang có trong ngày (tripSeatBank) lẫn dữ liệu quá khứ (CUSTOMER_HISTORY_DATA).
+function loadAllPassengerHistory() {
+  const rawResults = scanTripSeatBankHistory(() => true);
+  CUSTOMER_HISTORY_DATA.forEach(h => rawResults.push({ ...h, isToday: false }));
+  return groupHistoryResults(rawResults).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function selectRebookTrip(tripId) {
+  rebookSelectedTripId = tripId;
+  rebookSelectedSeats = [];
+  document.querySelectorAll('#rbTripList .trip-card').forEach(c => c.classList.remove('selected'));
+  const card = document.querySelector(`#rbTripList .trip-card[data-trip="${tripId}"]`);
+  if (card) card.classList.add('selected');
+  renderMiniSeatMap(tripId);
+  updateRebookBtn();
+}
+
+function selectRoute(route) {
+  const routeItem = routeOptions[selectedDirection].find(item => item.id === route);
+  if (!routeItem) return;
+  selectedRoute = route;
+  const routeInput = document.getElementById('routeTrigger');
+  if (routeInput) routeInput.value = routeItem.label;
+  document.querySelectorAll('#routeDropdown .dropdown-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.route === route);
+  });
+  document.getElementById('routeDropdown').classList.remove('open');
+  showToast('Chọn tuyến: ' + routeItem.label);
+}
+
+function subSeatAddTile() {
+  return `
+  <div class="seat-card sub-add" data-action="openSubSeatModal">
+    <span class="sub-add-plus">+</span>
+  </div>`;
+}
+
+function subSeatCard(seat) {
+  return `
+  <div class="seat-card sub" data-code="${seat.code}" data-action="openSubSeatModal" data-args='${JSON.stringify([seat.code])}'>
+    <div class="seat-top">
+      <div><div class="seat-code">${seat.code}</div></div>
+      <div class="seat-top-right">
+        <div class="seat-price-tag">${(seat.price || 0).toLocaleString('vi-VN')}đ</div>
+        <button type="button" class="seat-cancel-tag" data-action="deleteSubSeat" data-stop-propagation="1" data-args='${JSON.stringify([seat.code])}'>Xóa</button>
+      </div>
+    </div>
+    <div class="seat-note" title="${seat.note || ''}">${seat.note || '—'}</div>
+  </div>`;
+}
+
+function syncRuocLienToPickupList(seats) {
+  let paxList = [];
+  try {
+    const saved = localStorage.getItem(HN_PICKUP_PAX_KEY);
+    if (saved) paxList = JSON.parse(saved);
+  } catch (e) { }
+
+  if (!Array.isArray(paxList)) paxList = [];
+
+  const seatsArray = Array.isArray(seats) ? seats : [seats];
+  const targetSeat = seatsArray[0];
+  if (!targetSeat || targetSeat.guestType !== 'Rước liền') return;
+
+  const name = targetSeat.customerName || 'Khách rước';
+  const phone = targetSeat.phone || '';
+  const count = seatsArray.length;
+  const address = targetSeat.transshipStation || targetSeat.transship || targetSeat.pickupAddress || '';
+  const station = targetSeat.firstStop || DEFAULT_STAFF_STATION;
+  const destination = targetSeat.lastStop || 'Bến xe Châu Đốc';
+  const destinationTransfer = targetSeat.arrivalTransfer || targetSeat.dropoffAddress || '';
+  const tripNote = targetSeat.note || '';
+  const luggage = !!targetSeat.hasLuggage;
+
+  const existingIdx = paxList.findIndex(p => p.phone === phone && p.name === name);
+  const paxObj = {
+    id: existingIdx > -1 ? paxList[existingIdx].id : Date.now(),
+    name,
+    phone,
+    ticketCount: count,
+    fromStation: station,
+    fromTransfer: address,
+    toStation: destination,
+    toTransfer: destinationTransfer,
+    note: tripNote,
+    luggage: luggage,
+    assigned: { tripId: currentTripId, seat: seatsArray.map(s => s.code).join(', ') },
+    guestType: 'Rước liền',
+    isRuocLien: true
+  };
+
+  if (existingIdx > -1) {
+    paxList[existingIdx] = paxObj;
+  } else {
+    paxList.unshift(paxObj);
+  }
+
+  const jsonStr = JSON.stringify(paxList);
+  localStorage.setItem(HN_PICKUP_PAX_KEY, jsonStr);
+  try {
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: HN_PICKUP_PAX_KEY,
+      newValue: jsonStr,
+      storageArea: localStorage
+    }));
+  } catch (e) { }
+}
+
+function toggleDirection(dir) {
+  if (!directionLabels[dir]) return;
+  selectedDirection = dir;
+  selectedRoute = 'all';
+  const directionInput = document.getElementById('directionTrigger');
+  if (directionInput) directionInput.value = directionLabels[dir];
+  const routeInput = document.getElementById('routeTrigger');
+  if (routeInput) routeInput.value = 'Tất cả tuyến';
+  document.querySelectorAll('#directionDropdown .dropdown-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.dir === dir);
+  });
+  renderRouteOptions();
+  updateTripListForDirection(dir);
+  document.getElementById('directionDropdown').classList.remove('open');
+  showToast('Chọn hướng: ' + directionLabels[dir]);
+}
+
+function togglePaxFilter() {
+  document.getElementById('paxFilterDropdown').classList.toggle('open');
+}
+
+function toggleRebookSeat(code, tripId) {
+  if (tripId !== rebookSelectedTripId) return;
+  const idx = rebookSelectedSeats.indexOf(code);
+  if (idx >= 0) rebookSelectedSeats.splice(idx, 1);
+  else rebookSelectedSeats.push(code);
+  renderMiniSeatMap(tripId);
+  updateRebookBtn();
+}
+
+function toggleZone1() {
+  setZone1Collapsed(!document.body.classList.contains('zone1-collapsed'));
+}
+
+function updateCancelledTabCount() {
+  const cntEl = document.getElementById('cancelledTabCnt');
+  if (cntEl) {
+    cntEl.textContent = `(${cancelledSeats ? cancelledSeats.length : 0})`;
+  }
+}
+
+function updatePassengerTabCount() {
+  const allBooked = getAllBookedSeats();
+  const grouped = groupSeatsByTicket(allBooked);
+
+  const cntEl = document.getElementById('passengerTabCnt');
+  if (cntEl) cntEl.textContent = `(${allBooked.length})`;
+
+  const pickupCount = grouped.filter(g => {
+    const s = g.main;
+    return s.guestType === 'Trung chuyển' || s.guestType === 'Rước liền' || s.guestType === 'Rước đường' || !!s.pickupAddress || !!s.transship;
+  }).length;
+
+  const dropoffCount = grouped.filter(g => {
+    const s = g.main;
+    return s.guestType === 'Trung chuyển' || !!s.dropoffAddress || !!s.arrivalTransfer;
+  }).length;
+
+  const transTabCntEl = document.getElementById('transshipTabCnt');
+  if (transTabCntEl) transTabCntEl.textContent = `(${pickupCount} | ${dropoffCount})`;
+
+  const transSection = document.getElementById('zone3Transship');
+  if (transSection && transSection.style.display !== 'none') {
+    renderTransshipTables();
+  }
+}
+
+function updateRebookBtn() {
+  const btn = document.getElementById('rbConfirmBtn');
+  const sellBtn = document.getElementById('rbSellBtn');
+  const countEl = document.getElementById('rbSelectedCount');
+  if (countEl) countEl.textContent = `(${rebookSelectedSeats.length} ghế)`;
+  const isDisabled = !rebookSelectedTripId || !rebookSelectedSeats.length;
+  if (btn) btn.disabled = isDisabled;
+  if (sellBtn) sellBtn.disabled = isDisabled;
+}
+
+function updateTransferBarVisibility() {
+  const sticky = document.querySelector('.sticky-actions');
+  if (!sticky) return;
+  const paxSection = document.getElementById('zone3Passengers');
+  const isSeatMapVisible = !paxSection || paxSection.style.display === 'none';
+  const shouldShow = multiSelectMode && isSeatMapVisible;
+  sticky.style.display = shouldShow ? 'flex' : 'none';
+  const seatSection = document.querySelector('.zone3:not(.passenger-view)');
+  if (seatSection) seatSection.classList.toggle('has-sticky-actions', shouldShow);
+}
+
+function updateTransferHint() {
+  let bookedText = '';
+  if (transferSourceCancelId) {
+    const record = findCancelledRecordInTrip(transferSourceTripId, transferSourceCancelId);
+    bookedText = record ? `Đã chọn vé hủy: ${record.customerName || 'Khách'} (${record.phone || '—'})` : '';
+  } else if (selectedSourceSeats.length) {
+    bookedText = `Đã chọn ghế đã đặt: ${selectedSourceSeats.join(', ')}`;
+  }
+  const emptyText = selectedTargetSeats.length ? ` | Ghế trống: ${selectedTargetSeats.join(', ')}` : '';
+  document.getElementById('stickyHint').textContent = bookedText + emptyText;
+  const actionBtn = document.getElementById('stickyActionBtn');
+  if (actionBtn) {
+    if (selectionMode === 'transfer') {
+      actionBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3v18"/><path d="m21 7-4-4-4 4"/><path d="M7 21V3"/><path d="m3 17 4 4 4-4"/></svg>Chuyển ghế';
+    } else {
+      actionBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Đặt vé nhóm';
+    }
+  }
+  updateTransferBarVisibility();
+}
+

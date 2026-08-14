@@ -10,28 +10,52 @@
 .tab-btn-group {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
+  justify-content: center;
+  gap: 2px;
+  flex: 0 1 auto;
+  align-self: center;
+  min-width: 0;
+  height: 36px;
+  padding: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-gray);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 2px rgba(17, 18, 19, 0.04);
 }
 
 .pill-btn {
-  padding: 6px 13px;
+  position: relative;
+  height: 100%;
+  padding: 0 18px;
+  border: none;
   border-radius: 999px;
+  background: transparent;
   font-size: 14px;
   font-weight: 700;
-  border: 1px solid var(--border-gray);
-  background: white;
-  color: var(--black);
+  letter-spacing: .01em;
+  color: var(--text-sub);
+  white-space: nowrap;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  white-space: nowrap;
+  transition: background .2s ease, color .2s ease, box-shadow .2s ease, transform .15s ease;
+  cursor: pointer;
+}
+
+.pill-btn:hover:not(.active) {
+  color: var(--black);
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .pill-btn.active {
   background: var(--red);
-  border-color: var(--red);
-  color: white;
+  color: var(--white);
+  box-shadow: 0 2px 10px rgba(245, 16, 11, 0.28);
+}
+
+.pill-btn:active {
+  transform: scale(0.98);
 }
 
 @keyframes calopen {
@@ -96,8 +120,8 @@
 }
 
 .searchable-dropdown input {
-  width: 100% !important;
-  padding-right: 32px !important;
+  width: 100%;
+  padding-right: 32px;
   cursor: pointer;
   border: 1px solid var(--border-gray);
   border-radius: var(--radius-sm);
@@ -115,8 +139,8 @@
 }
 
 .form-field .searchable-dropdown input {
-  padding: 9px 11px !important;
-  min-height: 42px !important;
+  padding: 9px 11px;
+  min-height: 42px;
   font-weight: 700;
 }
 
@@ -251,15 +275,13 @@
 .zone3 {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
+  flex: 0 0 auto;
   padding: 10px 22px 16px;
 }
 
 /* ===== MODAL CHỈ ĐỊNH GHẾ DƯ CHO PHƠI KHÁC ===== */
 #assignSeatModal .panel-body {
-  overflow-y: hidden !important;
+  overflow-y: hidden;
 }
 
 #assignSeatModal .trip-list {
@@ -431,3 +453,229 @@
     transform: translateY(0);
   }
 }
+
+/* ===================== RƯỚC LIỀN (gộp từ pickup-list.html/css) =====================
+   Bảng danh sách khách rước liền dùng .shuttle-table (ticketstaff.css trước đây chưa có,
+   copy đúng bản đang dùng ở css/callcenter.css cho "Danh sách phơi xe" để đồng nhất kiểu bảng). */
+
+/* .filter-field-date/.filter-select/.filter-date-chev chuyển sang css/shared/booking-ui.css (dùng chung)
+   vì #rbFilterDateBtn trong modal "Đặt lại vé" (js/shared/booking.js) cần kiểu này trên CẢ callcenter.html
+   lẫn ticketstaff.html, không riêng gì #pkFilterDateBtn ở đây. */
+.filter-reset { flex: 0 0 auto; display: flex; align-items: flex-end; margin-left: auto; }
+.filter-reset button { height: 35px; padding: 0 12px; font-size: 12px; font-weight: 600; }
+
+/* .panel-footer dùng chung (css/shared/booking-ui.css) mặc định justify-content:flex-end — dồn hết các
+   phần tử con (kể cả dòng gợi ý "Sẽ chỉ định...") về sát bên phải. #assignPickupModal cần dòng gợi ý nằm
+   góc trái, nút "Đóng"/"Bán vé" bên phải (đúng như trước khi gộp pickup-list.html) — ghi đè riêng
+   space-between, không đụng .panel-footer dùng chung cho các modal khác. */
+#assignPickupModal .panel-footer {
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* #pkFilterDateBtn là ô lọc NGOÀI CÙNG BÊN TRÁI trong .filter-toolbar (#pickupView), nằm trong
+   .filter-field-date chỉ rộng 160-190px. .calendar-popover dùng chung (css/shared/booking-ui.css) neo
+   theo "right:0" — tính từ mép PHẢI của khung 160-190px đó, trong khi bản thân popover rộng 250px, nên
+   phần dư (~60-90px) tràn ngược sang TRÁI khung, đè lên bảng bên dưới. Neo lại theo "left:0" (khớp mép
+   trái nút bấm) để popover mở đúng ngay dưới nút, không lệch/đè lên bảng. Không đụng đến lịch Zone 1
+   (#calendarPanel) — chỉ ghi đè riêng #pkCalendarPanel. */
+#pkCalendarPanel {
+  left: 0;
+  right: auto;
+}
+
+/* Bảng danh sách rước liền — bản đầu tiên ngay sau khi gộp pickup-list.html vào ticketstaff.html
+   (copy theo kiểu bảng "Danh sách phơi xe" bên callcenter.css, KHÔNG phải copy nguyên từ shuttle.css —
+   không dùng table-layout:fixed/max-width, để tránh bị kéo giãn hết màn hình). */
+.shuttle-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.shuttle-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--white);
+  z-index: 5;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--border-gray);
+  white-space: nowrap;
+}
+
+.shuttle-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--surface);
+  vertical-align: middle;
+}
+
+.shuttle-table tbody tr {
+  transition: background .12s ease;
+}
+
+.shuttle-table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.shuttle-table th.col-stt, .shuttle-table td.col-stt {
+  width: 36px;
+  text-align: center;
+  vertical-align: middle;
+  font-weight: 600;
+}
+
+.shuttle-table td.center {
+  text-align: center;
+}
+
+/* Chú giải trạng thái (giống trang shuttle) */
+.status-legend {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border-gray);
+  background: var(--surface-2);
+}
+
+.status-legend-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-right: 4px;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text-main);
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+/* Ô "Khách hàng" / "Trạm đi-đến" trong bảng rước liền */
+.pax-info { display: flex; flex-direction: column; gap: 3px; }
+.pax-name { font-weight: 700; color: var(--text-main); white-space: nowrap; font-size: 13.5px; }
+.pax-phone { color: var(--text-sub); white-space: nowrap; font-size: 13.5px; }
+.route-tags { display: flex; flex-direction: column; gap: 3px; }
+.route-tag { display: block; font-size: 13.5px; white-space: nowrap; }
+.route-tag.route-from { color: var(--text-main); font-weight: 600; }
+.route-tag.route-to { color: var(--text-sub); font-weight: 500; }
+
+.luggage-mark {
+  display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px;
+  border-radius: 4px; background: #fff; border: 1px solid var(--border-gray); color: #fff;
+}
+.luggage-mark svg { width: 12px; height: 12px; stroke-width: 3; }
+.luggage-mark.yes { background: #9AA0A6; border-color: #9AA0A6; }
+
+.status-tag { font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-block; white-space: nowrap; }
+.status-tag.pending { background: #FFF7E0; color: #B45309; }
+.status-tag.assigned { background: #EAFBF1; color: var(--green); }
+.assigned-info { display: flex; flex-direction: column; gap: 1px; font-size: 12.5px; align-items: center; text-align: center; }
+.assigned-info b { font-size: 13.5px; color: var(--text-main); }
+.assigned-info span { color: var(--text-sub); }
+
+.assign-action-btn {
+  background: linear-gradient(135deg, var(--red) 0%, #d81410 100%);
+  color: white; border: 1px solid transparent; border-radius: 6px; padding: 4px 10px;
+  font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+  gap: 4px; white-space: nowrap; box-shadow: 0 1.5px 5px rgba(194, 13, 8, 0.22);
+  transition: all .15s ease; line-height: 1.2; cursor: pointer;
+}
+.assign-action-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(194, 13, 8, 0.32); }
+.assign-action-btn svg { width: 12px; height: 12px; stroke: currentColor; flex: 0 0 auto; }
+.assign-action-btn.reassign { background: white; color: var(--text-main); border: 1px solid var(--border-gray); box-shadow: none; }
+.assign-action-btn.reassign:hover { border-color: var(--red); color: var(--red); background: var(--red-light); }
+
+/* Modal "Chỉ định xe rước liền" (#assignPickupModal) — .panel-head/.panel-body/.panel-footer/.icon-close
+   đã dùng chung ở css/shared/booking-ui.css; chỉ ghi đè riêng layout 2 cột + kích thước cho modal này. */
+.assign-panel {
+  width: 980px; height: 650px; max-width: 95vw; max-height: 92vh; background: white; border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .25); display: flex; flex-direction: column; overflow: hidden;
+}
+#assignPickupModal .panel-body {
+  grid-template-columns: 350px 1fr;
+  overflow-y: hidden;
+  height: 100%;
+  align-items: stretch;
+}
+.assign-left-col, .assign-right-col {
+  display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden;
+}
+
+/* Danh sách phơi bên trái modal — đặt tiền tố "pk-" vì .trip-card/.trip-time/.trip-plate-inline đã được
+   dùng cho thẻ phơi Zone 1 (css/shared/booking-ui.css) với cấu trúc/kiểu khác hẳn — trùng tên sẽ đè nhầm. */
+.pk-trip-col-title { font-size: 12.5px; font-weight: 800; color: var(--text-sub); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+.pk-trip-search-box {
+  display: flex; align-items: center; gap: 8px;
+  border: 1.5px solid var(--border-gray); border-radius: 999px;
+  padding: 8px 14px; margin-bottom: 10px; background: white;
+}
+.pk-trip-search-box:focus-within { border-color: var(--red); }
+.pk-trip-search-box svg { width: 15px; height: 15px; stroke: var(--text-sub); flex: 0 0 auto; }
+.pk-trip-search-box input { border: none; background: transparent; outline: none; flex: 1; font-size: 14.5px; color: var(--text-main); font-family: inherit; }
+.pk-trip-empty-msg { padding: 16px 4px; text-align: center; font-size: 13.5px; color: var(--text-sub); font-weight: 600; }
+/* .pk-trip-list vẫn cần (khung cuộn danh sách) — riêng kiểu dáng từng thẻ phơi giờ dùng chung .trip-card
+   (css/shared/booking-ui.css), đúng y hệt danh sách phơi Zone 1, nên đã bỏ toàn bộ .pk-trip-card/.pk-trip-*
+   riêng của modal này. */
+.pk-trip-list { flex: 1 1 0; min-height: 0; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 6px; }
+
+/* Sơ đồ ghế bên phải modal */
+.seatmap-col-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.seatmap-col-title span { font-size: 12.5px; font-weight: 800; color: var(--text-sub); text-transform: uppercase; letter-spacing: .4px; }
+#assignPickupModal .van-frame {
+  flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 14px 16px; width: 100%;
+  display: flex; flex-direction: row; gap: 16px; justify-content: center; align-items: flex-start;
+  border: 1px solid var(--border-gray); border-radius: var(--radius-lg); background: var(--surface-2);
+}
+#assignPickupModal .seat-legend {
+  flex: 0 0 auto; margin-top: 8px; padding: 7px 12px; background: white;
+  border: 1px solid var(--border-gray); border-radius: var(--radius-sm); width: 100%;
+}
+#assignPickupModal .floor-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+#assignPickupModal .floor-title-bar {
+  text-align: center; font-size: 13px; font-weight: 800; letter-spacing: 1px; color: var(--text-main);
+  background: var(--surface); border-radius: var(--radius-sm); padding: 4px 0; margin-bottom: 6px;
+}
+#assignPickupModal .seat-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  flex: 1 1 auto; align-content: start; justify-items: center;
+}
+#assignPickupModal .seat-grid.cols-3 { grid-template-columns: repeat(3, 1fr); gap: 6px 8px; }
+#assignPickupModal .seat-grid.cols-3 .van-seat { width: 36px; height: 36px; }
+
+.van-seat {
+  position: relative; width: 40px; height: 40px; background: none; border: none; padding: 0;
+  cursor: pointer; color: #cbd5e1; transition: all .2s ease;
+}
+.van-seat:hover:not(.blocked) { transform: scale(1.1); }
+.van-seat .seat-num {
+  position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
+  font-size: 11px; font-weight: bold; color: #475569; pointer-events: none;
+}
+.van-seat.empty { color: #7DAEE8; }
+.van-seat.selected { color: #F27874; }
+.van-seat.selected .seat-num { color: #ffffff; }
+.van-seat.blocked { color: #C7CBD1; opacity: .55; cursor: not-allowed; }
+.van-seat.blocked .seat-num { color: #ffffff; }
+
+.seat-legend-dot.selected { background: #F27874; }
+.seat-legend-dot.blocked { background: #C7CBD1; }

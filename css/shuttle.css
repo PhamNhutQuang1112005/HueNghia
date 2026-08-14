@@ -5,21 +5,10 @@
    diện thương hiệu xuyên suốt hệ thống.
    ========================================================= */
 
+/* --red, --red-light, --black, --border-gray, --surface, --surface-2, --green, --white,
+   --text-main, --text-sub, --radius-sm/md/lg đã chuyển sang css/shared/variables.css */
 :root{
-  --red:#C20D08;
-  --red-light:#FEEFEF;
   --red-dark:#9E0A06;
-  --black:#000000;
-  --border-gray:#CBCDCD;
-  --surface:#E7E7E8;
-  --surface-2:#F8F7F7;
-  --green:#16A34A;
-  --white:#FFFFFF;
-  --text-main:#111213;
-  --text-sub:#6B6E70;
-  --radius-sm:6px;
-  --radius-md:8px;
-  --radius-lg:10px;
 
   /* Màu trạng thái theo FR-04.1 */
   --status-waiting:#9CA3AF;   /* Chờ xử lý - xám */
@@ -32,28 +21,11 @@
   --status-issue-bg:#FEF0EF;
 }
 
-*{box-sizing:border-box;}
-html,body{height:100%;}
-body{
-  margin:0;
-  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
-  background:var(--white);
-  color:var(--text-main);
-  -webkit-font-smoothing:antialiased;
-}
-.mono{font-family:'Roboto Mono',monospace;}
-button{font-family:inherit;cursor:pointer;}
+/* *, html/body, body, .mono, button, a đã chuyển sang css/shared/base.css.
+   input,select,textarea giữ riêng vì có thêm textarea, base.css chỉ có input,select */
 input,select,textarea{font-family:inherit;}
-a{text-decoration:none;color:inherit;}
 
-/* ===================== APP SHELL ===================== */
-.app{
-  height:100vh;
-  display:flex;
-  flex-direction:column;
-  min-width:1180px;
-  overflow:hidden;
-}
+/* ===================== APP SHELL — .app đã chuyển sang css/shared/base.css ===================== */
 
 /* ===================== TOPBAR ===================== */
 .topbar{
@@ -211,7 +183,7 @@ a{text-decoration:none;color:inherit;}
 }
 .user-chip span{font-size:13px;font-weight:600;}
 .user-chip > svg{width:12px;height:12px;stroke:var(--text-sub);transition:transform .18s;}
-.user-menu.open .user-chip > svg{transform:rotate(180deg);}
+/* .user-menu.open .user-chip>svg đã chuyển sang css/shared/base.css */
 
 .user-dropdown{
   position:absolute;
@@ -278,7 +250,7 @@ a{text-decoration:none;color:inherit;}
   overflow:hidden;
 }
 
-/* --- Chú giải trạng thái (trang chính) --- */
+/* --- Chú giải trạng thái (dải riêng, dùng ở trang pickup-list) --- */
 .status-legend{
   flex:0 0 auto;
   display:flex;
@@ -288,6 +260,17 @@ a{text-decoration:none;color:inherit;}
   padding:10px 20px;
   border-bottom:1px solid var(--border-gray);
   background:var(--surface-2);
+}
+/* --- Chú giải trạng thái — gộp làm dòng phụ trong .filter-toolbar (trang shuttle) --- */
+.status-legend-inline{
+  flex:1 1 100%; /* luôn ép xuống dòng riêng trong .filter-toolbar (flex-wrap), không tranh chỗ 6 ô lọc */
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:6px 18px;
+  border-top:1px dashed var(--border-gray);
+  padding-top:8px;
+  margin-top:4px;
 }
 .status-legend-title{
   font-size:11px;
@@ -435,6 +418,11 @@ a{text-decoration:none;color:inherit;}
   width:100%;
   border-collapse:collapse;
   font-size:15px;
+  table-layout:fixed; /* width khai báo trên <th> áp cho cả cột, header/dữ liệu luôn thẳng hàng */
+}
+.shuttle-table th,
+.shuttle-table td{
+  box-sizing:border-box; /* padding tính vào width khai báo, không cộng thêm ra ngoài */
 }
 .shuttle-table thead th{
   position:sticky;top:0;background:var(--white);z-index:5;
@@ -443,55 +431,101 @@ a{text-decoration:none;color:inherit;}
   padding:10px 12px;border-bottom:2px solid var(--border-gray);white-space:nowrap;
 }
 .shuttle-table td{
-  padding:12px;border-bottom:1px solid var(--surface);
+  padding:10px;border-bottom:1px solid var(--surface);
   vertical-align:middle;
+  text-align:left;
 }
 .shuttle-table tbody tr:hover{background:var(--surface-2);}
 .shuttle-table tbody tr.selected-row{background:var(--red-light);}
 
-/* Căn giữa và định dạng cột Checkbox & STT */
+/* Căn giữa/định dạng cột Checkbox & STT — dùng chung cả trang shuttle lẫn pickup-list
+   (pickup-list cũng dùng class .shuttle-table/.col-stt để tái dùng style bảng này). */
 .shuttle-table th.col-check, .shuttle-table td.col-check {
   width: 36px;
   text-align: center;
   vertical-align: middle;
 }
 .shuttle-table th.col-stt, .shuttle-table td.col-stt {
-  width: 42px;
+  width: 36px;
   text-align: center;
   vertical-align: middle;
   font-weight: 600;
   color: var(--text-sub);
 }
+
+/* Dính khi cuộn ngang cho nhóm cột định danh: Checkbox, STT, Tên khách hàng — CHỈ áp dụng cho bảng
+   chính trang shuttle (.shuttle-table--transit). pickup-list.html dùng chung .shuttle-table nhưng
+   không có cột Checkbox/Tên khách hàng nên không được ăn theo phần sticky/left này. */
+.shuttle-table--transit th.col-check, .shuttle-table--transit td.col-check {
+  position: sticky;
+  left: 0;
+  background: var(--white);
+}
+.shuttle-table--transit th.col-stt, .shuttle-table--transit td.col-stt {
+  position: sticky;
+  left: 36px;
+  background: var(--white);
+}
+.shuttle-table--transit th.col-customer, .shuttle-table--transit td.col-customer {
+  width: 150px;
+  position: sticky;
+  left: 72px;
+  background: var(--white);
+  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, .08); /* báo hiệu ranh giới nhóm cột dính khi cuộn */
+}
+.shuttle-table--transit thead th.col-check,
+.shuttle-table--transit thead th.col-stt,
+.shuttle-table--transit thead th.col-customer {
+  z-index: 6; /* góc trên-trái: dính cả top lẫn left, phải cao hơn header thường (z-index 5) */
+}
+.shuttle-table--transit td.col-check,
+.shuttle-table--transit td.col-stt,
+.shuttle-table--transit td.col-customer {
+  z-index: 2; /* thấp hơn header, cao hơn nội dung thường để đè lên khi cuộn ngang */
+}
+.shuttle-table--transit tbody tr:hover td.col-check,
+.shuttle-table--transit tbody tr:hover td.col-stt,
+.shuttle-table--transit tbody tr:hover td.col-customer {
+  background: var(--surface-2);
+}
+.shuttle-table--transit tbody tr.selected-row td.col-check,
+.shuttle-table--transit tbody tr.selected-row td.col-stt,
+.shuttle-table--transit tbody tr.selected-row td.col-customer {
+  background: var(--red-light);
+}
 input[type="checkbox"]{width:16px;height:16px;accent-color:var(--red);cursor:pointer;}
 
-/* Cột: Khách hàng & SĐT (Đã tách thành 2 cột riêng) */
-.cell-name{font-weight:700;font-size:15px;}
-.cell-phone{font-size:14.5px;font-weight:600;color:var(--text-main);font-family:inherit;}
+/* Độ rộng + căn lề từng cột còn lại (thay cho style width/text-align inline trước đây) */
+.shuttle-table th.col-addr, .shuttle-table td.col-addr { width: 150px; }
+.shuttle-table th.col-pax, .shuttle-table td.col-pax { width: 60px; text-align: center; }
+.shuttle-table th.col-seats, .shuttle-table td.col-seats { width: 90px; }
+.shuttle-table th.col-trip, .shuttle-table td.col-trip { width: 190px; }
+.shuttle-table th.col-price, .shuttle-table td.col-price { width: 75px; text-align: right; }
+.shuttle-table th.col-driver, .shuttle-table td.col-driver { width: 120px; }
+.shuttle-table th.col-status, .shuttle-table td.col-status { width: 100px; text-align: center; }
+.shuttle-table th.col-note, .shuttle-table td.col-note { width: 130px; text-align: center; }
+.shuttle-table th.col-actions, .shuttle-table td.col-actions { width: 80px; text-align: center; vertical-align: middle; }
 
-/* Cột 3: SL & Ghi chú */
+/* Cột: Khách hàng & SĐT — thang chữ chuẩn: primary ~13.5px đậm (định danh chính), secondary ~12.5px
+   (thông tin phụ trợ) — thay cho các cỡ chữ rải rác trước đây (12.5/13/13.5/14/14.5/15px). */
+.cell-name{font-weight:700;font-size:13.5px;}
+.cell-phone{font-size:12.5px;font-weight:600;color:var(--text-main);font-family:inherit;}
+
+/* Cột: Số khách */
 .pax-chip{
   display:inline-flex;align-items:center;gap:4px;
   background:var(--surface);color:var(--text-main);
-  font-size:13.5px;font-weight:700;padding:3px 8px;border-radius:999px;
-}
-.shuttle-table td.col-status,
-.shuttle-table td.col-note {
-  text-align: center;
+  font-size:12.5px;font-weight:700;padding:3px 8px;border-radius:999px;
 }
 .cell-note{font-size:12px;color:var(--text-sub);margin:4px auto 0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px;cursor:pointer;}
 .cell-note.important{color:var(--red-dark);font-weight:600;}
 
-/* Cột 4: Địa chỉ trung chuyển */
-.addr-tag{
-  display:inline-block;font-size:13px;font-weight:800;
-  padding:3px 9px;border-radius:6px;margin-bottom:5px;white-space:nowrap;
-}
-.addr-detail{font-size:14px;color:var(--text-sub);max-width:100%;line-height:1.4;}
+/* Cột: Địa chỉ trung chuyển */
+.addr-detail{font-size:13.5px;color:var(--text-main);max-width:100%;line-height:1.4;}
 
-/* Cột 5: Thông tin vé (Số vé, Số ghế, Chuyến đi, Giá vé) */
-.ticket-code{font-size:15px;font-weight:700;font-family:inherit;}
+/* Cột: Số ghế, Chuyến đi, Giá vé */
 .seats-box{
-  max-width:115px;
+  max-width:110px;
   white-space:nowrap;
   overflow-x:auto;
   font-family:inherit;
@@ -507,49 +541,28 @@ input[type="checkbox"]{width:16px;height:16px;accent-color:var(--red);cursor:poi
 .seats-box::-webkit-scrollbar-thumb:hover{background:var(--text-sub);}
 .ticket-price{font-size:13.5px;font-weight:600;color:var(--red-dark);}
 .ticket-time{font-size:13.5px;font-weight:700;}
-.ticket-route{font-size:14.5px;color:var(--text-sub);margin-top:2px;}
-.ticket-stations{
-  margin-top:8px;
-  font-size:14px;
-  line-height:1.45;
-  border-top:1px dashed var(--border-gray);
-  padding-top:6px;
-}
-.ticket-stations div {
-  margin-top: 3px;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-.ticket-stations div span {
-  color: var(--text-sub);
-}
-.ticket-stations div b {
-  color: var(--text-main);
-  font-weight: 600;
-}
+.ticket-route{font-size:12.5px;color:var(--text-sub);margin-top:3px;}
 .ticket-cell.late{
   border-radius:var(--radius-sm);
   padding:8px 10px;margin:-8px -10px;
-  animation:blinkLate 1.1s ease-in-out infinite;
+  background:var(--red-light); /* nền tĩnh — nhiều dòng cùng sắp trễ giờ cùng lúc từng nhấp nháy nền
+    (animation background-color) khiến trình duyệt phải paint lại liên tục, vô hạn, kể cả khi đứng yên */
 }
-@keyframes blinkLate{
-  0%,100%{background:var(--red-light);}
-  50%{background:#FFD6D4;}
+.late-blink-icon{
+  display:inline-block;
+  animation:blinkLateOpacity 1.1s ease-in-out infinite; /* opacity là thuộc tính rẻ (compositor-only,
+    không paint lại), chỉ áp lên icon nhỏ thay vì cả nền ô để vẫn giữ hiệu ứng nhấp nháy thu hút chú ý */
+}
+@keyframes blinkLateOpacity{
+  0%,100%{opacity:1;}
+  50%{opacity:.25;}
 }
 
-/* Cột 6: Tài xế trung chuyển */
-.driver-name{font-size:14.5px;font-weight:700;}
-.driver-phone{font-size:13.5px;color:var(--text-sub);font-family:inherit;margin-top:2px;}
-.driver-plate{font-size:13.5px;color:var(--text-sub);font-family:inherit;margin-top:2px;}
-.driver-type{
-  display:block;
-  font-size:13px;
-  color:var(--text-sub);
-  font-weight:500;
-  margin-top:2px;
-}
-.driver-empty{font-size:14px;color:#B0B2B3;font-style:italic;}
+/* Cột: Tài xế trung chuyển — chỉ còn tên + SĐT luôn hiện, bằng lái/biển số/loại xe dồn vào tooltip
+   title= trên dòng tên (đúng pattern tooltip đã dùng cho .cell-note/.seats-box). */
+.driver-name{font-size:13.5px;font-weight:700;cursor:help;}
+.driver-phone{font-size:12.5px;color:var(--text-sub);font-family:inherit;margin-top:2px;}
+.driver-empty{font-size:13.5px;color:#B0B2B3;font-style:italic;}
 
 /* Cột 7: Trạng thái */
 .status-label{
@@ -574,54 +587,12 @@ input[type="checkbox"]{width:16px;height:16px;accent-color:var(--red);cursor:poi
   gap: 4px;
   flex-wrap: nowrap;
 }
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border-radius: 8px;
-  border: 1.5px solid var(--border-gray);
-  background: var(--white);
-  color: var(--text-main);
-  cursor: pointer;
-  transition: all 0.18s ease;
-  box-sizing: border-box;
+.table-actions .btn {
+  padding: 3px 8px;
+  font-size: 11px;
 }
-.action-btn svg {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-}
-.action-btn.action-edit:hover {
-  background: var(--surface-2);
-  border-color: var(--black);
-  color: var(--black);
-}
-.action-btn.action-onboard {
-  color: var(--green);
-  border-color: rgba(22,163,74,0.3);
-}
-.action-btn.action-onboard:hover {
-  background: #EAFBF1;
-  border-color: var(--green);
-}
-.action-btn.action-issue {
-  color: #B45309;
-  border-color: rgba(180,83,9,0.3);
-}
-.action-btn.action-issue:hover {
-  background: #FFF7E0;
-  border-color: #B45309;
-}
-.action-btn.action-delete {
-  color: var(--red);
-  border-color: rgba(245,16,11,0.3);
-}
-.action-btn.action-delete:hover {
-  background: var(--red-light);
-  border-color: var(--red);
+.btn-rect {
+  border-radius: 6px;
 }
 
 .grid-empty{

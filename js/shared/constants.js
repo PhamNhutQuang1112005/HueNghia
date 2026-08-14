@@ -1,8 +1,8 @@
 // Hằng số/dữ liệu dùng chung giữa callcenter và ticketstaff — nội dung giống hệt (đo 07/08/2026).
-// CUSTOMER_HISTORY_DATA chưa chuyển vào đây vì phụ thuộc hàm getPastDate() — sẽ chuyển cùng lúc ở
-// Giai đoạn 3 khi getPastDate được gộp vào shared/format.js.
 // Nạp bằng thẻ <script> thường (không phải module) TRƯỚC script chính của từng trang —
 // const top-level ở đây dùng chung được cho các <script> nạp sau trong cùng trang.
+// LƯU Ý THỨ TỰ NẠP: file này dùng getPastDate() ngay khi chạy (tính CUSTOMER_HISTORY_DATA) nên
+// shared/format.js PHẢI nạp TRƯỚC shared/constants.js.
 
 const STAFF_CODE_MAP = {
   "tuyetphuong.huenghia": "NV01",
@@ -10,6 +10,24 @@ const STAFF_CODE_MAP = {
   "nguyen.long": "NV03",
   "thi.hoa": "NV04"
 };
+
+const CUSTOMER_HISTORY_DATA = [
+  { date: getPastDate(3), phone: '0809123456', name: 'Nguyễn Văn An', ticketNo: 'SGCD-H001', route: 'Sài Gòn - Châu Đốc', time: '07:00', seat: 'A1', firstStop: 'Trạm Kinh Dương Vương', lastStop: 'Trạm Châu Đốc', guestType: 'Khách trạm', transship: '', dropoffAddress: '145 Lý Thái Tổ, P.1, TP. Châu Đốc', state: 'sold', paid: true, price: 280000, plate: '51F-123.45', vehicleType: 'Limousine 24 Phòng', driver: 'Trần Văn Hùng', helper: 'Nguyễn Thị Hương', bookStaff: 'NV01', sellStaff: 'NV05' },
+  { date: getPastDate(10), phone: '0809123456', name: 'Nguyễn Văn An', ticketNo: 'CDSG-H002', route: 'Châu Đốc - Sài Gòn', time: '06:00', seat: 'B3', firstStop: 'Trạm Châu Đốc', lastStop: 'Trạm Q.5', guestType: 'Trung chuyển', pickupAddress: 'Khách sạn Victoria, Châu Đốc', dropoffAddress: '456 An Dương Vương, P.9, Q.5', state: 'sold', paid: true, price: 280000, plate: '51F-123.45', vehicleType: 'Limousine 24 Phòng', driver: 'Phạm Quốc Bảo', helper: 'Đỗ Văn Sơn', bookStaff: 'NV02', sellStaff: 'NV03' },
+  { date: getPastDate(4), phone: '0912345678', name: 'Trần Thị Mai', ticketNo: 'SGCD-H003', route: 'Sài Gòn - Châu Đốc', time: '08:30', seat: 'A2, A3', firstStop: 'Trạm Q.5', lastStop: 'Trạm Tân Châu', guestType: 'Trung chuyển', pickupAddress: 'KDC Bình Hưng, Bình Chánh', dropoffAddress: '12 Nguyễn Huệ, Thị xã Tân Châu', state: 'sold', paid: true, price: 560000, plate: '50H-678.90', vehicleType: 'Giường nằm 34 chỗ', driver: 'Phạm Quốc Bảo', helper: 'Đỗ Văn Sơn', bookStaff: 'NV04', sellStaff: 'NV08' },
+  { date: getPastDate(14), phone: '0912345678', name: 'Trần Thị Mai', ticketNo: 'CDSG-H004', route: 'Châu Đốc - Sài Gòn', time: '09:15', seat: 'B1', firstStop: 'Bến xe Châu Đốc', lastStop: 'Trạm Kinh Dương Vương', guestType: 'Khách trạm', transship: '', state: 'sold', paid: false, price: 280000, plate: '50H-678.90', vehicleType: 'Giường nằm 34 chỗ', driver: 'Trần Văn Hùng', helper: 'Nguyễn Thị Hương', bookStaff: 'NV02', sellStaff: '—' },
+  { date: getPastDate(5), phone: '0933778899', name: 'Lê Hoàng Nam', ticketNo: 'SGCD-H005', route: 'Sài Gòn - Châu Đốc', time: '10:00', seat: 'A6', firstStop: 'Trạm Kinh Dương Vương', lastStop: 'Trạm Châu Đốc', guestType: 'Khách trạm', transship: '', state: 'sold', paid: true, price: 280000, plate: '51F-222.33', vehicleType: 'Limousine 24 Phòng', driver: 'Trần Văn Hùng', helper: 'Nguyễn Văn Bình', bookStaff: 'NV01', sellStaff: 'NV02' },
+  { date: getPastDate(18), phone: '0933778899', name: 'Lê Hoàng Nam', ticketNo: 'CDSG-H006', route: 'Châu Đốc - Sài Gòn', time: '14:00', seat: 'A10, A11', firstStop: 'Trạm Tân Châu', lastStop: 'Trạm An Sương', guestType: 'Trung chuyển', pickupAddress: 'Chợ Mới, An Giang', dropoffAddress: 'Chợ Bà Điểm, Hóc Môn', state: 'sold', paid: true, price: 560000, plate: '50H-345.67', vehicleType: 'Ghế ngồi 45 chỗ', driver: 'Phạm Quốc Bảo', helper: 'Đỗ Văn Sơn', bookStaff: 'NV05', sellStaff: 'NV05' },
+  { date: getPastDate(6), phone: '0987654321', name: 'Phạm Thùy Linh', ticketNo: 'SGCD-H007', route: 'Sài Gòn - Châu Đốc', time: '17:00', seat: 'B5', firstStop: 'Trạm Q.5', lastStop: 'Bến xe Châu Đốc', guestType: 'Rước đường', pickupAddress: 'Cầu vượt Củ Chi, QL22', state: 'sold', paid: true, price: 250000, plate: '50H-678.90', vehicleType: 'Giường nằm 34 chỗ', driver: 'Trần Văn Hùng', helper: 'Nguyễn Thị Hương', bookStaff: 'NV02', sellStaff: 'NV07' },
+  { date: getPastDate(7), phone: '0809654321', name: 'Võ Minh Khoa', ticketNo: 'SGCD-H008', route: 'Sài Gòn - Châu Đốc', time: '07:00', seat: 'A4', firstStop: 'Trạm An Sương', lastStop: 'Trạm Châu Đốc', guestType: 'Rước đường', pickupAddress: 'Ngã 4 An Sương, Q.12', state: 'sold', paid: true, price: 280000, plate: '51F-123.45', vehicleType: 'Limousine 24 Phòng', driver: 'Trần Văn Hùng', helper: 'Nguyễn Văn Bình', bookStaff: 'NV03', sellStaff: 'NV03' },
+  { date: getPastDate(8), phone: '0901234567', name: 'Huỳnh Ngọc Ánh', ticketNo: 'SGCD-H009', route: 'Sài Gòn - Châu Đốc', time: '08:30', seat: 'A9', firstStop: 'Trạm Q.5', lastStop: 'Trạm Tân Châu', guestType: 'Trung chuyển', dropoffAddress: '78 Hùng Vương, Tân Châu', state: 'sold', paid: true, price: 250000, plate: '50H-678.90', vehicleType: 'Giường nằm 34 chỗ', driver: 'Trần Văn Hùng', helper: 'Nguyễn Thị Hương', bookStaff: 'NV01', sellStaff: 'NV06' },
+  { date: getPastDate(9), phone: '0966998877', name: 'Đặng Quốc Huy', ticketNo: 'SGCD-H010', route: 'Sài Gòn - Châu Đốc', time: '15:30', seat: 'A3', firstStop: 'Văn phòng trung tâm', lastStop: 'Trạm Châu Đốc', guestType: 'Khách trạm', transship: '', state: 'sold', paid: true, price: 280000, plate: '51F-222.33', vehicleType: 'Limousine 24 Phòng', driver: 'Trần Văn Hùng', helper: 'Nguyễn Văn Bình', bookStaff: 'NV05', sellStaff: 'NV05' },
+  { date: getPastDate(11), phone: '0913579246', name: 'Bùi Thảo Vy', ticketNo: 'CDSG-H011', route: 'Châu Đốc - Sài Gòn', time: '09:15', seat: 'A12', firstStop: 'Bến xe Châu Đốc', lastStop: 'Trạm An Sương', guestType: 'Khách trạm', transship: '', state: 'sold', paid: true, price: 250000, plate: '50H-678.90', vehicleType: 'Giường nằm 34 chỗ', driver: 'Trần Văn Hùng', helper: 'Nguyễn Thị Hương', bookStaff: 'NV03', sellStaff: 'NV04' },
+  { date: getPastDate(12), phone: '0938001122', name: 'Nguyễn Thanh Tùng', ticketNo: 'SGCD-H012', route: 'Sài Gòn - Châu Đốc', time: '10:00', seat: 'B6', firstStop: 'Trạm Kinh Dương Vương', lastStop: 'Trạm Châu Đốc', guestType: 'Khách trạm', transship: '', state: 'sold', paid: true, price: 280000, plate: '51F-222.33', vehicleType: 'Limousine 24 Phòng', driver: 'Phạm Quốc Bảo', helper: 'Đỗ Văn Sơn', bookStaff: 'NV02', sellStaff: 'NV08' },
+  { date: getPastDate(13), phone: '0989112233', name: 'Lý Thị Hồng', ticketNo: 'SGCD-H013', route: 'Sài Gòn - Châu Đốc', time: '17:00', seat: 'A11', firstStop: 'Trạm An Sương', lastStop: 'Bến xe Châu Đốc', guestType: 'Khách trạm', transship: '', state: 'sold', paid: true, price: 250000, plate: '50H-678.90', vehicleType: 'Giường nằm 34 chỗ', driver: 'Trần Văn Hùng', helper: 'Nguyễn Văn Bình', bookStaff: 'NV01', sellStaff: 'NV01' },
+  { date: getPastDate(15), phone: '0908771122', name: 'Cao Văn Đức', ticketNo: 'CDSG-H014', route: 'Châu Đốc - Sài Gòn', time: '14:00', seat: 'A5, A6', firstStop: 'Trạm Tân Châu', lastStop: 'Trạm Q.5', guestType: 'Trung chuyển', dropoffAddress: '102 Nguyễn Trãi, P.3, Q.5', state: 'sold', paid: false, price: 560000, plate: '51F-222.33', vehicleType: 'Limousine 24 Phòng', driver: 'Phạm Quốc Bảo', helper: 'Đỗ Văn Sơn', bookStaff: 'NV04', sellStaff: '—' },
+  { date: getPastDate(16), phone: '0967345678', name: 'Trương Minh Tuấn', ticketNo: 'SGCD-H015', route: 'Sài Gòn - Châu Đốc', time: '08:30', seat: 'B4', firstStop: 'Trạm Q.5', lastStop: 'Trạm Châu Đốc', guestType: 'Khách trạm', transship: '', state: 'sold', paid: true, price: 250000, plate: '50H-678.90', vehicleType: 'Giường nằm 34 chỗ', driver: 'Trần Văn Hùng', helper: 'Nguyễn Thị Hương', bookStaff: 'NV02', sellStaff: 'NV05' }
+];
 
 const VEHICLE_TYPE_SEATS = {
   "Limousine 34 giường": 34,
@@ -35,7 +53,6 @@ const VEHICLE_TYPE_SEATS = {
 const DEFAULT_STAFF_STATION = 'Trạm Kinh Dương Vương'; // Trạm đi mặc định theo nhân viên trạm đang đăng nhập
 const DEFAULT_SUB_SEAT_PRICE = 280000;
 const OCCUPIED_STATES = ['sold', 'hold', 'cargo', 'free'];
-const TS_WINDOW_HOURS = 6;
 
 const todayStr__constants = new Date().toISOString().split("T")[0];
 

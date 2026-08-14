@@ -135,9 +135,7 @@
 .zone3 {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
+  flex: 0 0 auto;
   padding: 10px 22px 16px;
 }
 
@@ -541,9 +539,9 @@
 }
 
 .filter-field-date {
-  flex: 0 0 auto !important;
-  min-width: 140px !important;
-  max-width: 170px !important;
+  flex: 0 0 auto;
+  min-width: 140px;
+  max-width: 170px;
 }
 
 /* TABLE SECTION (SHUTTLE STYLE) */

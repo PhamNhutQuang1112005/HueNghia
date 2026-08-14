@@ -428,30 +428,6 @@ function updateTabBadges() {
   // Badge trên tab đã bỏ khỏi UI header — giữ hàm để không phá các chỗ gọi.
 }
 
-/* =========================================================
-   Tiện ích hiển thị: màu tag địa chỉ theo khu vực (Quận/Huyện)
-   để điều hành viên dễ gom nhóm khách theo khu vực (2.1, FR-04 cột 4)
-   ========================================================= */
-const DISTRICT_COLORS = {
-  "Quận 5": "#EFF4FF;color:#1D4ED8",
-  "Bình Tân": "#FFF7E0;color:#B45309",
-  "Tân Phú": "#EAFBF1;color:#16A34A",
-  "Quận 10": "#FCE7F3;color:#BE185D",
-  "Hóc Môn": "#F3E8FF;color:#7C3AED",
-  "Quận 12": "#FEF3C7;color:#92400E"
-};
-function districtTagStyle(district) {
-  const style = DISTRICT_COLORS[district] || "#E7E7E8;color:#374151";
-  const [bg, colorPart] = style.split(";color:");
-  return `background:${bg};color:${colorPart}`;
-}
-
-const MANIFEST_LABELS = {
-  sang: "Phơi sáng 18/07",
-  chieu: "Phơi chiều 18/07",
-  toi: "Phơi tối 18/07"
-};
-
 const STATUS_LABELS = {
   waiting: { text: "Chờ điều phối", cls: "status-waiting" },
   enroute: { text: "Đang trung chuyển", cls: "status-enroute" },
@@ -478,80 +454,56 @@ function renderTable() {
     const late = isLateSoon(c);
     const statusInfo = STATUS_LABELS[c.status];
     const isSelected = selectedIds.has(c.id);
-
     const statusText = statusInfo.text;
-    const manifestName = MANIFEST_LABELS[c.manifest] || ("Phơi " + c.manifest);
+
+    const driverCell = c.driverName
+      ? `<div class="driver-name" title="Bằng lái: ${(c.driverLicense || '—')} · Biển số: ${c.driverPlate || '—'} · Loại xe: ${c.driverVehicleType || '—'}">${c.driverName}</div>
+         <div class="driver-phone">${c.driverPhone || '—'}</div>`
+      : `<span class="driver-empty">Chưa gán tài xế</span>`;
 
     return `
       <tr class="${isSelected ? "selected-row" : ""}" data-id="${c.id}">
         <td class="col-check">
-          <input type="checkbox" ${isSelected ? "checked" : ""} onchange="toggleRow('${c.id}', this)">
+          <input type="checkbox" ${isSelected ? "checked" : ""} data-change-action="toggleRow" data-args='["${c.id}","__this__"]'>
         </td>
         <td class="col-stt">${index + 1}</td>
-        <td>
-          <div style="font-size: 13.5px; line-height: 1.45;">
-            <div>Tên: <b>${c.name}</b>${c.urgentFlag ? " ⭐" : ""}</div>
-            <div style="margin-top: 3px; color: var(--text-sub);">SDT: <b class="cell-phone" style="color: var(--text-main);">${c.phone}</b></div>
-          </div>
+        <td class="col-customer">
+          <div class="cell-name">${c.name}${c.urgentFlag ? " ⭐" : ""}</div>
+          <div class="cell-phone">${c.phone}</div>
         </td>
-        <td>
-          <div class="addr-detail" style="color: var(--black); font-weight: 500;">
-            ${c.addressDetail}
-          </div>
+        <td class="col-addr">
+          <div class="addr-detail">${c.addressDetail}</div>
         </td>
-        <td style="text-align: center;">
-          <span style="font-weight: 700; font-size: 14.5px; color: var(--text-main);">${c.pax}</span>
+        <td class="col-pax">
+          <span class="pax-chip">${c.pax}</span>
         </td>
-        <td>
+        <td class="col-seats">
           <div class="seats-box" title="${c.seats}">${c.seats}</div>
         </td>
-        <td>
+        <td class="col-trip">
           <div class="${late ? "ticket-cell late" : ""}">
-            <div style="font-weight: 700; font-size: 13.5px; line-height: 1.4;">
-              <span style="color: var(--red-dark); font-weight: 700;">${c.departTime}</span>
-              <span style="color: var(--text-sub); margin: 0 4px;">-</span>
-              <span style="color: var(--text-main); font-weight: 600;">${c.departDate || "18/07/2026"}</span>${late ? " ⚠️" : ""}
-            </div>
-            <div style="font-size: 12.5px; color: var(--text-sub); margin-top: 3px; line-height: 1.4;">
-              <div><span>Trạm đi:</span> <b style="color: var(--text-main); font-weight: 600;">${c.departStation}</b></div>
-              <div><span>Trạm đến:</span> <b style="color: var(--text-main); font-weight: 600;">${c.arriveStation}</b></div>
-            </div>
+            <div class="ticket-time">${c.departTime} - ${c.departDate || "18/07/2026"}${late ? ' <span class="late-blink-icon">⚠️</span>' : ""}</div>
+            <div class="ticket-route">${c.departStation} → ${c.arriveStation}</div>
           </div>
         </td>
-        <td style="text-align: right;">
+        <td class="col-price">
           <div class="ticket-price">${c.ticketPrice.toLocaleString('vi-VN')}đ</div>
         </td>
-        <td>
-          ${c.driverName
-        ? `<div style="font-size: 13px; line-height: 1.4;">
-                 <div>Tên: <b>${c.driverName}</b> <span style="color: var(--text-sub);">(${(c.driverLicense || 'D').replace(/^Bằng\s*/i, '')})</span></div>
-                 <div style="margin-top: 2px; color: var(--text-sub);">SDT: <b class="cell-phone" style="color: var(--text-main); font-size: 13px;">${c.driverPhone || '—'}</b></div>
-                 <div style="margin-top: 2px; color: var(--text-sub);">Xe: <b style="color: var(--text-main);">${c.driverPlate || '—'}</b></div>
-                 <div style="margin-top: 2px; color: var(--text-sub);">Loại xe: <b style="color: var(--text-main);">${c.driverVehicleType || '—'}</b></div>
-                 <div style="margin-top: 5px;">
-                   <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; font-weight: 600;" onclick="assignSingleCustomer('${c.id}')" title="Chọn riêng khách này để đổi tài xế">
-                     Đổi tài xế
-                   </button>
-                 </div>
-               </div>`
-        : `<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
-                 <span class="driver-empty">Chưa gán tài xế</span>
-                 <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; font-weight: 600;" onclick="assignSingleCustomer('${c.id}')" title="Gán tài xế cho riêng khách này">
-                   Gán tài xế
-                 </button>
-               </div>`}
+        <td class="col-driver">
+          ${driverCell}
         </td>
         <td class="col-status">
           <span class="status-label ${statusInfo.cls}">${statusText}</span>
-          ${c.note ? `<div class="cell-note ${c.noteImportant ? "important" : ""}" title="${c.note}">${c.note}</div>` : ""}
         </td>
-        <td style="text-align: center; vertical-align: middle;">
-          <button type="button" class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px; font-weight: 600; margin: 0 auto; display: inline-flex; align-items: center; gap: 4px;" onclick="openUpdateStatusModal('${c.id}')" title="Cập nhật trạng thái">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 13px; height: 13px;">
-              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-            </svg>
-            Cập nhật
-          </button>
+        <td class="col-note">
+          ${c.note ? `<div class="cell-note ${c.noteImportant ? "important" : ""}" title="${c.note}">${c.note}</div>` : "—"}
+        </td>
+        <td class="col-actions">
+          <div class="table-actions">
+            <button type="button" class="btn btn-secondary btn-rect" data-action="openUpdateStatusModal" data-args='["${c.id}"]' title="Cập nhật trạng thái, tài xế">
+              Cập nhật
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -593,14 +545,6 @@ function clearSelection() {
 }
 
 // Hàm gán tài xế riêng cho 1 khách hàng (kể cả khách đã được chỉ định trước đó)
-function assignSingleCustomer(id) {
-  selectedIds.clear();
-  selectedIds.add(id);
-  renderTable();
-  updateActionBar();
-  openAssignModal();
-}
-
 /* =========================================================
    FR-06: Khung thao tác Gán Tài Xế (Action Bar)
    ========================================================= */
@@ -695,6 +639,38 @@ function onAssignFormChange() {
   document.getElementById("dispatchErrorBox").style.display = "none";
 }
 
+// Ghép "sđt_chặng" — chặng 'don' gộp cả tab 'ruoclien' vì phía ticketstaff/callcenter gộp chung khách
+// Rước liền vào bảng "Trung chuyển đón". Dùng cùng công thức này để ghi và để đọc lại ở 2 trang kia.
+function shuttleDriverLegKey(phone, tab) {
+  return `${(phone || '').replace(/\s+/g, '')}_${tab === 'tra' ? 'tra' : 'don'}`;
+}
+
+// Gán tài xế ở trang shuttle chỉ lưu tạm trong biến `customers` (mất khi tải lại/đồng bộ lại từ
+// tripSeatBank) — ghi thêm vào localStorage riêng để ticketstaff.html/callcenter.html đọc được tên
+// tài xế thật ở cột "Tài xế" bảng Trung chuyển đón, thay vì tên giả cố định như trước.
+function persistShuttleDriverAssignment(assignedCusts, driver, plate, vehicleType) {
+  try {
+    const raw = localStorage.getItem(HN_SHUTTLE_DRIVER_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    assignedCusts.forEach((c) => {
+      if (!c.phone) return;
+      map[shuttleDriverLegKey(c.phone, c.tab)] = {
+        driverName: driver.driverName,
+        driverPhone: driver.driverPhone,
+        driverPlate: plate,
+        driverVehicleType: vehicleType
+      };
+    });
+    const jsonStr = JSON.stringify(map);
+    localStorage.setItem(HN_SHUTTLE_DRIVER_KEY, jsonStr);
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: HN_SHUTTLE_DRIVER_KEY,
+      newValue: jsonStr,
+      storageArea: localStorage
+    }));
+  } catch (e) { }
+}
+
 function confirmAssign() {
   const driverId = document.getElementById("assignDriverSelect").value;
   if (!driverId) return;
@@ -737,6 +713,7 @@ function confirmAssign() {
       c.status = "enroute";
     }
   });
+  persistShuttleDriverAssignment(assignedList, driver, plate, vehicleType);
 
   closeModal("assignModal");
   clearSelection();
@@ -862,6 +839,16 @@ function openUpdateStatusModal(id) {
     reasonInput.value = "";
   }
 
+  // Gán tài xế gộp chung vào modal này — chỉ áp dụng cho 1 khách lẻ, không hiện ở cập nhật hàng loạt
+  document.getElementById("statusDriverSection").style.display = "block";
+  const driverSelect = document.getElementById("statusDriverSelect");
+  driverSelect.innerHTML = `<option value="">-- Giữ nguyên / chưa gán --</option>` +
+    driversPool.map((d) => `<option value="${d.id}">Tài xế ${d.driverName} — SĐT: ${d.driverPhone} (${d.license.replace(/^Bằng\s*/i, '')})</option>`).join("");
+  const currentDriver = driversPool.find((d) => d.driverName === c.driverName);
+  driverSelect.value = currentDriver ? currentDriver.id : "";
+  document.getElementById("statusVehicleTypeSelect").value = c.driverVehicleType || "Xe 16 chỗ";
+  document.getElementById("statusPlateSelect").value = c.driverPlate || "51B-666.66";
+
   document.getElementById("updateStatusModal").classList.add("open");
 }
 
@@ -901,6 +888,9 @@ function openBulkUpdateStatusModal() {
     reasonBox.style.display = "none";
     reasonInput.value = "";
   }
+
+  // Gán tài xế hàng loạt đã có luồng riêng (nút "Chỉ định tài xế" trên action bar) — ẩn phần này đi
+  document.getElementById("statusDriverSection").style.display = "none";
 
   document.getElementById("updateStatusModal").classList.add("open");
 }
@@ -958,9 +948,22 @@ function saveStatusUpdate() {
       c.noteImportant = false;
     }
 
+    const driverId = document.getElementById("statusDriverSelect").value;
+    let driverMsg = "";
+    if (driverId) {
+      const driver = driversPool.find((d) => d.id === driverId);
+      c.driverName = driver.driverName;
+      c.driverPhone = driver.driverPhone;
+      c.driverLicense = driver.license;
+      c.driverVehicleType = document.getElementById("statusVehicleTypeSelect").value;
+      c.driverPlate = document.getElementById("statusPlateSelect").value;
+      driverMsg = ` và gán tài xế ${driver.driverName}`;
+      persistShuttleDriverAssignment([c], driver, c.driverPlate, c.driverVehicleType);
+    }
+
     closeModal("updateStatusModal");
     renderTable();
-    showToast(`Đã cập nhật trạng thái khách "${c.name}" thành "${STATUS_LABELS[newStatus].text}".`);
+    showToast(`Đã cập nhật trạng thái khách "${c.name}" thành "${STATUS_LABELS[newStatus].text}"${driverMsg}.`);
   }
 }
 
@@ -1045,7 +1048,7 @@ function renderSearchResults(matches) {
   }
 
   searchResults.innerHTML = matches.map((c) => `
-    <div class="side-search-row" onclick="pickSearchResult('${c.id}')">
+    <div class="side-search-row" data-action="pickSearchResult" data-args='["${c.id}"]'>
       <div>
         <div class="side-search-name">${c.name}</div>
         <div class="side-search-meta">${c.phone} • Ghế: ${c.seats} • ${c.departTime}</div>
@@ -1323,7 +1326,7 @@ function renderCalendar() {
     const isToday = dateObj.toDateString() === DEMO_TODAY.toDateString();
     const isSelected = dateObj.toDateString() === selectedDate.toDateString();
     const lunar = ((d + 16) % 30) + 1;
-    html += `<div class="cal-day ${isToday ? "today" : ""} ${isSelected ? "selected" : ""}" onclick="pickDate(${y},${m},${d})">${d}<span class="lunar">${lunar}/6</span></div>`;
+    html += `<div class="cal-day ${isToday ? "today" : ""} ${isSelected ? "selected" : ""}" data-action="pickDate" data-args='[${y},${m},${d}]'>${d}<span class="lunar">${lunar}/6</span></div>`;
   }
   const totalCells = startOffset + daysInMonth;
   const trailing = (7 - (totalCells % 7)) % 7;

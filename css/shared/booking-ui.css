@@ -289,6 +289,15 @@
   position: relative;
 }
 
+/* #historyView/#pickupView (class "main-view-container") là flex item của .main — mặc định flex item
+   không co nhỏ hơn kích thước nội dung bên trong nó (min-width:auto), nên nếu 1 bảng bên trong có ô
+   "white-space:nowrap" đủ dài, cả view sẽ bị đẩy rộng hơn .main, tràn ngang ra ngoài trang thay vì tự
+   cuộn ngang bên trong .pax-table-wrap/.grid-wrap của riêng nó. min-width:0 ép flex item co lại đúng
+   theo không gian thật có, phần overflow (nếu còn) sẽ do overflow-x:auto của .pax-table-wrap xử lý. */
+.main-view-container {
+  min-width: 0;
+}
+
 body.zone1-collapsed .zone1 {
   display: none;
 }
@@ -390,6 +399,48 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   height: 14px;
   stroke: var(--text-sub);
   flex: 0 0 auto;
+}
+
+.combo-input-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  background: white;
+}
+
+.combo-input-wrap:focus-within {
+  border-color: var(--red);
+}
+
+.combo-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  padding: 6px 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-main);
+  background: transparent;
+}
+
+.combo-input-wrap svg {
+  width: 14px;
+  height: 14px;
+  stroke: var(--text-sub);
+  flex: 0 0 auto;
+}
+
+.dropdown-empty {
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text-sub);
+  text-align: center;
 }
 
 .dropdown-panel {
@@ -527,6 +578,15 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   font-size: 15px;
 }
 
+/* #pkCalendarPanel (Rước liền) và #rbCalendarPanel (modal Đặt lại vé) đặt nút "Hôm nay"/"Tất cả" + nút
+   chuyển tháng vào 1 div class="cal-head-right" (lịch Zone 1 dùng inline style riêng nên không cần class
+   này) — thiếu rule này khiến div mặc định display:block, đẩy nút "›" xuống dòng thay vì cùng hàng. */
+.cal-head-right {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
 .cal-nav {
   display: flex;
   gap: 4px;
@@ -615,55 +675,6 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   cursor: pointer;
 }
 
-/* slider */
-.timeslider {
-  padding: 2px 4px 0;
-}
-
-.ts-track {
-  position: relative;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--surface);
-  margin: 8px 4px 3px;
-  cursor: pointer;
-}
-
-.ts-track::before {
-  content: '';
-  position: absolute;
-  top: -7px;
-  bottom: -7px;
-  left: 0;
-  right: 0;
-}
-
-.ts-range {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  background: var(--red);
-  border-radius: 999px;
-}
-
-.ts-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--text-sub);
-  font-weight: 600;
-  padding: 0 4px;
-  pointer-events: none;
-}
-
-.ts-current {
-  text-align: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--red);
-  margin-top: 3px;
-}
-
 /* trip list */
 .trip-list-head {
   display: flex;
@@ -679,36 +690,52 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   letter-spacing: .4px;
 }
 
-.trip-card {
-  border: 1px solid var(--border-gray);
-  border-left: 3.5px solid var(--border-gray);
-  border-radius: var(--radius-md);
-  padding: 6px 8px;
+/* Danh sách phơi trước đây các thẻ .trip-card nằm sát nhau (không có gap nào giữa các <div> con của
+   #tripListSGCD/#tripListCDSG) nên khó phân biệt ranh giới từng phơi — xếp lại thành flex-column có
+   khoảng cách rõ ràng giữa các thẻ. */
+#tripListSGCD,
+#tripListCDSG {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  background: white;
-  box-sizing: border-box;
-  cursor: pointer;
-  transition: all .15s ease;
+  gap: 10px;
 }
 
-.trip-card:hover {
-  background: var(--surface-2);
+.trip-card {
+  border: 1px solid var(--border-gray);
+  /* Khôi phục vệt nhấn bên trái (xám lúc thường, đỏ lúc chọn) — đã bỏ ở 1 lần chỉnh trước, nay thêm
+     lại theo đúng bản gốc. */
+  border-left: 3.5px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0; /* danh sách phơi trong modal "Chỉ định xe"/"Đặt lại vé" nằm trong khung cuộn có chiều
+    cao giới hạn (khác Zone 1 luôn đủ chỗ) — không khóa lại, flexbox sẽ bóp co từng thẻ (đặc biệt mất hẳn
+    trip-card-row2) để nhồi vừa thay vì để phần overflow-y:auto cuộn. */
+  gap: 0;
+  background: white;
+  box-sizing: border-box;
+  overflow: hidden; /* bo góc thẻ cắt gọn nền màu của row1 (header) tràn ra ngoài border-radius */
+  cursor: pointer;
+  transition: all .15s ease;
 }
 
 .trip-card.selected {
   border-color: var(--red);
   border-left: 3.5px solid var(--red);
-  background: var(--red-light);
 }
 
+/* row1 = "header" thẻ phơi (giờ, biển số, SL ghế) — bỏ màu nền lẫn viền phân tách, dùng chung màu trắng
+   với row2, đổi màu cùng lúc với row2 khi hover/chọn (xem .trip-card.selected .trip-card-row1). */
 .trip-card-row1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
   width: 100%;
+  background: white;
+  padding: 6px 8px 3px;
+  box-sizing: border-box;
 }
 
 .trip-info-left {
@@ -720,7 +747,7 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 }
 
 .trip-time {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--text-main);
   line-height: 1.15;
@@ -728,7 +755,7 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 }
 
 .trip-plate-inline {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.15;
   color: var(--red);
@@ -744,30 +771,44 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   color: var(--red);
 }
 
+/* Cỡ chữ + chiều cao SL ghế bằng đúng .trip-time (13px, line-height 1.15) — bỏ padding dọc (chỉ giữ
+   padding ngang cho khung nền màu) để chiều cao khối không cao hơn dòng chữ giờ bên cạnh. */
 .trip-seat-tag {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
-  padding: 2px 6px;
+  padding: 0 6px;
   border-radius: 4px;
   white-space: nowrap;
   flex: 0 0 auto;
   margin-left: auto;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .trip-seat-tag.tag-limo {
-  background: #e11d48;
-  color: white;
+  color: #e11d48;
 }
 
 .trip-seat-tag.tag-normal {
-  background: #16a34a;
-  color: white;
+  color: #16a34a;
 }
 
+/* row2 = "thân" thẻ phơi (tên phơi) — luôn nền trắng, đổi màu nhẹ khi hover/chọn để giữ phản hồi thị
+   giác (trước đây màu hover/selected phủ cả thẻ; giờ row1 luôn cố định #f8fafc nên chuyển phần phản hồi
+   này sang riêng row2). */
 .trip-card-row2 {
   width: 100%;
-  margin-top: 1px;
+  background: white;
+  padding: 3px 8px 6px;
+  box-sizing: border-box;
+}
+
+.trip-card:hover .trip-card-row2 {
+  background: var(--surface-2);
+}
+
+.trip-card.selected .trip-card-row2,
+.trip-card.selected .trip-card-row1 {
+  background: var(--red-light);
 }
 
 .trip-name-text {
@@ -798,18 +839,22 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   gap: 5px;
 }
 
+
 .more-trips svg {
   width: 12px;
   height: 12px;
 }
 
 /* ===== RIGHT COLUMN ===== */
+/* Zone 2 + thanh tab + Zone 3 cuộn chung theo cả cột — không để Zone 3 tự
+   cuộn riêng bên trong nữa, để luôn thấy hết thông tin khi cuộn trang. */
 .right-col {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
 }
 
@@ -859,7 +904,7 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 }
 
 .zone2.collapsed .z2-grid {
-  display: none !important;
+  display: none;
 }
 
 .z2-title-compact {
@@ -954,14 +999,18 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   border-color: var(--red);
 }
 
-/* GRID rút gọn còn 2 dòng: dòng 1 = Biển số/Tài xế/Phụ xe, dòng 2 = gộp 2 mục/cột trên cùng 1 hàng */
+/* GRID rút gọn còn 2 dòng: dòng 1 = Biển số/Tài xế/Phụ xe, dòng 2 = gộp 2 mục/cột trên cùng 1 hàng.
+   HTML đặt sẵn 1 hàng ẩn ở giữa (.z2-dotted-row, grid-row:2, display:none) làm đường phân cách — hàng
+   này luôn ẩn nhưng vẫn chiếm 1 track riêng nên row-gap bị cộng dồn 2 lần (trên+dưới hàng ẩn đó), khiến
+   khoảng cách giữa "Biển số/Tài xế/Phụ xe" và "Đã bán/Đã đặt/Tổng tiền" xa hơn hẳn 1 khoảng gap thường.
+   Giảm row-gap để tổng khoảng cách gộp lại vừa đủ, không cần đụng tới cấu trúc hàng ẩn đó. */
 .z2-grid {
   display: grid;
   grid-template-columns: 1fr 1px 1fr 50px 1fr;
   grid-template-rows: auto auto;
   margin-top: 6px;
   column-gap: 14px;
-  row-gap: 6px;
+  row-gap: 2px;
   align-items: stretch;
 }
 
@@ -971,7 +1020,7 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   row-gap: 2px;
   margin: 0 -4px 0 0;
   padding-left: 0;
-  grid-row: 2 !important;
+  grid-row: 2;
 }
 
 .z2-item.money-line>.z2-circle {
@@ -1006,7 +1055,7 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   gap: 0;
   margin: 0 -4px 0 0;
   padding-left: 0;
-  grid-row: 2 !important;
+  grid-row: 2;
 }
 
 .z2-item.combo .z2-subitem {
@@ -1177,13 +1226,13 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 }
 
 /* ZONE 3 */
+/* Không tự cuộn riêng nữa — .right-col mới là nơi cuộn, Zone 3 cao theo đúng
+   nội dung để cuộn chung với Zone 2 và thấy hết thông tin. */
 .zone3 {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  overflow: auto;
+  flex: 0 0 auto;
   padding: 0px 22px 16px;
-  min-height: 0;
 }
 
 .zone3.has-sticky-actions {
@@ -1246,7 +1295,7 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 }
 
 .seat-card:hover .seat-price-tag {
-  display: none !important;
+  display: none;
 }
 
 .seat-cancel-tag:hover {
@@ -1293,6 +1342,32 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 .seat-code {
   font-size: 14.5px;
   font-weight: 800;
+}
+
+.seat-guest-type-tag {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 1.5px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.seat-guest-type-tag.rl {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+.seat-guest-type-tag.rd {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.seat-guest-type-tag.tc {
+  background: #F3E8FF;
+  color: #7E22CE;
 }
 
 .seat-price-tag {
@@ -1518,7 +1593,7 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 
 /* sticky action bar */
 .sticky-actions {
-  position: absolute;
+  position: sticky;
   left: 0;
   right: 0;
   bottom: 0;
@@ -1566,6 +1641,58 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   border: 1px solid var(--border-gray);
 }
 
+/* Nút "Đặt lại vé" trong bảng trang "Lịch sử hành khách" — viên thuốc đỏ đặc, có icon, theo mẫu ảnh.
+   Đủ đặc hiệu (element + class) để thắng .btn khai báo sau nó trong file — .btn cũng chỉ có 1 class nên
+   nếu để độ đặc hiệu bằng nhau, .btn (đứng sau) sẽ thắng theo thứ tự nguồn, đè mất bo góc/màu ở đây. */
+button.ph-rebook-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--red) 0%, #d81410 100%);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 1.5px 5px rgba(194, 13, 8, 0.22);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+
+button.ph-rebook-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(194, 13, 8, 0.32);
+  color: var(--white);
+}
+
+button.ph-rebook-btn svg {
+  width: 12px;
+  height: 12px;
+  stroke: var(--white);
+  flex: 0 0 auto;
+}
+
+/* Thanh chuyển ghế / đặt vé nhóm (.sticky-actions) — 2 nút cần có màu thay vì xám trung tính mặc định */
+.sticky-actions .btn-secondary {
+  background: white;
+  color: var(--red);
+  border: 1.5px solid var(--red);
+}
+
+.sticky-actions .btn-secondary:hover {
+  background: var(--red-light);
+}
+
+.sticky-actions #stickyActionBtn {
+  background: var(--red);
+  color: white;
+  border: none;
+}
+
 .btn-action-red {
   transition: background .12s, border-color .12s, color .12s;
 }
@@ -1593,8 +1720,8 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 }
 
 .slidepanel {
-  width: 840px;
-  max-width: 92vw;
+  width: 920px;
+  max-width: 94vw;
   max-height: 90vh;
   background: white;
   border-radius: 16px;
@@ -1718,6 +1845,52 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   background: var(--surface-2);
   color: var(--text-sub);
   cursor: not-allowed;
+}
+
+.phone-input-row,
+.phone-extra-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.phone-input-row input,
+.phone-extra-row input {
+  width: auto;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.phone-add-btn,
+.phone-remove-btn {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--text-sub);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.phone-add-btn:hover,
+.phone-remove-btn:hover {
+  border-color: var(--red);
+  color: var(--red);
+  background: var(--red-light);
+}
+
+.phone-extra-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .checkbox-inline {
@@ -1848,6 +2021,98 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   margin-top: 4px;
 }
 
+.zero-price-reason {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.zero-price-reason label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.zero-price-reason input {
+  width: 100%;
+  border: 1px solid var(--red);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  font-size: 13px;
+}
+
+.deposit-block {
+  margin-top: 8px;
+}
+
+.deposit-block .checkbox-inline {
+  padding: 7px 11px;
+  font-size: 13.5px;
+}
+
+.deposit-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 8px 9px;
+  border: 1px solid var(--green);
+  border-radius: var(--radius-sm);
+  background: rgba(22, 163, 74, .06);
+}
+
+.deposit-fields label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--green);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.deposit-fields input[type="number"] {
+  width: 100%;
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  font-size: 13px;
+}
+
+.deposit-method-row {
+  display: flex;
+  gap: 14px;
+}
+
+.radio-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  user-select: none;
+}
+
+.radio-inline input[type="radio"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--green);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.seat-deposit-tag {
+  background: rgba(22, 163, 74, .12);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .panel-footer {
   flex: 0 0 auto;
   padding: 14px 22px;
@@ -1925,8 +2190,7 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
   overflow: visible;
 }
 
@@ -2049,16 +2313,45 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 .pax-table-wrap {
   border: 1px solid var(--surface);
   border-radius: var(--radius-md);
-  overflow: auto;
-  max-height: 520px;
-  flex: 0 1 auto;
+  overflow-x: auto;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+}
+
+/* .grid-wrap/.grid-empty: callcenter.css đã có sẵn bộ này cho #phoiView (nạp sau booking-ui.css nên vẫn
+   thắng, không đổi phoiView) — ticketstaff.css không có, cần thêm ở đây để #historyView dùng chung được
+   trên cả 2 trang mà không phải viết trùng 2 lần. */
+.grid-wrap {
+  flex: 1;
+  overflow: auto;
+}
+
+.grid-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--text-sub);
+  text-align: center;
+  gap: 12px;
+}
+
+.grid-empty svg {
+  width: 42px;
+  height: 42px;
+  stroke: #A0A3A5;
+}
+
+.grid-empty p {
+  margin: 0;
+  font-size: 13.5px;
 }
 
 .pax-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-family: inherit;
   font-size: 13px;
@@ -2086,18 +2379,226 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 .pax-table thead th:nth-child(6),
 .pax-table thead th:nth-child(7),
 .pax-table thead th:nth-child(8),
-.pax-table thead th:nth-child(9) {
+.pax-table thead th:nth-child(9),
+.pax-table thead th:nth-child(10) {
   text-align: center;
 }
 
 .pax-table thead th:nth-child(1),
 .pax-table tbody td:nth-child(1) {
   width: 40px;
-  min-width: 40px;
-  max-width: 40px;
   padding-left: 8px;
   padding-right: 8px;
   text-align: center;
+}
+
+/* Bề rộng cột cố định theo tỉ lệ — tránh bảng co giãn lệch khi nội dung dài/ngắn khác nhau giữa các dòng.
+   Nhóm rộng (Họ tên/SĐT/Điểm đi/Điểm đến): nhiều chữ, cần thoáng. Nhóm vừa (Vị trí/Đã thu/Còn nợ):
+   số ngắn. Nhóm hẹp (Số vé/Baga): 1 số hoặc 1 icon. Cột "Ghi chú" không đặt width, tự nhận phần còn
+   lại (rộng nhất) — giới hạn chiều cao 2 dòng bằng line-clamp thay vì ép hẹp width. */
+.pax-table thead th:nth-child(2),
+.pax-table tbody td:nth-child(2) {
+  width: 14%;
+}
+
+.pax-table thead th:nth-child(3),
+.pax-table tbody td:nth-child(3) {
+  width: 10%;
+}
+
+.pax-table thead th:nth-child(4),
+.pax-table tbody td:nth-child(4) {
+  width: 13%;
+}
+
+.pax-table thead th:nth-child(5),
+.pax-table tbody td:nth-child(5) {
+  width: 13%;
+}
+
+.pax-table thead th:nth-child(6),
+.pax-table tbody td:nth-child(6) {
+  width: 5%;
+}
+
+.pax-table thead th:nth-child(7),
+.pax-table tbody td:nth-child(7) {
+  width: 7%;
+}
+
+.pax-table thead th:nth-child(8),
+.pax-table tbody td:nth-child(8),
+.pax-table thead th:nth-child(9),
+.pax-table tbody td:nth-child(9) {
+  width: 9%;
+}
+
+.pax-table thead th:nth-child(10),
+.pax-table tbody td:nth-child(10) {
+  width: 46px;
+}
+
+/* Bảng ghế hủy (tab "Ghế hủy") dùng chung .pax-table nhưng thứ tự/số cột khác bảng Hành khách
+   (8 cột: STT, Vị trí, Họ và tên, SĐT, Chặng đi, Số tiền, Nguyên nhân hủy, Thời gian hủy) —
+   ghi đè lại toàn bộ width theo đúng cột của bảng này, độ đặc hiệu cao hơn nên không lẫn với bảng trên. */
+.pax-table--cancelled thead th:nth-child(1),
+.pax-table--cancelled tbody td:nth-child(1) {
+  width: 40px;
+}
+
+.pax-table--cancelled thead th:nth-child(2),
+.pax-table--cancelled tbody td:nth-child(2) {
+  width: 70px;
+  text-align: center;
+}
+
+.pax-table--cancelled thead th:nth-child(3),
+.pax-table--cancelled tbody td:nth-child(3) {
+  width: 17%;
+}
+
+.pax-table--cancelled thead th:nth-child(4),
+.pax-table--cancelled tbody td:nth-child(4) {
+  width: 12%;
+}
+
+.pax-table--cancelled thead th:nth-child(5),
+.pax-table--cancelled tbody td:nth-child(5) {
+  width: 20%;
+}
+
+.pax-table--cancelled thead th:nth-child(6),
+.pax-table--cancelled tbody td:nth-child(6) {
+  width: 11%;
+}
+
+.pax-table--cancelled thead th:nth-child(7),
+.pax-table--cancelled tbody td:nth-child(7) {
+  width: 22%;
+}
+
+.pax-table--cancelled thead th:nth-child(8),
+.pax-table--cancelled tbody td:nth-child(8) {
+  width: 18%;
+}
+
+/* Bảng trang "Lịch sử hành khách" (historyView) dùng chung .pax-table nhưng có 10 cột riêng, thứ tự khác
+   hẳn bảng Hành khách/Ghế hủy — nếu không ghi đè, cột 1 (cần rộng nhất) bị bó theo width 40px của cột STT
+   bảng Hành khách. Chọn cả 2 lớp (.pax-table.pax-table--history) để độ đặc hiệu chắc chắn cao hơn
+   .pax-table đơn, không phụ thuộc thứ tự khai báo trong file.
+   Thứ tự cột: 1 Ngày, 2 Tên phơi, 3 Tên hành khách, 4 SĐT, 5 Trạm đi, 6 Trạm đến, 7 SL ghế, 8 Giá vé,
+   9 Nhân viên, 10 Chức năng (nút "Đặt lại vé").
+   Kiểu chữ/bảng lấy theo mẫu .shuttle-table (bảng "Danh sách phơi xe" trang callcenter, css/callcenter.css)
+   — header xám nhạt in hoa dính (sticky), hàng có hover — nhưng .shuttle-table chỉ tồn tại ở callcenter.css
+   (ticketstaff.html không nạp file đó), nên style được viết đè trực tiếp ở đây (file dùng chung) để cả 2
+   trang hiển thị giống nhau thay vì phụ thuộc .shuttle-table. */
+.pax-table.pax-table--history thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--white);
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--border-gray);
+  white-space: normal;
+  vertical-align: bottom;
+}
+
+.pax-table.pax-table--history tbody td {
+  padding: 12px;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--surface);
+}
+
+.pax-table.pax-table--history tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.pax-table.pax-table--history tbody tr:hover {
+  background: var(--surface-2);
+}
+
+/* Ngày — ngắn, không xuống dòng. */
+.pax-table.pax-table--history thead th:nth-child(1),
+.pax-table.pax-table--history tbody td:nth-child(1) {
+  width: 7%;
+  text-align: left;
+}
+
+/* Tên phơi + Trạm đi/Trạm đến là 3 cột thông tin chuyến đi quan trọng nhất — ưu tiên rộng hơn hẳn các
+   cột còn lại. */
+.pax-table.pax-table--history thead th:nth-child(2),
+.pax-table.pax-table--history tbody td:nth-child(2) {
+  width: 20%;
+  text-align: left;
+}
+
+/* Hành khách + SĐT — đủ rộng để tên và số hiện trên 1 hàng, không cần xuống dòng hay cắt bớt. */
+.pax-table.pax-table--history thead th:nth-child(3),
+.pax-table.pax-table--history tbody td:nth-child(3) {
+  width: 14%;
+  text-align: left;
+}
+
+.pax-table.pax-table--history tbody td.ch-col-ellipsis {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.pax-table.pax-table--history thead th:nth-child(4),
+.pax-table.pax-table--history tbody td:nth-child(4) {
+  width: 10%;
+  text-align: left;
+}
+
+.pax-table.pax-table--history tbody td.ch-col-nowrap {
+  white-space: nowrap;
+}
+
+.pax-table.pax-table--history thead th:nth-child(5),
+.pax-table.pax-table--history tbody td:nth-child(5) {
+  width: 12%;
+  text-align: left;
+}
+
+.pax-table.pax-table--history thead th:nth-child(6),
+.pax-table.pax-table--history tbody td:nth-child(6) {
+  width: 12%;
+  text-align: left;
+}
+
+/* Số ghế chỉ hiện số lượng (1-2 chữ số, mã ghế cụ thể xem qua title) nên rất hẹp. */
+.pax-table.pax-table--history thead th:nth-child(7),
+.pax-table.pax-table--history tbody td:nth-child(7) {
+  width: 4%;
+  text-align: center;
+}
+
+.pax-table.pax-table--history thead th:nth-child(8),
+.pax-table.pax-table--history tbody td:nth-child(8) {
+  width: 7%;
+  text-align: right;
+}
+
+.pax-table.pax-table--history thead th:nth-child(9),
+.pax-table.pax-table--history tbody td:nth-child(9) {
+  width: 7%;
+  text-align: left;
+}
+
+/* Chức năng — rộng hơn hẳn con số cũ (4%): nút "Đặt lại" (icon + chữ, white-space:nowrap) cần đủ chỗ,
+   nếu cột hẹp hơn kích thước thật của nút thì chính nút này đẩy cả bảng tràn rộng hơn khung hiển thị dù
+   đã khai table-layout:fixed — đây là nguyên nhân chính khiến phải cuộn ngang mới xem hết bảng. */
+.pax-table.pax-table--history thead th:nth-child(10),
+.pax-table.pax-table--history tbody td:nth-child(10) {
+  width: 7%;
+  text-align: center;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 .pax-table tbody td {
@@ -2105,14 +2606,26 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   border-bottom: 1px solid #ECECEC;
   vertical-align: middle;
   color: var(--text-main);
-  white-space: nowrap;
-}
-
-.pax-table tbody td.pax-note-cell {
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.pax-table tbody td.pax-note-cell {
   text-align: left;
+}
+
+/* display:-webkit-box đặt thẳng lên <td> làm ô thoát khỏi mô hình "table-cell", khiến trình duyệt
+   không còn tính đúng chiều cao hàng theo nội dung đã cắt — chữ dòng 3 tràn lộ ra ngoài viền hàng
+   thay vì bị overflow:hidden chặn lại. Bọc riêng 1 <span> bên trong để line-clamp áp dụng cho nó,
+   còn <td> vẫn giữ nguyên display:table-cell mặc định. */
+.pax-note-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
 }
 
 .pax-table tbody td:nth-child(1),
@@ -2124,7 +2637,8 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 .pax-table tbody td:nth-child(3),
 .pax-table tbody td:nth-child(6),
 .pax-table tbody td:nth-child(7),
-.pax-table tbody td:nth-child(8) {
+.pax-table tbody td:nth-child(8),
+.pax-table tbody td:nth-child(9) {
   text-align: center;
 }
 
@@ -2149,7 +2663,7 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 
 .pax-pay-amount {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--text-main);
   margin-top: 0px;
   line-height: 1.3;
@@ -2159,26 +2673,8 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   white-space: nowrap;
 }
 
-.pax-pay-cell.paid {
-  background: #EAFBF1;
-}
-
-.pax-pay-cell.debt {
-  background: #FEEFEF;
-}
-
-.pax-pay-cell.free {
-  background: #F1F2F4;
-}
-
-.pax-pay-cell.paid .pax-pay-amount {
-  color: var(--green);
-}
-
-.pax-pay-cell.debt .pax-pay-amount {
-  color: var(--red);
-}
-
+/* Vé 0đ (giá vé sửa còn 0đ, có lý do) hoặc ghế state 'free' — không có gì để thu/nợ, hiện "Miễn phí"
+   màu xám nhạt thay vì số tiền, chỉ đổi màu chữ chứ không tô nền (giữ đúng yêu cầu bỏ màu nền ở đây). */
 .pax-pay-cell.free .pax-pay-amount {
   color: var(--seat-free);
 }
@@ -2355,7 +2851,7 @@ textarea:focus {
 }
 
 .cols-3 .route-single-line {
-  display: none !important;
+  display: none;
 }
 
 .cols-3 .route-split-line {
@@ -2452,7 +2948,7 @@ textarea:focus {
 }
 
 .seat-card.cancelled:hover .seat-price-tag {
-  display: block !important;
+  display: block;
 }
 
 .seat-card.cancelled .seat-footbtn {
@@ -2497,135 +2993,6 @@ textarea:focus {
 }
 
 /* ========== CUSTOMER HISTORY VIEW ========== */
-.customer-history-view {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-  animation: chFadeIn .25s ease;
-}
-
-.ch-body {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  padding: 0;
-}
-
-.ch-body .ch-history-table {
-  margin: 0;
-}
-
-.ch-body .ch-empty {
-  padding: 60px 22px;
-}
-
-/* History table */
-.ch-history-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 13.5px;
-}
-
-.ch-history-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: #F5F6F8;
-  color: var(--text-sub);
-  font-size: 11.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  padding: 10px 12px;
-  text-align: left;
-  border-bottom: 2px solid var(--border-gray);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, .06);
-}
-
-.ch-history-table tbody tr {
-  cursor: pointer;
-  transition: background .12s;
-}
-
-.ch-history-table tbody tr:hover {
-  background: var(--red-light);
-}
-
-.ch-history-table tbody tr.expanded {
-  background: #FFF5F5;
-}
-
-.ch-history-table tbody td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--surface);
-  color: var(--text-main);
-  vertical-align: top;
-}
-
-.ch-history-table thead th:first-child,
-.ch-history-table tbody td:first-child {
-  padding-left: 22px;
-}
-
-.ch-history-table thead th:last-child,
-.ch-history-table tbody td:last-child {
-  padding-right: 22px;
-}
-
-.ch-history-table .ch-date {
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.ch-history-table .ch-route {
-  font-weight: 700;
-}
-
-.ch-trip-link {
-  color: var(--red);
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: underline;
-  transition: color 0.15s;
-}
-
-.ch-trip-link:hover {
-  color: #9e0a06;
-}
-
-.ch-btn-rebook-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  color: white;
-  background: linear-gradient(135deg, var(--red) 0%, #9e0a06 100%);
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: opacity 0.15s;
-  white-space: nowrap;
-}
-
-.ch-btn-rebook-row:hover {
-  opacity: 0.9;
-}
-
-.ch-history-table .ch-seat-code {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  background: var(--surface);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
 /* Empty state */
 .ch-empty {
   display: flex;
@@ -2654,50 +3021,121 @@ textarea:focus {
   color: var(--red);
 }
 
-/* Trip list for rebook */
-.ch-trip-list {
+/* Bộ lọc ngày/khung giờ cho danh sách phơi xe trong modal "Đặt lại vé" — allTripsMeta tích luỹ theo
+   thời gian nên không lọc sẽ rất dài, khó chọn đúng chuyến. 2 ô nằm cùng 1 hàng, mỗi ô ~50% (trừ khoảng
+   cách), tự động xuống 2 hàng nếu không đủ chỗ ngang (màn hình nhỏ) nhờ flex-wrap. */
+.rb-trip-filter-row {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
-.ch-trip-card {
-  padding: 10px 12px;
-  border: 1.5px solid var(--border-gray);
+.rb-trip-filter-row .rb-date-filter-wrap,
+.rb-trip-filter-row select {
+  flex: 1 1 calc(50% - 4px);
+  min-width: 140px;
+}
+
+/* Chọn selector đặc hiệu hơn ".rebook-form-section select" (khai báo sau, cùng độ đặc hiệu nếu chỉ
+   dùng ".rb-trip-filter-row select" — sẽ bị rule đó đè mất padding/font-size do đứng sau trong file)
+   để chắc chắn thắng, không phụ thuộc thứ tự khai báo. Cùng chiều cao/font-size với nút chọn ngày
+   (.filter-select) để 2 ô thẳng hàng, cân đối. */
+.rebook-form-section .rb-trip-filter-row select {
+  width: 100%;
+  height: 35px;
+  border: 1px solid var(--border-gray);
   border-radius: var(--radius-sm);
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  background: var(--white);
+  font-family: inherit;
   cursor: pointer;
-  transition: all .15s;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
-.ch-trip-card:hover {
+.rebook-form-section .rb-trip-filter-row select:focus {
+  outline: 2px solid var(--red);
+  outline-offset: 0;
   border-color: var(--red);
-  background: var(--red-light);
 }
 
-.ch-trip-card.selected {
-  border-color: var(--red);
-  background: var(--red-light);
-  box-shadow: 0 0 0 2px rgba(245, 16, 11, .15);
+/* Nút mở lịch chọn ngày (#rbFilterDateBtn) — cùng bộ class "filter-select"/"filter-date-chev" đã dùng
+   cho #pkFilterDateBtn (trang Rước liền) và trang shuttle, nhưng #rebookModal dùng chung cho cả
+   callcenter.html lẫn ticketstaff.html nên đặt ở đây (dùng chung) thay vì trong css riêng từng trang. */
+.rb-date-filter-wrap {
+  position: relative;
 }
 
-.ch-trip-card .ch-trip-time {
-  font-size: 14px;
-  font-weight: 800;
+/* #rbFilterDateBtn nằm trong .rb-date-filter-wrap chỉ rộng ~50% cột trái modal (~230-240px), trong khi
+   .calendar-popover dùng chung neo theo "right:0" và rộng 250px — cùng lỗi tràn sang trái/đè nội dung đã
+   sửa cho #pkCalendarPanel (trang Rước liền), neo lại "left:0" cho khớp. */
+#rbCalendarPanel {
+  left: 0;
+  right: auto;
 }
 
-.ch-trip-card .ch-trip-route {
-  font-size: 12px;
+/* #phFilterDateBtn (trang Lịch sử hành khách) cũng nằm trong .filter-field-date hẹp (~160-190px) — cùng
+   lỗi lệch/tràn đã sửa cho #pkCalendarPanel/#rbCalendarPanel. */
+/* #phCalendarPanel là lịch DUY NHẤT có 2 nút trong .cal-head-right ("Tất cả" + "Hôm nay", các lịch khác
+   chỉ có 1 nút "Hôm nay") — cùng cỡ chữ/kích thước dùng chung (tháng 15px, nút 12.5px) thì hàng tiêu đề
+   bị chật/to mất cân đối trong khung rộng 250px. Nới khung rộng hơn 1 chút + thu nhỏ chữ tháng/nút riêng
+   cho lịch này, không đụng cỡ chữ dùng chung của các lịch khác (Zone 1, Rước liền, Đặt lại vé). */
+#phCalendarPanel {
+  left: 0;
+  right: auto;
+  width: 280px;
+}
+
+#phCalendarPanel .cal-head b {
+  font-size: 13px;
+}
+
+#phCalendarPanel .cal-today-btn {
+  font-size: 10.5px;
+  padding: 3px 6px;
+}
+
+#phCalendarPanel .cal-head-right {
+  gap: 3px;
+}
+
+.filter-select {
+  display: flex; align-items: center; gap: 6px; height: 35px; width: 100%;
+  border: 1.5px solid var(--border-gray); border-radius: var(--radius-md);
+  padding: 0 10px; background: var(--white); font-size: 13px; font-weight: 600; color: var(--text-main);
+  transition: border-color .12s, background .12s, color .12s;
+  cursor: pointer;
+}
+.filter-select:hover { border-color: var(--red); color: var(--red); }
+.filter-select.open { border-color: var(--red); background: var(--red-light); color: var(--red); }
+.filter-select svg { width: 14px; height: 14px; stroke: currentColor; flex: 0 0 auto; }
+.filter-select span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; text-align: left; }
+.filter-date-chev { width: 11px !important; height: 11px !important; margin-left: auto; transition: transform .15s; }
+.filter-select.open .filter-date-chev { transform: rotate(180deg); }
+.filter-field-date {
+  flex: 0 0 auto !important;
+  min-width: 160px !important;
+  max-width: 190px !important;
+  position: relative;
+}
+
+.ch-trip-empty {
+  padding: 16px 4px;
+  text-align: center;
+  font-size: 13px;
   color: var(--text-sub);
   font-weight: 600;
 }
 
-.ch-trip-card .ch-trip-avail {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--green);
+/* Trip list for rebook — từng thẻ phơi giờ dùng chung .trip-card/.trip-card-row1/.trip-card-row2 (kiểu
+   dáng y hệt danh sách phơi Zone 1), không còn .ch-trip-card riêng nữa. */
+.ch-trip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 /* ===================== PHƠI XE MANAGEMENT (SHUTTLE TOOLBAR STYLE) ===================== */
@@ -2748,6 +3186,26 @@ textarea:focus {
 .filter-field select:focus,
 .filter-field input[type="text"]:focus,
 .filter-field input[type="date"]:focus {
+  border-color: var(--red);
+}
+
+/* Dropdown "Khung giờ" ở zone1 (sidebar phơi xe) — kích thước bằng đúng ô "Tuyến"/"Hướng đi" bên cạnh
+   (.combo-input-wrap + .combo-input: border 1px, radius --radius-sm, padding dọc 6px, font-size 15px) để
+   đồng bộ chiều cao/chữ giữa các field trong cùng cột lọc, thay vì để chiều cao/cỡ chữ tự chọn riêng. */
+#zone1HourFilter {
+  width: 100%;
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+  background: var(--white);
+  outline: none;
+  transition: border-color .15s;
+}
+
+#zone1HourFilter:focus {
   border-color: var(--red);
 }
 
@@ -2856,21 +3314,9 @@ textarea:focus {
   border: none;
 }
 
-.ch-history-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 6px;
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--text-sub);
-}
-
 /* ========== REBOOK MODAL ========== */
 #rebookModal {
-  z-index: 9999 !important;
+  z-index: 9999;
 }
 
 #rebookModal.open {
@@ -2995,9 +3441,9 @@ textarea:focus {
 }
 
 .ch-col-filter-btn.active {
-  color: var(--red, #C20D08) !important;
-  background: rgba(194, 13, 8, 0.12) !important;
-  border-color: var(--red, #C20D08) !important;
+  color: var(--red, #C20D08);
+  background: rgba(194, 13, 8, 0.12);
+  border-color: var(--red, #C20D08);
   font-weight: bold;
 }
 
@@ -3171,9 +3617,7 @@ textarea:focus {
 }
 
 .transship-table-wrap {
-  overflow-y: auto !important;
-  overflow-x: auto !important;
-  max-height: 220px !important;
+  overflow-x: auto;
   width: 100%;
   position: relative;
   display: block;
@@ -3205,9 +3649,6 @@ textarea:focus {
 }
 
 .transship-table th {
-  position: sticky;
-  top: 0;
-  z-index: 10;
   background: #f1f5f9;
   color: var(--text-sub);
   font-weight: 700;
@@ -3246,7 +3687,7 @@ textarea:focus {
 
 .ts-empty {
   text-align: center;
-  padding: 24px !important;
+  padding: 24px;
   color: var(--text-sub);
   font-weight: 500;
 }
@@ -3282,12 +3723,37 @@ textarea:focus {
 
 /* ===================== CUSTOMER HISTORY SEAT MAP VIEW ===================== */
 .customer-history-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
   background: #f8fafc;
   padding: 16px;
+}
+
+/* Header của view "Tìm kiếm vé khách hàng" — thay cho thanh lọc trước đây, chỉ còn tiêu đề + nút đóng. */
+.ch-search-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.ch-search-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.ch-search-header .btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
 }
 
 .ch-container {
@@ -3365,31 +3831,6 @@ textarea:focus {
   margin-bottom: 16px;
 }
 
-.ch-seatmaps-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 20px;
-  align-items: start;
-  width: 100%;
-}
-
-.ch-trip-seatmap-card {
-  background: white;
-  border: 1px solid var(--border-gray);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  transition: border-color .15s, box-shadow .15s;
-}
-
-.ch-trip-seatmap-card:hover {
-  border-color: var(--red);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-}
-
 .ch-seat-row-item {
   display: flex;
   align-items: center;
@@ -3418,16 +3859,6 @@ textarea:focus {
   flex-direction: row;
   align-items: center;
   gap: 6px;
-}
-
-.ch-seat-pill {
-  font-size: 13.5px;
-  font-weight: 800;
-  color: var(--red);
-  background: var(--red-light);
-  padding: 3px 9px;
-  border-radius: 6px;
-  border: 1px solid rgba(194, 13, 8, 0.2);
 }
 
 .col-stops {
@@ -3495,69 +3926,6 @@ textarea:focus {
   padding: 5px 12px;
 }
 
-.ch-trip-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #f8fafc;
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--border-gray);
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.ch-trip-title-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.ch-trip-ico {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--red-light);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-}
-
-.ch-trip-name {
-  font-size: 15.5px;
-  font-weight: 800;
-  color: var(--text-main);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.ch-date-tag {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--red);
-  background: var(--red-light);
-  padding: 1px 7px;
-  border-radius: 5px;
-}
-
-.ch-history-badge {
-  font-size: 11px;
-  font-weight: 800;
-  background: #22c55e;
-  color: white;
-  padding: 1px 6px;
-  border-radius: 4px;
-  text-transform: uppercase;
-}
-
-.ch-trip-subinfo {
-  font-size: 12.5px;
-  color: var(--text-sub);
-  margin-top: 3px;
-}
-
 .ch-seatmap-visual-wrap {
   display: flex;
   gap: 24px;
@@ -3585,18 +3953,6 @@ textarea:focus {
   margin-bottom: 10px;
   padding-bottom: 6px;
   border-bottom: 1px solid #f1f5f9;
-}
-
-.ch-active-seat {
-  background: var(--red) !important;
-  color: white !important;
-  border-color: var(--red) !important;
-  box-shadow: 0 0 0 2px var(--red-light), 0 2px 6px rgba(194, 13, 8, 0.3) !important;
-  transform: scale(1.04);
-}
-
-.ch-active-seat svg {
-  color: white !important;
 }
 
 .ch-cust-tag {
@@ -3664,6 +4020,7 @@ textarea:focus {
 }
 
 .ch-seat-pill {
+  border: 1px solid rgba(194, 13, 8, 0.2);
   font-size: 15px;
   font-weight: 800;
   color: var(--red);
@@ -3731,6 +4088,7 @@ textarea:focus {
 }
 
 .ch-btn-rebook-row {
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3746,6 +4104,7 @@ textarea:focus {
 }
 
 .ch-btn-rebook-row:hover {
+  opacity: 0.9;
   background: var(--red);
   color: white;
 }
@@ -3777,6 +4136,7 @@ textarea:focus {
 }
 
 .ch-trip-header {
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3801,23 +4161,6 @@ textarea:focus {
   text-decoration: underline;
 }
 
-.ch-trip-ico {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--red-light);
-  color: var(--red);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  transition: transform .15s ease;
-}
-
-.ch-trip-title-info:hover .ch-trip-ico {
-  transform: scale(1.08);
-}
-
 .ch-trip-name {
   font-size: 14px;
   font-weight: 800;
@@ -3827,44 +4170,6 @@ textarea:focus {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-}
-
-.ch-trip-link {
-  color: var(--text-main);
-  transition: color .15s ease;
-}
-
-.ch-date-tag {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--red);
-  background: var(--red-light);
-  padding: 1.5px 6px;
-  border-radius: 5px;
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
-.ch-history-badge {
-  font-size: 10.5px;
-  font-weight: 800;
-  background: #22c55e;
-  color: white;
-  padding: 1.5px 6px;
-  border-radius: 999px;
-  text-transform: uppercase;
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-}
-
-.ch-trip-subinfo {
-  font-size: 11.5px;
-  color: var(--text-sub);
-  margin-top: 2px;
-  line-height: 1.35;
-  word-break: break-word;
 }
 
 .ch-seat-cards-grid {
@@ -3878,16 +4183,16 @@ textarea:focus {
 }
 
 .ch-seat-card-item {
-  display: flex !important;
-  flex-direction: column !important;
+  display: flex;
+  flex-direction: column;
   background: white;
   border: 1.5px solid var(--border-gray);
   border-radius: var(--radius-md);
-  padding: 9px 10px !important;
-  min-height: 200px !important;
-  height: auto !important;
-  box-sizing: border-box !important;
-  overflow: visible !important;
+  padding: 9px 10px;
+  min-height: 200px;
+  height: auto;
+  box-sizing: border-box;
+  overflow: visible;
   position: relative;
   transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
 }
@@ -3934,18 +4239,25 @@ textarea:focus {
   flex: 0 0 auto;
 }
 
+/* Thẻ ghế lịch sử khách hàng không dùng kiểu "rê chuột ẩn giá, hiện nút chỉnh sửa" như thẻ ghế ở sơ đồ
+   chính (không có nút chỉnh sửa để hiện) — huỷ rule .seat-card:hover .seat-price-tag{display:none} chỉ
+   cho riêng phạm vi này, giữ giá luôn hiện kể cả khi rê chuột qua thẻ. */
+.ch-seat-card-item:hover .seat-price-tag {
+  display: block;
+}
+
 .ch-seat-card-item .seat-line {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: flex-start !important;
-  gap: 4px !important;
-  font-size: 11.5px !important;
-  line-height: 1.35 !important;
-  margin: 3px 0 !important;
-  color: var(--text-main) !important;
-  white-space: normal !important;
-  word-break: break-word !important;
-  overflow: visible !important;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  margin: 3px 0;
+  color: var(--text-main);
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
 }
 
 .ch-seat-card-item .seat-label-full {
@@ -3965,32 +4277,67 @@ textarea:focus {
   flex: 1 1 auto;
 }
 
+.ch-seat-card-item .seat-footbtn {
+  margin-top: auto;
+  width: 100%;
+  background: white;
+  color: var(--red);
+  border: 1px solid var(--red);
+  border-radius: var(--radius-sm);
+  padding: 5px 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  cursor: pointer;
+  transition: all .15s ease;
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+.ch-seat-card-item .seat-footbtn:hover {
+  background: var(--red) !important;
+  color: white !important;
+}
+
+/* Các class dưới đây dùng chung cho thẻ lịch sử khách hàng — tên phơi bấm được (goToTripFromHistory),
+   nhãn ngày, badge "Hôm nay", và phần địa chỉ phụ trong Trạm đi/đến (xem getHistoryStopsDisplay). */
+.ch-trip-link {
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  color: var(--text-main);
+  transition: color .15s ease;
+}
+
+.ch-date-tag {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--red);
+  background: var(--red-light);
+  padding: 1.5px 6px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.ch-history-badge {
+  font-size: 10.5px;
+  font-weight: 800;
+  background: #22c55e;
+  color: white;
+  padding: 1.5px 6px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
 .ch-sub-address {
   font-size: 11px;
   color: var(--text-sub);
   margin-top: 1px;
   font-weight: normal;
   word-break: break-word;
-}
-
-.ch-seat-card-item .seat-footbtn {
-  margin-top: auto !important;
-  width: 100% !important;
-  background: white !important;
-  color: var(--red) !important;
-  border: 1px solid var(--red) !important;
-  border-radius: var(--radius-sm) !important;
-  padding: 5px 0 !important;
-  font-size: 11.5px !important;
-  font-weight: 700 !important;
-  letter-spacing: .2px !important;
-  cursor: pointer !important;
-  transition: all .15s ease !important;
-  text-align: center !important;
-  flex: 0 0 auto !important;
-}
-
-.ch-seat-card-item .seat-footbtn:hover {
-  background: var(--red) !important;
-  color: white !important;
 }

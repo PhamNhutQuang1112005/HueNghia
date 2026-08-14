@@ -94,6 +94,10 @@ Biến `:root`: 13 biến giống nhau ở **cả 5 file** (`--black`, `--border
 
 Nợ kỹ thuật CSS khác: `!important` — callcenter 59, ticketstaff 61, shuttle 18, pickup-list 1. Selector bị khai báo trùng **trong cùng 1 file**: callcenter 16, ticketstaff 16.
 
+> ⚠️ **Số liệu trên đo TRƯỚC Giai đoạn 1 (tách CSS)** — sau khi tách, phần lớn cả 2 loại nợ kỹ thuật này đã
+> **di chuyển sang `css/shared/booking-ui.css`** cùng với 3.351 dòng trùng lặp, không còn nằm ở
+> `callcenter.css`/`ticketstaff.css` như bảng trên ghi. Đã đo lại chính xác ở Giai đoạn 7 — xem mục đó.
+
 Không có `@media` nào trong callcenter/ticketstaff/pickup-list (chỉ shuttle có 1) → tách file không phải lo vấn đề thứ tự media query.
 
 ### 0.6 Trùng lặp HTML
@@ -216,43 +220,183 @@ Không đụng file JS nào. Chỉ tách file + đổi thẻ `<link>`.
 - **Phát hiện thêm:** `confirmRebookAndSell()` được gọi ở `callcenter.html:1069` (nút "Bán vé" trong panel đặt lại vé) nhưng chỉ định nghĩa trong `ticketstaff.js`, không có trong `callcenter.js` — cùng nhóm lỗi với `updateRebookPreview`/`resetPhoiFilters` đã xử lý ở Giai đoạn 0. Nút mặc định `disabled` nên rủi ro thấp. Chưa xử lý, ghi vào mục 6.
 - **Bàn giao:** test đồng bộ chéo — đặt vé ở callcenter, kiểm tra dữ liệu hiện đúng ở ticketstaff / pickup-list / shuttle
 
-### Giai đoạn 3 — Tách các module shared JS thuần tuý
+### Giai đoạn 3 — Tách các module shared JS thuần tuý — ĐÃ XONG (trừ calendar.js)
 Chỉ chuyển những hàm **giống hệt 100%**, không sửa nội dung — dễ đối chiếu.
 
-- [ ] `shared/format.js`, `shared/ui.js`, `shared/seat-bank.js` (phần 100% giống)
-- [ ] `shared/booking.js` — phần lớn trong 70 hàm giống hệt cc/ts
-- [ ] `shared/calendar.js` — **rủi ro cao hơn** vì 4 bản chỉ giống 45–100%, phải nhận tham số cấu hình. Cân nhắc: giai đoạn này chỉ gộp bản cc+ts (giống 84–100%), để pickup-list/shuttle nhập ở Giai đoạn 6
-- [ ] `callcenter.js`/`ticketstaff.js` xoá bản copy trong file — dùng chung nhờ nạp `shared/*.js` bằng `<script>` thường trước script chính (không `import`, xem quyết định kiến trúc mục 1)
-- **Bàn giao:** test cả 2 trang. Đây là lần đầu 2 trang dùng chung 1 nguồn — sửa 1 chỗ ảnh hưởng cả 2
+- [x] `shared/format.js` — 6 hàm: `abbrRouteName`, `formatHistoryDate`, `getPastDate`, `getStaffCode`, `normalizeSearchText`, `shortenStopName`
+- [x] `shared/seat-bank.js` — 5 hàm: `buildSequentialSeatCodes`, `generateTripSeatPlanForVehicleType`, `getSeatCodesForVehicleType`, `loadSeatBank`, `saveSeatBank`
+- [x] `shared/ui.js` — 9 hàm: `showToast`, `closeModal`, `closePanel`, `pickSearchResult`, `toggleSearchResults`, `toggleCalendar`, `getStationValue`, `setStationValue`, `setSelectOptionValue` (`toggleCalendar` xếp tạm vào đây thay vì tạo hẳn `calendar.js` chỉ cho 1 hàm — xem mục dưới)
+- [x] `shared/booking.js` — 50 hàm còn lại trong 70 hàm giống hệt cc/ts (panel đặt vé, ghế phụ, menu ghế, chuyển ghế, lịch sử khách, đặt lại vé)
+- [x] Tiện thể chuyển luôn `CUSTOMER_HISTORY_DATA` vào `shared/constants.js` (hoãn từ Giai đoạn 2 vì phụ thuộc `getPastDate()` — nay `getPastDate` đã có trong `format.js` nên chuyển được). **Thứ tự nạp bắt buộc: `storage-keys.js → format.js → constants.js → seat-bank.js → ui.js → booking.js → script chính`** vì `constants.js` gọi `getPastDate()` ngay khi chạy
+- [x] `callcenter.js`/`ticketstaff.js` xoá bản copy — đối chiếu lại: mỗi hàm chỉ 1 khai báo/file trước khi xoá, quét lại sau khi xoá xác nhận 0 hàm còn sót (kể cả bản lồng trong hàm khác)
+- [x] `pickup-list.html` phải thêm `shared/format.js` dù chưa dùng trực tiếp — vì đã nạp sẵn `shared/constants.js` (từ Giai đoạn 2) và giờ file đó phụ thuộc `format.js`
+- [ ] `shared/calendar.js` — **chưa làm**, đúng như dự tính: 4 bản `renderCalendar`/`shiftMonth`/`pickDate`/`goToday`/`updateCalTrigger` chỉ giống 45–100% (không phải 100%), thuộc nhóm "khác nội dung", nằm ngoài quy tắc "chỉ chuyển hàm giống hệt" của giai đoạn này. Để dành cho Giai đoạn 6 khi làm cùng lúc với pickup-list/shuttle, lúc đó cần tham số hoá
+- **Kiểm tra đã làm:** mô phỏng nạp script bằng Node `vm` cho cả 4 trang theo đúng thứ tự mới — chạy hết không lỗi
+- **Bàn giao:** test cả 2 trang callcenter/ticketstaff (lần đầu dùng chung 1 nguồn — sửa 1 chỗ ảnh hưởng cả 2), và test lại pickup-list (thêm `format.js` mới)
 
-### Giai đoạn 4 — Event delegation, bỏ inline handler
-- [ ] Tạo `shared/events.js`: dispatcher đọc `data-action` + `data-*`, registry ánh xạ tên → hàm
-- [ ] Chuyển 109 inline trong `callcenter.html` + 30 chỗ sinh động trong `callcenter.js`
-- [ ] Chuyển 98 inline trong `ticketstaff.html` + 30 chỗ trong `ticketstaff.js`
-- [ ] 7 chỗ `event.stopPropagation()` inline → xử lý trong dispatcher, ghi chú lý do từng chỗ
-- [ ] Bật cảnh báo khi gặp `data-action` không có handler đăng ký — chính là cách bắt sớm loại lỗi `updateRebookPreview`
-- **Bàn giao:** test toàn bộ thao tác trên 2 trang. Đây là giai đoạn rủi ro cao nhất — làm xong dừng chờ xác nhận
-- Có thể chuyển dần từng phần (không bắt buộc chuyển hết 1 lần như bản ES Module đã bỏ) — vì dùng script thường, hàm `function` vẫn tự nằm trên `window`, inline handler cũ và `data-action` mới có thể tồn tại song song trong lúc chuyển
+### Giai đoạn 4 — Event delegation, bỏ inline handler — ĐÃ XONG
+- [x] Tạo `shared/events.js`: dispatcher lắng nghe `click/change/input/blur/submit` ở `document` (capture phase), dùng `closest()` tìm phần tử `data-action`/`data-change-action`/`data-input-action`/`data-blur-action`/`data-submit-action` gần nhất, tra hàm **động qua `window[tên]`** thay vì object registry thủ công (vì toàn bộ hàm nghiệp vụ vốn đã là hàm global trong kiến trúc script-thường — tự nó đã là "registry", không cần bảng ánh xạ trùng lặp dễ lệch). Chỉ ~4 trường hợp gộp-2-lệnh/điều-hướng mới cần đăng ký thủ công trong `SYNTHETIC_ACTIONS`
+- [x] Tham số truyền qua `data-args='["…"]'` (JSON) — 3 token đặc biệt được thay bằng giá trị thật lúc bấm (không lưu tĩnh): `"__this__"`, `"__event__"`, `"__this_value__"` (cho input đọc `el.value` trực tiếp)
+- [x] Chuyển toàn bộ 232 điểm inline (109 tĩnh callcenter.html + 98 tĩnh ticketstaff.html + 43 sinh động trong callcenter.js/ticketstaff.js, gồm **1 chỗ phát hiện thêm** ngoài kiểm kê ban đầu — `selectAssignTargetSeat` trong ticketstaff.js bị bỏ sót vì nằm sau dấu backtick chứ không phải khoảng trắng, quét lại broad-pattern mới bắt được)
+- [x] 5 chỗ `event.stopPropagation()` inline → cờ `data-stop-propagation="1"`, dispatcher gọi ở đầu, TRƯỚC khi chạy hàm chính. Xác nhận đúng ngữ nghĩa gốc bằng cách truy vết 1 trường hợp cụ thể (`showContextMenu`/nút "..." trong callcenter.js): có 1 listener `document.addEventListener("click", ()=>{đóng menu})` ở **bubble phase** đăng ký sẵn trong code — dispatcher mới chạy ở **capture phase** nên `stopPropagation()` gọi đúng lúc, ngăn listener đó chạy giống hệt hành vi gốc
+- [x] 2 chỗ `${footBtnClick}` (biến JS giữ nguyên cả chuỗi lệnh onclick, tuỳ điều kiện rỗng/có khách) → 1 synthetic action `seatFootBtnClick` đọc `data-seat-code` + `data-edit-mode`, xoá hẳn biến `footBtnClick`
+- [x] Bật cảnh báo `console.warn` khi `data-action` không có hàm — đã xác nhận **không phát sinh warning mới** so với lỗi đã biết (`confirmRebookAndSell` thiếu trên callcenter, từ Giai đoạn 2), tức chuyển đổi không làm hỏng thêm gì
+- [x] **Kiểm tra đã làm** (không có trình duyệt để test trực tiếp):
+  - Đối chiếu **231 chỗ inline kiểm kê ban đầu**, phát hiện thêm 1 → tổng 232, khớp chính xác số lượng `data-*action` sau khi chuyển
+  - Đối chiếu **toàn bộ tên action** (61 ở callcenter, 57 ở ticketstaff) đều resolve được qua `window[tên]` hoặc `SYNTHETIC_ACTIONS` — chỉ 1 trường hợp thiếu, đúng bằng bug đã biết trước
+  - Mô phỏng Node `vm`: nạp đúng thứ tự `shared/*.js → script chính → events.js`, gọi thử dispatcher với `data-action` giả — chạy không lỗi
+  - Đối chiếu diff từng dòng với bản gốc (backup trước khi chuyển) cho toàn bộ điểm chuyển đổi phức tạp (nhiều tham số, `this`, `event`, số, chuỗi có dấu tiếng Việt)
+- [x] **Phát hiện và sửa lỗi phát sinh ngoài dự tính:** ghi file bằng Python trên Windows (dùng ở Giai đoạn 1/3/4 khi cần biến đổi hàng loạt) mặc định dịch `\n` → `\r\n`, làm 12 file bị lẫn CRLF trong khi chuẩn thật của repo là LF thuần (xác nhận qua git blob HEAD, `core.autocrlf=false`). Đã chuẩn hoá lại toàn bộ 12 file này về LF — không đụng tới các file vốn đã CRLF từ trước khi tôi thao tác (`css/pickup-list.css`, `css/shuttle.css`, `html/shuttle.html`, `js/shuttle.js` — CRLF có sẵn, không phải do tôi gây ra)
+- **Bàn giao:** test toàn bộ thao tác trên 2 trang callcenter/ticketstaff trên trình duyệt thật — đây là giai đoạn rủi ro cao nhất, mọi nút bấm/thay đổi input đều đã đổi cơ chế, cần xác nhận kỹ trước khi qua Giai đoạn 5
 
-### Giai đoạn 5 — Tách module riêng từng trang
-- [ ] `callcenter/`: 28 hàm riêng + bản callcenter của 33 hàm khác nội dung + state
-- [ ] `ticketstaff/`: 27 hàm riêng + bản ticketstaff + state
-- [ ] Tách các hàm dài đã đo: `renderHistorySeatMap` (229 dòng ở ticketstaff, 228 ở callcenter), `printTicket` (153), `generateBulkTrips` (112), `saveSingleTrip` (96)
-- [ ] Rà hàm khai báo trong `shared/*.js` mà không trang nào gọi tới → xoá
-- **Bàn giao:** test độc lập từng trang
+### Sự cố sau bàn giao Giai đoạn 4 — ĐÃ SỬA (08/08/2026)
 
-### Giai đoạn 6 — Nhập pickup-list & shuttle vào shared
-- [ ] `pickup-list.js`: dùng `shared/seat-bank.js`, `shared/calendar.js`, `shared/ui.js`, `shared/constants.js` (`VEHICLE_TYPE_SEATS` giống hệt)
-- [ ] `shuttle.js`: dùng `shared/calendar.js`, `shared/ui.js`, `shared/storage-keys.js`; 34 hàm riêng giữ nguyên trong `shuttle/`
-- [ ] Tách CSS: `pickup-list.html` đang nạp cả `shuttle.css` — làm rõ phần nào thật sự dùng chung, đưa vào `css/shared/`
-- [ ] `login` để nguyên (159 dòng, không chung gì ngoài 13 biến `:root` — chỉ cần dùng `variables.css`)
-- [ ] Chuyển 34 + 18 inline handler còn lại sang `data-action`
+Bạn báo lỗi trên trình duyệt thật: **nút đặt vé, chỉnh sửa vé, chọn ghế để chuyển ghế, chọn ghế để đặt vé nhóm đều hỏng**. Đúng như dự đoán ở nguyên tắc an toàn #3 (không có trình duyệt để tự test) — mô phỏng Node `vm` không bắt được các lỗi này vì chúng chỉ lộ ra khi gọi đúng hàm với đúng ngữ cảnh runtime cụ thể, chứ không phải lỗi cú pháp/tham chiếu. Đã tìm ra **3 nguyên nhân riêng biệt**, đều do cách viết dispatcher/script chuyển đổi ở Giai đoạn 4, không phải do bản thân việc bỏ inline handler:
 
-### Giai đoạn 7 — Dọn dẹp cuối
-- [ ] Rà 16 selector khai báo trùng trong callcenter.css và 16 trong ticketstaff.css
-- [ ] Rà 59 + 61 + 18 `!important` — cái nào còn cần sau khi cascade đã sạch
-- [ ] Xem lại 33 hàm "trùng tên khác nội dung" cc↔ts: cặp nào chỉ khác 1–2 dòng thì gộp thành 1 hàm nhận tham số (nguyên tắc #6). **Làm sau cùng, không làm chung với lúc tách module**
-- [ ] Xoá file JS/CSS gộp cũ
+1. **`ev.currentTarget` không còn đúng khi dùng event delegation.** `onSeatClick` (callcenter.js, ticketstaff.js) và `openSeatMenu` (shared/booking.js) dùng `ev.currentTarget` để lấy thẻ ghế đang bấm — đúng khi listener gắn trực tiếp lên từng thẻ (cách cũ), nhưng SAI khi listener gắn tập trung ở `document` (cách mới): `currentTarget` lúc này luôn là `document`, không phải thẻ ghế → gọi `.style` trên `document` vỡ ngay. **Sửa:** đổi thành `ev.target.closest('.seat-card')` — tự tìm đúng thẻ ghế bất kể click vào phần tử con nào bên trong, không phụ thuộc nơi gắn listener. Đây là lỗi trực tiếp gây hỏng "chọn ghế để chuyển ghế" và "chọn ghế để đặt vé nhóm".
+2. **Lỗi tự viết trong `events.js`: nhầm tham số hàm với `this`.** `SYNTHETIC_ACTIONS.seatFootBtnClick` (nút "ĐẶT VÉ"/"KDV - CHÂU ĐỐC" ở chân mỗi ghế) khai báo tham số tên `el`, nhưng dispatcher gọi bằng `fn.apply(el, args)` — `.apply()` gán tham số 1 vào **`this`**, không phải vào tham số khai báo; vì phần tử này không có `data-args` nên `args=[]`, khiến tham số `el` luôn là `undefined` → `el.getAttribute(...)` vỡ ngay khi bấm. **Sửa:** đổi sang đọc qua `this` thay vì tham số. Đây là lỗi trực tiếp gây hỏng "nút đặt vé" và "chỉnh sửa vé".
+3. **Phạm vi quét ở Giai đoạn 4 bỏ sót `js/shared/*.js`.** Script kiểm kê/chuyển đổi ban đầu chỉ quét 4 file gốc (`html/callcenter.html`, `html/ticketstaff.html`, `js/callcenter.js`, `js/ticketstaff.js`), nhưng Giai đoạn 3 đã tách một phần code sang `js/shared/booking.js` — nơi này còn sót **8 chỗ `onclick=` chưa chuyển** (trong `miniSeatHtml`, `openSeatMenu`, tìm khách qua SĐT, `renderRebookTripList`, `renderRouteOptions`, `subSeatAddTile`, `subSeatCard` ×2). Các nút này lặng lẽ vẫn dùng cơ chế cũ (vẫn chạy được vì `function` khai báo thường luôn nằm trên `window`) nhưng không nhất quán với phần còn lại — đã chuyển nốt sang `data-action`, thêm 2 synthetic action mới (`closeSeatMenuAndStartTransfer`, `searchResultRowClick`).
+
+**Phát hiện phụ (không phải bug hành vi, chỉ là sai vị trí tổ chức code):** trong lúc rà lỗi #3, phát hiện script tách hàm ở Giai đoạn 3 có lỗi biên khi gặp **hàm viết 1 dòng** (VD: `function closeModal(id) { ... }` gói gọn trên 1 dòng) — thuật toán tìm điểm kết thúc hàm bằng cách tìm dòng chỉ chứa `"}"`, nên với hàm 1 dòng nó tìm lố sang tận hàm kế tiếp. Hậu quả: `openBookingPanel` (đúng ra thuộc nhóm "booking") bị gộp lẫn vào `ui.js` (ăn theo `closeModal`), và `startTransferMode` bị gộp lẫn vào `booking.js` (ăn theo `closeSeatMenu`). Đã xác minh qua git HEAD: cả 2 hàm này vốn **giống hệt nhau giữa callcenter/ticketstaff** nên không mất dữ liệu, chỉ là đặt sai file. Không sửa vị trí ngay (tránh thêm rủi ro ngoài phạm vi đang sửa) — để dành dọn ở Giai đoạn 5/7.
+
+**Kiểm tra sau khi sửa:** dựng mô phỏng DOM đầy đủ hơn bằng Node `vm` (có `closest`/`matches`/`classList` thật, leo cây cha đúng cách) để gọi thử trực tiếp qua dispatcher — xác nhận cả 4 luồng (đặt vé, sửa vé, chuyển ghế, đặt vé nhóm) chạy đúng, đúng thẻ ghế được cập nhật `style.outline`, đúng `openBookingPanel`/`findSeat` được gọi với đúng tham số, trên cả 2 trang.
+
+---
+
+### Giai đoạn 5 — Tách module riêng từng trang — (1)+(2) ĐÃ XONG, (3) hoãn lại
+Đã trao đổi và chốt: làm (1) rà hàm thừa + (2) tách hàm dài trước (rủi ro thấp); việc (3) tách hẳn
+`callcenter.js`/`ticketstaff.js` thành nhiều file (`state.js`/`trip.js`/`main.js`...) tạm hoãn vì thuần tổ
+chức lại code, không giảm trùng lặp, trong khi rủi ro thật (kiến trúc script-thường, nhiều biến trạng thái
+chạy ngay khi nạp trang — tách sai thứ tự dễ vỡ mà khó phát hiện).
+
+> ⏸️ **(3) hoãn tới sau khi xong Giai đoạn 6-7**, không phải huỷ bỏ. Lý do hoãn: nội dung 2 file cần ổn định
+> hẳn trước khi đổi cấu trúc file, tránh vừa sửa code vừa tách file cùng lúc (dễ lẫn 2 loại thay đổi khi có
+> lỗi). Cũng có thể **bỏ hẳn (3)** nếu tới lúc đó 2 file (hiện ~2350 dòng, đã giảm sau khi tách hàm dài ở
+> mục trên) vẫn đủ dễ đọc — (3) không sửa bug, không giảm trùng lặp, chỉ dễ tìm code hơn, nên không bắt buộc.
+
+- [x] Rà hàm khai báo trong `shared/*.js` mà không trang nào gọi tới → xoá: tìm 4 ứng viên, 2 là báo động
+  giả (`cancelledSeatCard`, `subSeatCard` — dùng dạng callback `.map(tenHàm)` không ngoặc, quét ban đầu bỏ
+  sót), xoá đúng 2 hàm chết thật (`abbrRouteName`, `renderHistoryTable`)
+- [x] Tách 4 hàm dài đã đo — kèm phát hiện thêm khi tách `renderHistorySeatMap`: bản callcenter/ticketstaff
+  thực ra **giống hệt nhau** (chỉ khác 1 dòng kiểm tra thừa vô hại, đã đối chiếu bằng diff), nên gộp thẳng
+  về `shared/booking.js` luôn — vừa hết trùng lặp vừa hết dài:
+  - `renderHistorySeatMap`: 228/229 dòng → gộp 2 trang thành 1 bản trong `shared/booking.js`, còn **109
+    dòng** + 4 hàm phụ mới (`rebuildChDateRouteOptions`, `groupHistoryResultsByTrip`,
+    `renderHistorySeatCardHtml`, `renderHistoryTripCardHtml`)
+  - `printTicket` (ticketstaff.js): 153 → **36 dòng** + tách `buildTicketPrintHtml()` (khối HTML/CSS in vé tĩnh)
+  - `generateBulkTrips` (callcenter.js): 112 → **52 dòng** + tách `computeBulkTripDates()`, `createBulkTrips()`
+  - `saveSingleTrip` (callcenter.js): 96 → **47 dòng** + tách `updateExistingTrip()`, `createNewTrip()`
+- **Kiểm tra đã làm:** dùng **jsdom** (dựng DOM thật, chạy đúng thẻ `<script>` theo thứ tự thật) thay cho
+  mô phỏng `vm` thủ công trước đó — độ chính xác cao hơn hẳn vì `vm` không parse được `innerHTML`. Test qua
+  dispatcher/gọi hàm trực tiếp trên cả 2 trang: mở lịch sử khách hàng, đổi bộ lọc, in vé (đối chiếu nội dung
+  HTML xuất ra), tạo/sửa phơi đơn, tạo phơi hàng loạt (đối chiếu đúng số lượng + tên phơi sinh ra) — tất cả
+  khớp kết quả mong đợi, không có hồi quy so với Giai đoạn 0-4
+- **Bàn giao:** test độc lập từng trang trên trình duyệt thật trước khi quyết định có làm tiếp (3) hay không
+
+### Giai đoạn 6 — Nhập pickup-list & shuttle vào shared — phần an toàn ĐÃ XONG, `shared/calendar.js` hoãn lại
+
+> Đã trao đổi và chốt: làm phần rủi ro thấp trước (gộp hàm giống hệt, tách CSS trùng, chuyển inline handler),
+> **hoãn `shared/calendar.js`** vì việc đó phải sửa lại cả `callcenter.js`/`ticketstaff.js` (2 file đã ổn định
+> qua Giai đoạn 0-5) để dùng chung với pickup-list/shuttle — rủi ro cao nhất trong giai đoạn này.
+>
+> **Phát hiện quan trọng khi rà hàm:** không phải cứ trùng tên là gộp được. `generateTripSeatPlanForVehicleType`
+> của `pickup-list.js` chỉ giống bản dùng chung ở cc/ts **56%** (pattern trạng thái ghế khác thứ tự) — **giữ
+> nguyên bản riêng** của pickup-list.js (có ghi chú giải thích ngay tại chỗ khai báo), không gộp. Tương tự,
+> `toggleCalendar`/`showToast`/`pickSearchResult` của `shuttle.js` dùng ID phần tử hoặc logic khác — **giữ
+> nguyên, không nạp `shared/ui.js` cho shuttle.html** (chỉ 1 hàm `closeModal` giống hệt, không đáng để thêm 1
+> dependency mới kèm theo mấy hàm không dùng tới).
+
+- [x] `pickup-list.js`: xoá 4 hàm giống hệt/tương đương 100% (`buildSequentialSeatCodes`, `getSeatCodesForVehicleType`,
+  `saveSeatBank`, `loadSeatBank`), dùng bản trong `shared/seat-bank.js`; dùng `shared/ui.js` cho `showToast`
+  (thêm `let toastTimer;`), `toggleSearchResults`, `pickSearchResult`. `pickup-list.html` nạp thêm
+  `shared/seat-bank.js` + `shared/ui.js` trước `pickup-list.js`
+- [x] `shuttle.js`: đã dùng đúng `shared/storage-keys.js` từ trước (không cần sửa gì). Không nạp
+  `shared/constants.js`/`format.js`/`ui.js` — xác nhận qua rà toàn bộ file: shuttle.js có mô hình dữ liệu mẫu
+  riêng biệt hoàn toàn (miền trung chuyển, không phải miền đặt vé), không dùng bất kỳ hằng số/hàm nào trong
+  các file đó
+- [x] Tách CSS: 13 biến `:root` + `*`/`html,body`/`body`/`button`/`a`/`.mono`/`.app`/`.topbar`(riêng pickup-list.css,
+  shuttle.css giữ bản `.topbar` riêng vì khác nội dung)/`.topbar-spacer`/`.user-menu`/`.user-menu.open .user-chip>svg`
+  giống hệt `css/shared/variables.css`/`base.css` → xoá khỏi `pickup-list.css`/`shuttle.css`, thêm `<link>`
+  `variables.css` + `base.css` vào 2 HTML (trước `shuttle.css`/`pickup-list.css` để cascade đúng thứ tự ghi đè).
+  Các selector trùng nhau giữa `pickup-list.css`↔`shuttle.css` nhưng KHÔNG nằm trong phạm vi base.css
+  (`.search-btn`, `.btn-secondary`, `.toast`...) — **để nguyên**, chưa gộp (out of scope đợt này, xem mục 6)
+- [x] Chuyển 18 inline handler tĩnh + 5 động (template string) trong pickup-list.html/js sang `data-action`;
+  34 inline handler tĩnh + 6 động trong shuttle.html/js sang `data-action`. Thêm `js/shared/events.js` vào cả
+  2 trang. Thêm 2 synthetic action mới vào `events.js`: `navigateToTicketStaff` (nút "Quản lý vé" ở
+  pickup-list), `submitCustomerForm` (form thêm khách ở shuttle — gốc gọi `event.preventDefault()` +
+  `saveCustomer()` liền nhau, không gộp về 1 hàm được)
+- [ ] `shared/calendar.js` — **hoãn**, cần xác nhận trước khi làm vì đụng vào callcenter.js/ticketstaff.js
+- [ ] `login` để nguyên (159 dòng, không chung gì ngoài 13 biến `:root` — chỉ cần dùng `variables.css`) — chưa đụng tới
+- **Kiểm tra đã làm:** jsdom nạp cả 2 trang theo đúng thứ tự script mới, mô phỏng bấm/gõ qua dispatcher cho
+  toàn bộ luồng chính (đổi tab, mở/đóng lịch, lọc, chọn dòng/chọn tất cả, mở modal gán tài xế, đổi tài xế,
+  cập nhật trạng thái, submit form khách — xác nhận `defaultPrevented=true` không bị reload trang, gán ghế
+  rước liền, bán vé) — 0 cảnh báo "không tìm thấy hàm cho data-action", không lỗi runtime
+- **Bàn giao:** test cả 2 trang trên trình duyệt thật trước khi quyết định có làm tiếp `shared/calendar.js` hay không
+
+### Giai đoạn 7 — Dọn dẹp cuối (09/08/2026)
+
+> ⚠️ Trước khi làm, đã **đo lại từ đầu** toàn bộ số liệu của mục này thay vì tin số cũ trong kế hoạch —
+> giữa lúc viết kế hoạch (07/08) và lúc làm Giai đoạn 7 (09/08) đã có nhiều đợt sửa bug/thêm tính năng
+> trực tiếp trên `callcenter`/`ticketstaff` nằm ngoài trình tự Giai đoạn 0-6, nên số liệu cũ lệch khá xa.
+
+- [x] **Rà selector khai báo trùng trong cùng 1 file** — số cũ "16 ở callcenter.css + 16 ở ticketstaff.css"
+  **sai vị trí**: sau khi tách CSS ở Giai đoạn 1, 2 file đó không còn selector nào trùng (đo lại = 0 cả
+  hai). Trùng lặp thật nằm ở **`css/shared/booking-ui.css`**: **15 selector bị khai báo 2-3 lần** (16 lượt
+  khai báo thừa), toàn bộ đều thuộc khu vực "Lịch sử khách hàng" (`.customer-history-view`, `.ch-trip-link`,
+  `.ch-btn-rebook-row`(+`:hover`), `.ch-history-badge`×3, `.ch-seatmaps-list`, `.ch-trip-seatmap-card`(+`:hover`),
+  `.ch-seat-pill`, `.ch-trip-header`, `.ch-trip-title-info`, `.ch-trip-ico`, `.ch-trip-name`, `.ch-date-tag`,
+  `.ch-trip-subinfo`) — di sản của nhiều lần thiết kế lại tính năng này (1 bản HTML dạng `<table>` cũ hoàn
+  toàn không còn dùng, 1 bản dạng thẻ lưới cũ, 1 bản hiện đang chạy thật) bị nối đuôi nhau trong file mà
+  không xoá bản cũ. Đã đối chiếu **từng thuộc tính CSS** giữa các bản trùng (không xoá ẩu theo cụm) để giữ
+  đúng 100% giao diện đang chạy: thuộc tính nào chỉ có ở bản cũ nhưng KHÔNG bị bản mới ghi đè (áp dụng
+  cascade CSS thật) thì gộp vào bản đang chạy trước khi xoá bản cũ; thuộc tính nào bị bản mới ghi đè thì bỏ
+  hẳn. Kèm xoá đúng phần CSS của bảng `<table>` lịch sử cũ (`.ch-history-table` và 10 selector con — xác
+  nhận qua `grep` toàn bộ `js/`+`html/` không còn nơi nào sinh ra các class này) và 1 rule `.ch-active-seat`
+  mồ côi hoàn toàn (class không được JS nào gán). **Không đụng** tới các selector dùng chung tên nhưng thật
+  ra phục vụ tính năng khác đứng cạnh đó trong cùng khối comment (`.ch-trip-card`, `.ch-empty`, `.ch-trip-list`
+  — của modal "Đặt lại vé", không phải lịch sử khách hàng). booking-ui.css: 580 → 549 selector, 4228 → 3999
+  dòng, khớp dấu ngoặc `{`/`}` sau khi sửa
+- [x] **Rà `!important`** — số cũ (59/61/18/1, đo trước Giai đoạn 1) đã lỗi thời vì phần lớn nằm trong khối
+  3.351 dòng đã chuyển sang `booking-ui.css`. Đo lại đúng hiện trạng: callcenter.css 3, ticketstaff.css 5,
+  booking-ui.css 53, shuttle.css 18, pickup-list.css 1. Xét từng rule theo đặc trưng CSS thật (specificity
+  theo bộ 3 số (id, class, thẻ), thứ tự nạp file, có bị style inline của JS chặn hay không) thay vì xoá theo
+  cảm tính:
+  - **callcenter.css, ticketstaff.css, pickup-list.css: xoá sạch, còn 0** — toàn bộ chỉ là tàn dư từ trước
+    khi thứ tự nạp `variables → base → booking-ui → <trang>.css` được xác lập ở Giai đoạn 1; nay `!important`
+    thừa vì selector cùng độ đặc hiệu ở file trang riêng đã tự thắng do nạp sau, hoặc do selector có `#id`
+    vốn đã thắng bất kể `!important`
+  - **booking-ui.css: 53 → 5**, 5 cái còn lại xác nhận **thật sự cần thiết**, có ví dụ cụ thể:
+    `.calendar-popover{border-radius/border-top}` cần thắng `.calendar` (khai báo sau, cùng độ đặc hiệu,
+    2 class đứng chung 1 phần tử) — không có sẽ mất góc bo tròn/viền trên của khung lịch dạng popover;
+    `#rebookModal.open{display:flex}` cần thắng `style="display:none"` viết thẳng trong HTML (inline style
+    chỉ có `!important` mới thắng nổi); `.ch-seat-card-item .seat-footbtn:hover{color,background}` cần thắng
+    `.seat-card:not(.empty):hover .seat-footbtn` (độ đặc hiệu (0,4,0) > (0,3,0), nếu bỏ `!important` nút
+    "Đặt lại vé này" khi hover sẽ đổi lại thành viền/chữ đỏ thay vì nền đỏ/chữ trắng)
+  - **shuttle.css: chưa rà** (18 cái) — kiến trúc CSS riêng, không dùng chung `booking-ui.css` nên lý do
+    "cascade đã sạch" của mục này không áp dụng trực tiếp; để dành nếu có nhu cầu dọn riêng file đó sau
+- [ ] **Xem lại hàm "trùng tên khác nội dung" cc↔ts** — đo lại: **32 hàm** (số cũ 33, gần đúng dù đã qua
+  nhiều đợt sửa ngoài kế hoạch — hầu hết chỉ xê dịch nhẹ). Danh sách đầy đủ (kèm số dòng mỗi bản):
+  `fillSearchInputWithPhone, makeSeat, groupSeat, loadAllTrips, switchTab, renderCancelledListTable,
+  getAllBookedSeats, groupSeatsByTicket, renderPassengerList, renderTransshipTables, seatCard, renderSeats,
+  updateTripStats, renderZone1TripList, saveSubSeat, setZone1Collapsed, toggleZone2Grid, onSeatClick,
+  confirmTransfer, openCancelModal, checkCancelReason, clearSeatToEmpty, confirmCancel, refreshTicket,
+  onPriceEdit, saveTicket, selectTrip, updateTripListForDirection, renderCalendar, pickDate,
+  updateCalTrigger, confirmRebook`. Ứng viên gộp rõ nhất (gần giống nhau nhất, cần diff dòng-theo-dòng
+  thật trước khi gộp, chưa làm): `refreshTicket`, `switchTab`, `renderSeats`, `pickDate`. **Chưa gộp hàm
+  nào** — việc này đổi *hành vi thực thi* (không chỉ dọn CSS tĩnh như 2 mục trên), rủi ro cao hơn hẳn và
+  đúng như nguyên tắc #1 đã ghi "làm sau cùng, không làm chung đợt" — cần bạn xác nhận trước khi bắt đầu,
+  và làm riêng từng hàm một, test lại sau mỗi hàm thay vì gộp hàng loạt
+- [x] **Xoá file JS/CSS gộp cũ** — rà toàn bộ thư mục dự án và `git status`: không có file `.bak`/backup/
+  bản sao cũ nào còn sót lại (bản gốc trước tách được giữ trong lịch sử git, không phải file vật lý riêng),
+  nên không có gì để xoá — mục này coi như đã thoả mãn
+- [ ] **Việc (3) hoãn từ Giai đoạn 5**: cân nhắc tách `callcenter.js`/`ticketstaff.js` thành nhiều file nhỏ hơn (`state.js`/`trip.js`/`main.js`...). Chỉ làm nếu tới lúc này 2 file vẫn thấy khó đọc — không bắt buộc, không sửa bug/không giảm trùng lặp. Nếu làm: dùng jsdom test kỹ thứ tự nạp `<script>` trước khi báo xong (rủi ro chính: biến trạng thái `let` chạy ngay khi nạp trang, tách sai thứ tự dễ vỡ khởi tạo)
+- **Kiểm tra đã làm:** đối chiếu số dấu ngoặc `{`/`}` khớp nhau sau mỗi lần sửa `booking-ui.css`; chạy lại
+  toàn bộ bộ test jsdom hiện có (multi-phone, tag loại khách, chuyển ghế từ danh sách hủy, combobox Zone 1,
+  tách lý do giá 0đ) — không lỗi runtime, không hồi quy (các test này không tự kiểm tra được CSS bằng mắt)
+- **Bàn giao:** so sánh trực quan trên trình duyệt thật khu vực "Lịch sử khách hàng" (khung lịch popover,
+  card lịch sử theo phơi, nút "Đặt lại vé này" khi hover) — đây là vùng bị sửa nhiều nhất trong giai đoạn
+  này và mình không có trình duyệt để tự xác nhận. Quyết định tiếp: có muốn gộp 32 hàm khác-nội-dung ở mục
+  trên không, và có cần rà nốt 18 `!important` trong `shuttle.css` không
 
 ---
 
@@ -305,6 +449,7 @@ Chỉ chuyển những hàm **giống hệt 100%**, không sửa nội dung — 
 | 3 | `shuttle.js` đọc key `hn_all_trips_meta_v1` không ai ghi | shuttle.js:1393 | Tuyến/giờ khách đồng bộ rơi về giá trị mặc định. Nghi là gõ nhầm, phải là `hn_trips_meta_v9` — cần bạn xác nhận |
 | 4 | `fillSearchInputWithPhone` bản đang chạy thiếu kiểm tra SĐT | ticketstaff.js:2189 | Bản chết ở dòng 59 có kiểm tra. Không tự ý ghép validation vào (nguyên tắc #15) |
 | 5 | `hn_current_user` viết thẳng chuỗi, không có hằng số | 8 chỗ, 4 trang | Sẽ xử lý ở Giai đoạn 2 |
+| 6 | `pickup-list.css`↔`shuttle.css` còn ~12 selector giống hệt nhau (`.user-chip`, `.user-dropdown`, `.search-btn`, `.btn-secondary`, `.toast`...) chưa gộp | 2 file, phát hiện ở Giai đoạn 6 | Không nằm trong phạm vi "topbar/user-menu" mà `base.css` đã định nghĩa; muốn gộp đúng phải đối chiếu thêm với `callcenter.css`/`ticketstaff.css` (vì `base.css` dùng chung cả 5 trang) — ngoài phạm vi 1 lượt sửa nhỏ, để dành Giai đoạn 7 |
 
 ---
 
