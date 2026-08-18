@@ -112,7 +112,7 @@ const a12 = makeSeat("A12", "sold", {
 });
 
 let seatPlanDown = [
-  a1, a2, makeSeat("A3", "empty"), makeSeat("A4", "cargo"),
+  a1, a2, makeSeat("A3", "empty"), makeSeat("A4", "hold"),
   makeSeat("A5", "sold"), makeSeat("A6", "empty"), makeSeat("A7", "sold"), makeSeat("A8", "free"),
   makeSeat("A9", "empty"), a10, a11, a12,
 ];
@@ -124,7 +124,7 @@ const b3 = groupSeat(b2, "B3", "sold");
 
 let seatPlanUp = [
   makeSeat("B1", "empty"), b2, b3, makeSeat("B4", "empty"),
-  makeSeat("B5", "sold"), makeSeat("B6", "empty"), makeSeat("B7", "cargo"), makeSeat("B8", "hold"),
+  makeSeat("B5", "sold"), makeSeat("B6", "empty"), makeSeat("B7", "hold"), makeSeat("B8", "hold"),
   makeSeat("B9", "empty"), makeSeat("B10", "sold"), makeSeat("B11", "free"), makeSeat("B12", "empty"),
 ];
 
@@ -584,21 +584,28 @@ function seatCard(seat, ticketGroupMap) {
         <div class="route-split-row"><span class="route-split-label">Đi:</span><span class="seat-stop" title="—">—</span></div>
         <div class="route-split-row"><span class="route-split-label">Đến:</span><span class="seat-stop" title="—">—</span></div>
       </div>
-      <div class="seat-line" style="color:var(--text-sub);"><span class="seat-label-full">Khách hàng: </span><span class="seat-label-short">KH: </span>—</div>
-      <div class="seat-line" style="color:var(--text-sub);"><span class="seat-label-full">Số điện thoại: </span><span class="seat-label-short">SĐT: </span>—</div>
+      <div class="seat-line" style="color:var(--black);">KH: —</div>
+      <div class="seat-line" style="color:var(--black);">SĐT: —</div>
       <div class="seat-note" title="${seat.note || ''}"><span class="seat-label-full">Ghi chú: </span><span class="seat-label-short">GC: </span>${seat.note || '—'}</div>
     `;
   } else {
     const displayNote = seatNoteWithReason(seat);
+    const pickupTransferAddr = seat.transshipStation ? seat.transshipStation : '';
+    const dropoffTransferAddr = seat.arrivalTransfer ? seat.arrivalTransfer : '';
+    const firstTitle = pickupTransferAddr ? `Trung chuyển đón: ${pickupTransferAddr}` : firstStopShort;
+    const lastTitle = dropoffTransferAddr ? `Trung chuyển trả: ${dropoffTransferAddr}` : lastStopShort;
+    const routeTitle = (pickupTransferAddr || dropoffTransferAddr)
+      ? `Đón: ${pickupTransferAddr || firstStopShort} • Trả: ${dropoffTransferAddr || lastStopShort}`
+      : routeStr;
     linesHtml = `
       ${groupLabelHtml}
-      <div class="seat-line route-single-line"><span class="seat-label-full">Chặng đi: </span><span class="seat-stop" title="${routeStr}">${routeStr}</span></div>
+      <div class="seat-line route-single-line"><span class="seat-label-full">Chặng đi: </span><span class="seat-stop" title="${routeTitle}">${routeStr}</span></div>
       <div class="route-split-line">
-        <div class="route-split-row"><span class="route-split-label">Đi:</span><span class="seat-stop" title="${firstStopShort}">${firstStopShort}</span></div>
-        <div class="route-split-row"><span class="route-split-label">Đến:</span><span class="seat-stop" title="${lastStopShort}">${lastStopShort}</span></div>
+        <div class="route-split-row"><span class="route-split-label">Đi:</span><span class="seat-stop" title="${firstTitle}">${firstStopShort}</span></div>
+        <div class="route-split-row"><span class="route-split-label">Đến:</span><span class="seat-stop" title="${lastTitle}">${lastStopShort}</span></div>
       </div>
-      <div class="seat-line" style="color:var(--text-main); font-weight:700;"><span class="seat-label-full">Khách hàng: </span><span class="seat-label-short">KH: </span>${seat.customerName || '—'}</div>
-      <div class="seat-line" style="color:var(--text-main); font-weight:700;"><span class="seat-label-full">Số điện thoại: </span><span class="seat-label-short">SĐT: </span>${seat.phone || '—'}</div>
+      <div class="seat-line" style="color:var(--black);">KH: ${seat.customerName || '—'}</div>
+      <div class="seat-line" style="color:var(--black);">SĐT: ${seat.phone || '—'}</div>
       <div class="seat-note" title="${displayNote}"><span class="seat-label-full">Ghi chú: </span><span class="seat-label-short">GC: </span>${displayNote || '—'}</div>
     `;
   }
@@ -928,9 +935,15 @@ function confirmTransfer() {
     targetSeat.paid = sourceSeat.paid;
     targetSeat.count = sourceSeat.count;
     targetSeat.hasLuggage = sourceSeat.hasLuggage;
+    targetSeat.luggageNote = sourceSeat.luggageNote;
     targetSeat.guestType = sourceSeat.guestType;
     targetSeat.transshipStation = sourceSeat.transshipStation;
     targetSeat.arrivalTransfer = sourceSeat.arrivalTransfer;
+    targetSeat.price = sourceSeat.price;
+    targetSeat.zeroPriceReason = sourceSeat.zeroPriceReason;
+    targetSeat.depositAmount = sourceSeat.depositAmount;
+    targetSeat.depositMethod = sourceSeat.depositMethod;
+    targetSeat.paymentMethod = sourceSeat.paymentMethod;
 
     // Ghế dư không phải "mã ghế thật" của xe hiện tại (đã mất khi đổi loại xe) — chuyển đi xong thì
     // phải XOÁ khỏi extraLeftoverSeats hẳn, không thể clearSeatToEmpty() như ghế thường (sẽ để lại
@@ -981,6 +994,7 @@ function clearSeatToEmpty(seat) {
   seat.transshipStation = null;
   seat.arrivalTransfer = null;
   seat.zeroPriceReason = null;
+  seat.luggageNote = null;
 }
 
 function confirmCancel() {
@@ -1034,7 +1048,7 @@ function confirmCancel() {
 /* Trạm đi và địa điểm rước thay đổi theo loại khách:
    - Khách trạm: dropdown chọn trạm đi, mặc định là trạm của nhân viên đang thao tác
      nhưng vẫn có thể chọn trạm đi khác trong danh sách.
-   - Trung chuyển / Rước liền: có thêm ô nhập địa chỉ trung chuyển/rước liền.
+   - Trung chuyển: có thêm ô nhập nơi trung chuyển (bắt buộc).
    - Rước đường: trạm đi vẫn là dropdown, còn địa điểm rước là dropdown danh sách điểm rước. */
 
 function refreshTicket() {
@@ -1056,9 +1070,9 @@ function refreshTicket() {
     ? document.getElementById('f_transship_select').value.trim()
     : document.getElementById('f_transship').value.trim();
 
-  const isTransshipLike = (type === 'Trung chuyển' || type === 'Rước liền');
+  const isTransshipLike = (type === 'Trung chuyển');
   if (isTransshipLike && transshipVal) {
-    transshipLabel.textContent = type === 'Rước liền' ? 'Rước liền' : 'TC đi';
+    transshipLabel.textContent = 'TC đi';
     transshipRow.style.display = 'flex';
     document.getElementById('t_transship').textContent = transshipVal;
   } else if (type === 'Rước đường' && transshipVal) {
@@ -1078,10 +1092,13 @@ function refreshTicket() {
     arrivalRow.style.display = 'none';
   }
 
-  document.getElementById('t_luggage_row').style.display = document.getElementById('f_luggage').checked ? 'flex' : 'none';
+  const luggageChecked = document.getElementById('f_luggage').checked;
+  document.getElementById('t_luggage_row').style.display = luggageChecked ? 'flex' : 'none';
+  document.getElementById('f_luggage_note_row').style.display = luggageChecked ? '' : 'none';
+  const luggageNoteVal = document.getElementById('f_luggage_note').value.trim();
+  document.getElementById('t_luggage_val').textContent = luggageNoteVal ? `Có — ${luggageNoteVal}` : 'Có';
 
   const depositEnabled = document.getElementById('f_deposit_enabled').checked;
-  document.getElementById('depositFieldsWrap').style.display = depositEnabled ? 'flex' : 'none';
   const depositRow = document.getElementById('t_deposit_row');
   const depositAmount = parseInt(document.getElementById('f_deposit_amount').value, 10) || 0;
   if (depositEnabled && depositAmount > 0) {
@@ -1092,6 +1109,43 @@ function refreshTicket() {
     depositRow.style.display = 'none';
   }
 }
+
+// Tick "Đặt cọc" -> mở ngay modal nhập số tiền + phương thức. Bỏ tick -> tắt cọc, xoá số tiền đã gõ
+// để lần tick lại sau không giữ số cũ gây nhầm.
+function onDepositToggle() {
+  const checked = document.getElementById('f_deposit_enabled').checked;
+  if (checked) {
+    openDepositModal();
+  } else {
+    document.getElementById('f_deposit_amount').value = '';
+    refreshTicket();
+  }
+}
+
+function openDepositModal() {
+  document.getElementById('f_deposit_amount').focus();
+  document.getElementById('depositModal').classList.add('open');
+}
+
+// "Xác nhận" trong modal — bắt buộc phải có số tiền cọc > 0 mới cho đóng modal.
+function closeDepositModal() {
+  const amount = parseInt(document.getElementById('f_deposit_amount').value, 10) || 0;
+  if (amount <= 0) {
+    showToast('Vui lòng nhập số tiền cọc');
+    return;
+  }
+  document.getElementById('depositModal').classList.remove('open');
+  refreshTicket();
+}
+
+// "Hủy" trong modal — huỷ luôn việc đặt cọc, bỏ tick checkbox lại.
+function cancelDepositModal() {
+  document.getElementById('depositModal').classList.remove('open');
+  document.getElementById('f_deposit_enabled').checked = false;
+  document.getElementById('f_deposit_amount').value = '';
+  refreshTicket();
+}
+
 function onPriceEdit() {
   const el = document.getElementById('t_price');
   const num = parseInt(el.textContent.replace(/[^0-9]/g, '')) || 0;
@@ -1126,10 +1180,6 @@ function saveTicket() {
 
   if (type === 'Trung chuyển' && !document.getElementById('f_transship').value.trim()) {
     showToast('Vui lòng nhập trạm trung chuyển');
-    return;
-  }
-  if (type === 'Rước liền' && !document.getElementById('f_transship').value.trim()) {
-    showToast('Vui lòng nhập địa chỉ rước liền');
     return;
   }
   if (type === 'Rước đường' && !document.getElementById('f_transship_select').value.trim()) {
@@ -1172,6 +1222,7 @@ function saveTicket() {
       : document.getElementById('f_transship').value.trim();
     seat.arrivalTransfer = document.getElementById('f_arrival_transfer').value.trim();
     seat.hasLuggage = document.getElementById('f_luggage').checked;
+    seat.luggageNote = seat.hasLuggage ? document.getElementById('f_luggage_note').value.trim() : '';
     seat.price = editedPrice;
     // Ghi chú giữ nguyên đúng những gì gõ ở ô "Ghi chú" — lý do giá 0đ lưu riêng ở zeroPriceReason,
     // chỉ ghép hiển thị chung lúc render (seatNoteWithReason) chứ không ghi đè vào note thật.
@@ -1187,7 +1238,6 @@ function saveTicket() {
     const seat = currentPanelSeat;
     applyFormToSeat(seat);
     syncDepositToTicketGroup(seat);
-    if (type === 'Rước liền') syncRuocLienToPickupList([seat]);
     renderSeats();
     if (document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
     closePanel();
@@ -1201,9 +1251,10 @@ function saveTicket() {
       seat.ticketNo = groupTicketNo;
       seat.paid = false;
       seat.count = currentPanelSeats.length;
-      seat.state = seat.hasLuggage ? 'cargo' : 'hold';
+      // Ghế có baga vẫn ghi seat.hasLuggage bình thường, không còn chuyển sang state 'cargo' riêng
+      // (đã bỏ loại ghế màu xanh biển trên sơ đồ) — luôn giữ 'hold' như ghế đặt thường.
+      seat.state = 'hold';
     });
-    if (type === 'Rước liền') syncRuocLienToPickupList(currentPanelSeats);
     renderSeats();
     if (document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
   }
@@ -1534,11 +1585,37 @@ document.addEventListener('click', (e) => {
 renderCalendar();
 updateCalTrigger();
 
-/* ---- Zone 1: lọc danh sách phơi theo giờ khởi hành (dropdown giờ tròn cố định) ---- */
-function onZone1HourFilterChange() {
-  zone1HourFilter = document.getElementById('zone1HourFilter')?.value || 'all';
+/* ---- Zone 1: lọc danh sách phơi theo giờ khởi hành (popover 2 cột Sáng/Chiều thay cho <select> cũ) ---- */
+function toggleZone1HourPopover(force) {
+  const popover = document.getElementById('zone1HourPopover');
+  const btn = document.getElementById('zone1HourFilterBtn');
+  if (!popover || !btn) return;
+  const willOpen = typeof force === 'boolean' ? force : !popover.classList.contains('open');
+  popover.classList.toggle('open', willOpen);
+  btn.classList.toggle('open', willOpen);
+  if (willOpen) updateZone1HourPopoverSelection();
+}
+
+function updateZone1HourPopoverSelection() {
+  document.querySelectorAll('#zone1HourPopover [data-action="selectZone1Hour"]').forEach(b => {
+    const val = JSON.parse(b.getAttribute('data-args'))[0];
+    b.classList.toggle('selected', val === zone1HourFilter);
+  });
+}
+
+function selectZone1Hour(value) {
+  zone1HourFilter = value;
+  const label = document.getElementById('zone1HourFilterLabel');
+  if (label) label.textContent = value === 'all' ? 'Tất cả các giờ' : (String(value).padStart(2, '0') + ':00');
+  toggleZone1HourPopover(false);
   renderZone1TripList();
 }
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#zone1HourPopover') && !e.target.closest('#zone1HourFilterBtn')) {
+    toggleZone1HourPopover(false);
+  }
+});
 
 /* ===================== TÀI KHOẢN / ĐĂNG XUẤT ===================== */
 (function initUserMenu() {
@@ -1931,9 +2008,9 @@ function renderTable(trips) {
         ${noteHtml}
       </td>
       <td>${t.plate || '—'}</td>
-      <td>${emptyCount}/${totalCount}</td>
-      <td>${(t.price || 280000).toLocaleString('vi-VN')}đ</td>
-      <td><span class="badge ${statusClass}">${label}</span></td>
+      <td style="text-align:center;">${emptyCount}/${totalCount}</td>
+      <td style="text-align:right;">${(t.price || 280000).toLocaleString('vi-VN')}đ</td>
+      <td style="text-align:center;"><span class="badge ${statusClass}">${label}</span></td>
       <td class="actions-cell">
         <button class="dots-btn" data-action="showContextMenu" data-stop-propagation="1" data-args='${JSON.stringify(["__event__", t.id])}'>...</button>
       </td>

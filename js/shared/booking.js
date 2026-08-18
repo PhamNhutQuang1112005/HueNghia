@@ -642,7 +642,7 @@ function onGuestTypeChange() {
   const transshipInput = document.getElementById('f_transship');
   const stationRow = document.getElementById('f_station_row');
 
-  const isTransshipLike = (type === 'Trung chuyển' || type === 'Rước liền');
+  const isTransshipLike = (type === 'Trung chuyển');
   if (type === 'Rước đường') {
     stationLabel.textContent = 'Trạm đi';
     selectEl.style.display = 'block';
@@ -657,8 +657,8 @@ function onGuestTypeChange() {
     inputEl.style.display = 'none';
     transshipSelect.style.display = 'none';
     transshipInput.style.display = isTransshipLike ? 'block' : 'none';
-    transshipLabel.textContent = isTransshipLike ? (type === 'Rước liền' ? 'Rước liền đi' : 'Trung chuyển đi') : 'Địa điểm rước';
-    transshipInput.placeholder = isTransshipLike ? (type === 'Rước liền' ? 'Nhập địa chỉ rước liền...' : 'Nơi trung chuyển...') : 'Nhập địa điểm rước...';
+    transshipLabel.textContent = isTransshipLike ? 'Trung chuyển đi' : 'Địa điểm rước';
+    transshipInput.placeholder = isTransshipLike ? 'Nơi trung chuyển...' : 'Nhập địa điểm rước...';
     transshipWrap.style.display = isTransshipLike ? 'flex' : 'none';
   }
   stationRow.style.setProperty('--cols', transshipWrap.style.display === 'none' ? 1 : 2);
@@ -674,7 +674,7 @@ function onRebookGuestTypeChange() {
   const transshipInput = document.getElementById('rbTransshipInput');
   const stationRow = document.getElementById('rbStationRow');
 
-  const isTransshipLike = (type === 'Trung chuyển' || type === 'Rước liền');
+  const isTransshipLike = (type === 'Trung chuyển');
   if (type === 'Rước đường') {
     if (stationLabel) stationLabel.textContent = 'Trạm đi';
     if (transshipLabel) transshipLabel.textContent = 'Địa điểm rước';
@@ -686,9 +686,9 @@ function onRebookGuestTypeChange() {
     if (transshipSelect) transshipSelect.style.display = 'none';
     if (transshipInput) {
       transshipInput.style.display = isTransshipLike ? 'block' : 'none';
-      transshipInput.placeholder = isTransshipLike ? (type === 'Rước liền' ? 'Nhập địa chỉ rước liền...' : 'Nơi trung chuyển...') : 'Nhập địa điểm rước...';
+      transshipInput.placeholder = isTransshipLike ? 'Nơi trung chuyển...' : 'Nhập địa điểm rước...';
     }
-    if (transshipLabel) transshipLabel.textContent = isTransshipLike ? (type === 'Rước liền' ? 'Rước liền đi' : 'Trung chuyển đi') : 'Địa điểm rước';
+    if (transshipLabel) transshipLabel.textContent = isTransshipLike ? 'Trung chuyển đi' : 'Địa điểm rước';
     if (transshipWrap) transshipWrap.style.display = isTransshipLike ? 'flex' : 'none';
   }
   if (stationRow) stationRow.style.setProperty('--cols', (!transshipWrap || transshipWrap.style.display === 'none') ? 1 : 2);
@@ -959,6 +959,7 @@ function confirmRestoreFromCancelled() {
 
   saveSeatBank();
   if (targetTripId === currentTripId) renderSeats();
+  renderCancelledSeats();
   if (document.getElementById('zone3Passengers') && document.getElementById('zone3Passengers').style.display !== 'none' && typeof renderPassengerList === 'function') {
     renderPassengerList();
   }
@@ -1527,6 +1528,27 @@ function updateTransferHint() {
       actionBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3v18"/><path d="m21 7-4-4-4 4"/><path d="M7 21V3"/><path d="m3 17 4 4 4-4"/></svg>Chuyển ghế';
     } else {
       actionBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Đặt vé nhóm';
+    }
+  }
+  // Nút "Bán vé" trên thanh chuyển ghế (chỉ có ở ticketstaff, callcenter không có #stickySellBtn) —
+  // chỉ hiện khi đang chọn nguồn là ghế thật (không phải vé hủy) thuộc ĐÚNG chuyến đang xem (tránh
+  // in nhầm tuyến/giờ của chuyến khác nếu người dùng đã bấm sang Zone 1 chọn ghế đích ở chuyến khác)
+  // và TẤT CẢ ghế nguồn đang chọn đều chưa bán (state khác 'sold').
+  const sellBtn = document.getElementById('stickySellBtn');
+  const reprintBtn = document.getElementById('stickyReprintBtn');
+  if (sellBtn || reprintBtn) {
+    const sourceSeats = (!transferSourceCancelId && selectedSourceSeats.length && transferSourceTripId === currentTripId)
+      ? selectedSourceSeats.map(code => findSeatInTrip(transferSourceTripId, code)).filter(Boolean)
+      : [];
+    if (sellBtn) {
+      const canSell = sourceSeats.length > 0 && sourceSeats.every(s => s.state !== 'sold');
+      sellBtn.style.display = canSell ? '' : 'none';
+    }
+    // Nút "In lại vé" trên thanh chuyển ghế — chỉ hiện khi TẤT CẢ ghế nguồn đang chọn đều ĐÃ bán,
+    // để nhân viên in lại vé ngay khi vừa chọn ghế mà không cần mở panel riêng.
+    if (reprintBtn) {
+      const canReprint = sourceSeats.length > 0 && sourceSeats.every(s => s.state === 'sold');
+      reprintBtn.style.display = canReprint ? '' : 'none';
     }
   }
   updateTransferBarVisibility();

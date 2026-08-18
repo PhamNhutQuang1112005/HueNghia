@@ -1273,6 +1273,7 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   gap: 6px;
   flex: 1 1 auto;
   align-content: start;
+  align-items: stretch;
 }
 
 .seat-cancel-tag {
@@ -1447,12 +1448,16 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   border: 1.5px solid var(--black);
 }
 
-.seat-card.hold {
+/* .cargo gộp chung màu với .hold — không còn loại ghế "xanh biển" riêng trên sơ đồ ghế; ghế có baga
+   vẫn ghi nhận đủ dữ liệu (seat.hasLuggage/luggageNote), chỉ không đổi màu thẻ ghế riêng nữa. */
+.seat-card.hold,
+.seat-card.cargo {
   background: #FFFBEB;
   border: 2px solid var(--seat-hold);
 }
 
-.seat-card.hold .seat-code::after {
+.seat-card.hold .seat-code::after,
+.seat-card.cargo .seat-code::after {
   content: "";
   display: inline-block;
   width: 8px;
@@ -1491,22 +1496,6 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   height: 8px;
   border-radius: 50%;
   background: var(--seat-free);
-  margin-left: 6px;
-  vertical-align: middle;
-}
-
-.seat-card.cargo {
-  background: #EAF1FD;
-  border: 2px solid var(--seat-cargo);
-}
-
-.seat-card.cargo .seat-code::after {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--seat-cargo);
   margin-left: 6px;
   vertical-align: middle;
 }
@@ -1584,11 +1573,6 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 .seat-legend-dot.free {
   background: #F1F2F4;
   border-color: var(--seat-free);
-}
-
-.seat-legend-dot.cargo {
-  background: #EAF1FD;
-  border-color: var(--seat-cargo);
 }
 
 /* sticky action bar */
@@ -1841,6 +1825,15 @@ button.ph-rebook-btn svg {
   border-color: var(--red);
 }
 
+/* Checkbox/radio (baga, đặt cọc, phương thức thanh toán...) chỉ cần màu accent-color đã đủ thể hiện
+   đang chọn — viền đỏ to bao quanh ô tích nhỏ xíu khi bấm/focus nhìn thô, không giống lỗi thiếu dữ liệu
+   như ở ô nhập chữ/số nên không cần cảnh báo đỏ. */
+.form-field input[type="checkbox"]:focus,
+.form-field input[type="radio"]:focus {
+  outline: none;
+  border-color: inherit;
+}
+
 .form-field input[readonly] {
   background: var(--surface-2);
   color: var(--text-sub);
@@ -2054,52 +2047,101 @@ button.ph-rebook-btn svg {
 .deposit-fields {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 6px;
-  padding: 8px 9px;
-  border: 1px solid var(--green);
-  border-radius: var(--radius-sm);
-  background: rgba(22, 163, 74, .06);
+  gap: 14px;
 }
 
-.deposit-fields label {
-  font-size: 11.5px;
+/* :not(.pay-method-option) — "Phương thức"/"Số tiền cọc" là <label> chữ đơn thuần, cần display:block để
+   xuống dòng trên input. Nhưng .pay-method-option (thẻ chọn Tiền mặt/Chuyển khoản) CŨNG là <label>, lại
+   nằm lồng trong .form-field này — nếu không loại trừ, rule này đè mất display:flex của nó, làm icon
+   và chữ bên trong thẻ không còn nằm ngang hàng (mất tác dụng flex-direction/justify-content/align-items). */
+.deposit-fields .form-field label:not(.pay-method-option) {
+  font-size: 12px;
   font-weight: 700;
-  color: var(--green);
+  color: var(--text-sub);
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
 .deposit-fields input[type="number"] {
   width: 100%;
   border: 1px solid var(--border-gray);
   border-radius: var(--radius-sm);
-  padding: 7px 9px;
-  font-size: 13px;
+  padding: 8px 10px;
+  font-size: 14px;
 }
 
-.deposit-method-row {
+/* Chọn phương thức thanh toán dạng thẻ bấm (dùng chung cho modal Đặt cọc và modal Xác nhận thanh toán
+   khi Bán vé) — input radio thật vẫn giữ để form hoạt động chuẩn, chỉ ẩn hình, đổi giao diện sang
+   thẻ có icon để bấm chọn trực quan hơn dấu chấm radio thường. */
+.pay-method-toggle {
   display: flex;
-  gap: 14px;
+  align-items: stretch;
+  gap: 12px;
 }
 
-.radio-inline {
+.pay-method-option {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-main);
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border-gray);
+  border-radius: var(--radius-lg);
   cursor: pointer;
   user-select: none;
+  background: white;
+  transition: border-color .12s ease, background .12s ease;
 }
 
-.radio-inline input[type="radio"] {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--green);
-  cursor: pointer;
+.pay-method-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.pay-method-option svg {
+  width: 18px;
+  height: 18px;
   flex: 0 0 auto;
+  color: var(--text-main);
+  transition: color .12s ease;
+}
+
+.pay-method-option span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main);
+  white-space: nowrap;
+  transition: color .12s ease;
+}
+
+.pay-method-option:hover {
+  border-color: var(--green);
+}
+
+.pay-method-option:has(input:checked) {
+  border-color: var(--green);
+  background: rgba(22, 163, 74, .07);
+}
+
+.pay-method-option:has(input:checked) svg,
+.pay-method-option:has(input:checked) span {
+  color: var(--green);
+}
+
+.pay-method-option:has(input:checked) span {
+  font-weight: 700;
+}
+
+.pay-method-option:has(input:focus-visible) {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
 }
 
 .seat-deposit-tag {
@@ -2152,6 +2194,12 @@ button.ph-rebook-btn svg {
   margin: 0 0 16px;
   font-size: 18.5px;
   font-weight: 800;
+}
+
+/* Modal Đặt cọc chỉ có 1 ô số tiền + 2 thẻ chọn phương thức — nội dung ít, không cần rộng bằng modal
+   mặc định (520px, dùng cho các form dài hơn như modal Chỉ định xe/Hủy vé). */
+#depositModal .modal {
+  width: 400px;
 }
 
 .modal .form-field {
@@ -3113,6 +3161,7 @@ textarea:focus {
 .filter-select.open { border-color: var(--red); background: var(--red-light); color: var(--red); }
 .filter-select svg { width: 14px; height: 14px; stroke: currentColor; flex: 0 0 auto; }
 .filter-select span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; text-align: left; }
+#zone1HourFilterBtn { font-size: 15px; }
 .filter-date-chev { width: 11px !important; height: 11px !important; margin-left: auto; transition: transform .15s; }
 .filter-select.open .filter-date-chev { transform: rotate(180deg); }
 .filter-field-date {
@@ -3120,6 +3169,93 @@ textarea:focus {
   min-width: 160px !important;
   max-width: 190px !important;
   position: relative;
+}
+
+/* Popover "Khung giờ" Zone 1 — 2 cột Sáng/Chiều thay cho <select> 1 cột dài trước đây. */
+.hour-filter-popover {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  width: 230px;
+  background: var(--white);
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
+  padding: 8px;
+}
+
+.hour-filter-popover.open {
+  display: block;
+}
+
+.hour-filter-all {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 8px;
+  margin-bottom: 6px;
+  border: none;
+  border-bottom: 1px solid var(--border-gray);
+  border-radius: 0;
+  background: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.hour-filter-all:hover,
+.hour-filter-all.selected {
+  color: var(--red);
+}
+
+.hour-filter-cols {
+  display: flex;
+  gap: 6px;
+}
+
+.hour-filter-col {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hour-filter-col-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: var(--text-sub);
+  padding: 2px 8px 4px;
+}
+
+.hour-filter-col button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.hour-filter-col button:hover {
+  background: var(--surface-2);
+  color: var(--red);
+}
+
+.hour-filter-col button.selected {
+  background: var(--red-light);
+  color: var(--red);
+  font-weight: 700;
 }
 
 .ch-trip-empty {

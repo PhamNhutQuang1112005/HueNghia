@@ -136,7 +136,7 @@ const a12 = makeSeat("A12", "sold", {
 });
 
 let seatPlanDown = [
-  a1, a2, makeSeat("A3", "empty"), makeSeat("A4", "cargo"),
+  a1, a2, makeSeat("A3", "empty"), makeSeat("A4", "hold"),
   makeSeat("A5", "sold"), makeSeat("A6", "empty"), makeSeat("A7", "sold"), makeSeat("A8", "free"),
   makeSeat("A9", "empty"), a10, a11, a12,
 ];
@@ -148,7 +148,7 @@ const b3 = groupSeat(b2, "B3", "sold");
 
 let seatPlanUp = [
   makeSeat("B1", "empty"), b2, b3, makeSeat("B4", "empty"),
-  makeSeat("B5", "sold"), makeSeat("B6", "empty"), makeSeat("B7", "cargo"), makeSeat("B8", "hold"),
+  makeSeat("B5", "sold"), makeSeat("B6", "empty"), makeSeat("B7", "hold"), makeSeat("B8", "hold"),
   makeSeat("B9", "empty"), makeSeat("B10", "sold"), makeSeat("B11", "free"), makeSeat("B12", "empty"),
 ];
 
@@ -203,21 +203,7 @@ if (!savedBank) {
     vehicleType: 'Limousine 24 Phòng',
     driver: 'Trần Văn Hùng (TC-01)',
     helper: 'Nguyễn Thị Hương',
-    cancelledSeats: [
-      {
-        id: 'c1',
-        code: 'A5',
-        customerName: 'Nguyễn Văn An',
-        phone: '0809123456',
-        firstStop: 'Kinh Dương Vương',
-        lastStop: 'BX Châu Đốc',
-        price: 280000,
-        reason: 'Khách bận đột xuất',
-        cancelTime: '08:15 06/07/2026',
-        ticketNo: 'MS0098',
-        note: 'Đã hoàn tiền 100%'
-      }
-    ]
+    cancelledSeats: []
   };
   allTripsMeta.forEach(t => {
     if (t.id !== '1') {
@@ -309,6 +295,7 @@ let selectedTargetSeats = [];
 let transferSourceTripId = null; // chuyến của các ghế nguồn đang chọn để chuyển
 let transferTargetTripId = null; // chuyến đang xem để chọn ghế trống làm đích (có thể khác chuyến nguồn)
 let transferSourceCancelId = null; // id bản ghi trong cancelledSeats đang chọn để "chuyển ghế" sang phơi khác (thay vì 1 ghế nguồn còn sống)
+let sellFromTransferBarSeats = null; // (các) ghế đang chờ bán nhanh từ thanh chuyển ghế, không qua panel sửa vé — xem sellFromTransferBar()
 let currentPanelSeat = null;
 let currentPanelSeats = [];
 let currentEditSeatCode = null;
@@ -622,7 +609,7 @@ function seatCard(seat, ticketGroupMap) {
   const lastStopShort = shortenStopName(seat.lastStop) || '—';
   const routeStr = `${firstStopShort} → ${lastStopShort}`;
 
-  const textColor = isEmpty ? 'color:var(--text-sub);' : 'color:var(--text-main); font-weight:700;';
+  const textColor = 'color:var(--black);';
   const displayRoute = isEmpty ? '—' : routeStr;
   const displayFirst = isEmpty ? '—' : firstStopShort;
   const displayLast = isEmpty ? '—' : lastStopShort;
@@ -630,15 +617,23 @@ function seatCard(seat, ticketGroupMap) {
   const custPhone = isEmpty ? '—' : (seat.phone || '—');
   const noteStr = isEmpty ? (seat.note || '—') : (seatNoteWithReason(seat) || '—');
 
+  const pickupTransferAddr = !isEmpty && seat.transshipStation ? seat.transshipStation : '';
+  const dropoffTransferAddr = !isEmpty && seat.arrivalTransfer ? seat.arrivalTransfer : '';
+  const firstTitle = pickupTransferAddr ? `Trung chuyển đón: ${pickupTransferAddr}` : displayFirst;
+  const lastTitle = dropoffTransferAddr ? `Trung chuyển trả: ${dropoffTransferAddr}` : displayLast;
+  const routeTitle = (pickupTransferAddr || dropoffTransferAddr)
+    ? `Đón: ${pickupTransferAddr || displayFirst} • Trả: ${dropoffTransferAddr || displayLast}`
+    : displayRoute;
+
   const linesHtml = `
     ${isEmpty ? '' : groupLabelHtml}
-    <div class="seat-line route-single-line"><span class="seat-label-full">Chặng đi: </span><span class="seat-stop" title="${displayRoute}">${displayRoute}</span></div>
+    <div class="seat-line route-single-line"><span class="seat-label-full">Chặng đi: </span><span class="seat-stop" title="${routeTitle}">${displayRoute}</span></div>
     <div class="route-split-line">
-      <div class="route-split-row"><span class="route-split-label">Đi:</span><span class="seat-stop" title="${displayFirst}">${displayFirst}</span></div>
-      <div class="route-split-row"><span class="route-split-label">Đến:</span><span class="seat-stop" title="${displayLast}">${displayLast}</span></div>
+      <div class="route-split-row"><span class="route-split-label">Đi:</span><span class="seat-stop" title="${firstTitle}">${displayFirst}</span></div>
+      <div class="route-split-row"><span class="route-split-label">Đến:</span><span class="seat-stop" title="${lastTitle}">${displayLast}</span></div>
     </div>
-    <div class="seat-line" style="${textColor}"><span class="seat-label-full">Khách hàng: </span><span class="seat-label-short">KH: </span>${custName}</div>
-    <div class="seat-line" style="${textColor}"><span class="seat-label-full">Số điện thoại: </span><span class="seat-label-short">SĐT: </span>${custPhone}</div>
+    <div class="seat-line" style="${textColor}">KH: ${custName}</div>
+    <div class="seat-line" style="${textColor}">SĐT: ${custPhone}</div>
     <div class="seat-note" title="${noteStr}"><span class="seat-label-full">Ghi chú: </span><span class="seat-label-short">GC: </span>${noteStr}</div>
   `;
 
@@ -852,10 +847,15 @@ function confirmTransfer() {
   const targetTripId = transferTargetTripId || currentTripId;
 
   let extraSeatsChanged = false;
+  // Ghế đích của các ghế NGUỒN đã bán (state 'sold') — in lại vé cho đúng mã ghế/chuyến mới sau khi
+  // chuyển, vì vé giấy khách đang cầm giờ ghi sai mã ghế/chuyến cũ.
+  const reprintSeats = [];
   for (let i = 0; i < pairCount; i++) {
     const sourceSeat = findSeatInTrip(sourceTripId, selectedSourceSeats[i]);
     const targetSeat = findSeatInTrip(targetTripId, selectedTargetSeats[i]);
     if (!sourceSeat || !OCCUPIED_STATES.includes(sourceSeat.state) || !targetSeat || targetSeat.state !== 'empty') continue;
+
+    const wasSold = sourceSeat.state === 'sold';
 
     Object.assign(targetSeat, {
       state: sourceSeat.state,
@@ -869,10 +869,18 @@ function confirmTransfer() {
       paid: sourceSeat.paid,
       count: sourceSeat.count,
       hasLuggage: sourceSeat.hasLuggage,
+      luggageNote: sourceSeat.luggageNote,
       guestType: sourceSeat.guestType,
       transshipStation: sourceSeat.transshipStation,
-      arrivalTransfer: sourceSeat.arrivalTransfer
+      arrivalTransfer: sourceSeat.arrivalTransfer,
+      price: sourceSeat.price,
+      zeroPriceReason: sourceSeat.zeroPriceReason,
+      depositAmount: sourceSeat.depositAmount,
+      depositMethod: sourceSeat.depositMethod,
+      paymentMethod: sourceSeat.paymentMethod
     });
+
+    if (wasSold) reprintSeats.push(targetSeat);
 
     // Ghế dư không phải "mã ghế thật" của xe hiện tại (đã mất khi đổi loại xe) — chuyển đi xong thì
     // phải XOÁ khỏi extraLeftoverSeats hẳn, không thể clearSeatToEmpty() như ghế thường (sẽ để lại
@@ -890,7 +898,14 @@ function confirmTransfer() {
   if (extraSeatsChanged) renderExtraSeats();
   if (document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
   exitMultiSelectMode();
-  showToast(`Đã chuyển ${pairCount} ghế thành công`);
+  // Không tự động in lại vé cho ghế đã bán vừa chuyển — chỉ nhắc để nhân viên tự bấm "In lại vé"
+  // trong panel xem thông tin ghế đó khi cần (xem reprintCurrentPanelTicket()).
+  if (reprintSeats.length) {
+    const codes = reprintSeats.map(s => s.code).join(', ');
+    showToast(`Đã chuyển ${pairCount} ghế thành công — ghế ${codes} đã bán, mở lại ghế để bấm "In lại vé" cho khách`);
+  } else {
+    showToast(`Đã chuyển ${pairCount} ghế thành công`);
+  }
 }
 
 /* Đưa ghế về trạng thái trống hoàn toàn — không giữ lại bất kỳ thông tin khách nào */
@@ -899,7 +914,8 @@ function clearSeatToEmpty(seat) {
     state: 'empty', count: 1, customerName: null, phone: null, firstStop: null,
     lastStop: null, note: null, staff: null, callState: null, pickupTime: null,
     ticketNo: null, paid: false, hasLuggage: false, guestType: null,
-    transshipStation: null, arrivalTransfer: null, zeroPriceReason: null
+    transshipStation: null, arrivalTransfer: null, zeroPriceReason: null,
+    luggageNote: null, paymentMethod: null
   });
 }
 
@@ -928,9 +944,9 @@ function refreshTicket() {
     ? document.getElementById('f_transship_select').value.trim()
     : document.getElementById('f_transship').value.trim();
 
-  const isTransshipLike = (type === 'Trung chuyển' || type === 'Rước liền');
+  const isTransshipLike = (type === 'Trung chuyển');
   if (isTransshipLike && transshipVal) {
-    transshipLabel.textContent = type === 'Rước liền' ? 'Rước liền' : 'TC đi';
+    transshipLabel.textContent = 'TC đi';
     transshipRow.style.display = 'flex';
     document.getElementById('t_transship').textContent = transshipVal;
   } else if (type === 'Rước đường' && transshipVal) {
@@ -950,10 +966,13 @@ function refreshTicket() {
     arrivalRow.style.display = 'none';
   }
 
-  document.getElementById('t_luggage_row').style.display = document.getElementById('f_luggage').checked ? 'flex' : 'none';
+  const luggageChecked = document.getElementById('f_luggage').checked;
+  document.getElementById('t_luggage_row').style.display = luggageChecked ? 'flex' : 'none';
+  document.getElementById('f_luggage_note_row').style.display = luggageChecked ? '' : 'none';
+  const luggageNoteVal = document.getElementById('f_luggage_note').value.trim();
+  document.getElementById('t_luggage_val').textContent = luggageNoteVal ? `Có — ${luggageNoteVal}` : 'Có';
 
   const depositEnabled = document.getElementById('f_deposit_enabled').checked;
-  document.getElementById('depositFieldsWrap').style.display = depositEnabled ? 'flex' : 'none';
   const depositRow = document.getElementById('t_deposit_row');
   const depositAmount = parseInt(document.getElementById('f_deposit_amount').value, 10) || 0;
   if (depositEnabled && depositAmount > 0) {
@@ -965,6 +984,42 @@ function refreshTicket() {
   }
 
   updateTicketQR();
+}
+
+// Tick "Đặt cọc" -> mở ngay modal nhập số tiền + phương thức. Bỏ tick -> tắt cọc, xoá số tiền đã gõ
+// để lần tick lại sau không giữ số cũ gây nhầm.
+function onDepositToggle() {
+  const checked = document.getElementById('f_deposit_enabled').checked;
+  if (checked) {
+    openDepositModal();
+  } else {
+    document.getElementById('f_deposit_amount').value = '';
+    refreshTicket();
+  }
+}
+
+function openDepositModal() {
+  document.getElementById('f_deposit_amount').focus();
+  document.getElementById('depositModal').classList.add('open');
+}
+
+// "Xác nhận" trong modal — bắt buộc phải có số tiền cọc > 0 mới cho đóng modal.
+function closeDepositModal() {
+  const amount = parseInt(document.getElementById('f_deposit_amount').value, 10) || 0;
+  if (amount <= 0) {
+    showToast('Vui lòng nhập số tiền cọc');
+    return;
+  }
+  document.getElementById('depositModal').classList.remove('open');
+  refreshTicket();
+}
+
+// "Hủy" trong modal — huỷ luôn việc đặt cọc, bỏ tick checkbox lại.
+function cancelDepositModal() {
+  document.getElementById('depositModal').classList.remove('open');
+  document.getElementById('f_deposit_enabled').checked = false;
+  document.getElementById('f_deposit_amount').value = '';
+  refreshTicket();
 }
 
 function buildScannableQRText() {
@@ -981,83 +1036,10 @@ function updateTicketQR() {
   qrImg.onclick = () => window.open(qrUrl, '_blank');
 }
 
-// Dựng HTML đầy đủ (kể cả <style> in nhiệt 80mm) cho cửa sổ in vé — tách khỏi printTicket() để hàm đó
-// chỉ còn lo phần chuẩn bị dữ liệu, không lẫn với khối HTML/CSS tĩnh dài.
-function buildTicketPrintHtml(d) {
+// Dựng đúng phần NỘI DUNG 1 tờ vé (không kèm <html>/<head>) — dùng chung cho cả in 1 vé
+// (buildTicketPrintHtml) lẫn in nhiều vé gộp chung 1 cửa sổ (buildMultiTicketPrintHtml).
+function buildTicketPageHtml(d) {
   return `
-    <!DOCTYPE html>
-    <html lang="vi">
-    <head>
-    <meta charset="UTF-8">
-    <title>In Vé Xe Huệ Nghĩa - ${d.ticketNo}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-      @page { size: 80mm auto; margin: 0; }
-      body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        width: 76mm;
-        margin: 0 auto;
-        padding: 12px 6px;
-        color: #111213;
-        background: #fff;
-        font-size: 12.5px;
-        line-height: 1.35;
-      }
-      .brand-header {
-        text-align: center;
-        border-bottom: 2px solid #000;
-        padding-bottom: 8px;
-        margin-bottom: 8px;
-      }
-      .brand-badge {
-        display: inline-block;
-        background: #C20D08;
-        color: #fff;
-        font-weight: 900;
-        font-size: 16px;
-        padding: 2px 8px;
-        border-radius: 4px;
-        margin-bottom: 4px;
-      }
-      .brand-name { font-size: 17px; font-weight: 900; letter-spacing: 0.5px; color: #000; }
-      .brand-sub { font-size: 11px; font-weight: 600; color: #444; }
-      .ticket-title { font-size: 15px; font-weight: 900; text-align: center; margin: 8px 0 4px; text-transform: uppercase; }
-      .dash-line { border-bottom: 1px dashed #000; margin: 6px 0; }
-      .kv-row { display: flex; justify-content: space-between; font-size: 12.5px; margin: 4px 0; }
-      .kv-label { color: #333; font-weight: 600; }
-      .kv-val { font-weight: 700; text-align: right; }
-      .seat-box {
-        font-size: 21px;
-        font-weight: 900;
-        text-align: center;
-        border: 2px solid #000;
-        padding: 6px;
-        margin: 8px 0;
-        background: #fafafa;
-      }
-      .total-price-box {
-        text-align: center;
-        font-size: 16px;
-        font-weight: 900;
-        margin: 8px 0;
-        padding: 6px;
-        border: 1px solid #000;
-        background: #f0f0f0;
-      }
-      .qr-container {
-        text-align: center;
-        margin-top: 10px;
-        padding-top: 8px;
-        border-top: 1px dashed #000;
-      }
-      .qr-img { width: 140px; height: 140px; display: block; margin: 0 auto 6px; border: 1px solid #ccc; padding: 4px; background: #fff; }
-      .footer-note { text-align: center; font-size: 10.5px; margin-top: 10px; line-height: 1.4; color: #333; }
-    </style>
-    </head>
-    <body>
-
     <div class="brand-header">
       <div class="brand-badge">HN</div>
       <div class="brand-name">HUỆ NGHĨA EXPRESS</div>
@@ -1085,6 +1067,7 @@ function buildTicketPrintHtml(d) {
 
     <div class="kv-row"><span class="kv-label">Đơn giá:</span><span class="kv-val">${d.unitPrice.toLocaleString('vi-VN')}đ/vé</span></div>
     <div class="total-price-box">TỔNG TIỀN: ${d.totalPrice.toLocaleString('vi-VN')}đ</div>
+    <div class="kv-row"><span class="kv-label">Thanh toán:</span><span class="kv-val">${d.paymentMethod}</span></div>
 
     <div class="qr-container">
       <img class="qr-img" src="${d.qrImgUrl}" alt="Mã QR Lên Xe">
@@ -1096,7 +1079,87 @@ function buildTicketPrintHtml(d) {
       <b>Cảm ơn quý khách đã chọn Huệ Nghĩa Express!</b><br>
       Tổng đài đặt vé & hỗ trợ: <b>1900 63 64 99</b>
     </div>
+  `;
+}
 
+const TICKET_PRINT_STYLE = `
+  @page { size: 80mm auto; margin: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    color: #111213;
+    background: #fff;
+    font-size: 12.5px;
+    line-height: 1.35;
+  }
+  .ticket-page { width: 76mm; margin: 0 auto; padding: 12px 6px; }
+  .ticket-page + .ticket-page { page-break-before: always; }
+  .brand-header {
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+  }
+  .brand-badge {
+    display: inline-block;
+    background: #C20D08;
+    color: #fff;
+    font-weight: 900;
+    font-size: 16px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+  }
+  .brand-name { font-size: 17px; font-weight: 900; letter-spacing: 0.5px; color: #000; }
+  .brand-sub { font-size: 11px; font-weight: 600; color: #444; }
+  .ticket-title { font-size: 15px; font-weight: 900; text-align: center; margin: 8px 0 4px; text-transform: uppercase; }
+  .dash-line { border-bottom: 1px dashed #000; margin: 6px 0; }
+  .kv-row { display: flex; justify-content: space-between; font-size: 12.5px; margin: 4px 0; }
+  .kv-label { color: #333; font-weight: 600; }
+  .kv-val { font-weight: 700; text-align: right; }
+  .seat-box {
+    font-size: 21px;
+    font-weight: 900;
+    text-align: center;
+    border: 2px solid #000;
+    padding: 6px;
+    margin: 8px 0;
+    background: #fafafa;
+  }
+  .total-price-box {
+    text-align: center;
+    font-size: 16px;
+    font-weight: 900;
+    margin: 8px 0;
+    padding: 6px;
+    border: 1px solid #000;
+    background: #f0f0f0;
+  }
+  .qr-container {
+    text-align: center;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed #000;
+  }
+  .qr-img { width: 140px; height: 140px; display: block; margin: 0 auto 6px; border: 1px solid #ccc; padding: 4px; background: #fff; }
+  .footer-note { text-align: center; font-size: 10.5px; margin-top: 10px; line-height: 1.4; color: #333; }
+`;
+
+// Dựng HTML đầy đủ (kể cả <style> in nhiệt 80mm) cho cửa sổ in — 1 vé duy nhất.
+function buildTicketPrintHtml(d) {
+  return `
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+    <meta charset="UTF-8">
+    <title>In Vé Xe Huệ Nghĩa - ${d.ticketNo}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>${TICKET_PRINT_STYLE}</style>
+    </head>
+    <body>
+    <div class="ticket-page">${buildTicketPageHtml(d)}</div>
     <script>
       window.onload = function() {
         setTimeout(function() {
@@ -1109,9 +1172,41 @@ function buildTicketPrintHtml(d) {
   `;
 }
 
-function printTicket(seats) {
-  if (!seats || seats.length === 0) return;
+// Dựng 1 cửa sổ in DUY NHẤT chứa NHIỀU tờ vé nối tiếp nhau (mỗi tờ 1 trang in riêng nhờ
+// page-break-before), thay vì gọi window.open() nhiều lần — trình duyệt chặn popup nếu mở nhiều
+// cửa sổ liên tiếp trong cùng 1 lần bấm nên in riêng từng ghế bằng nhiều window.open() thực tế chỉ
+// ra được đúng 1 vé đầu, các vé sau bị chặn âm thầm (không báo lỗi gì).
+function buildMultiTicketPrintHtml(dataList) {
+  const pagesHtml = dataList.map(d => `<div class="ticket-page">${buildTicketPageHtml(d)}</div>`).join('');
+  const titleTicketNo = dataList.length ? dataList[0].ticketNo : '';
+  return `
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+    <meta charset="UTF-8">
+    <title>In Vé Xe Huệ Nghĩa - ${titleTicketNo}${dataList.length > 1 ? ` (+${dataList.length - 1})` : ''}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>${TICKET_PRINT_STYLE}</style>
+    </head>
+    <body>
+    ${pagesHtml}
+    <script>
+      window.onload = function() {
+        setTimeout(function() {
+          window.print();
+        }, 400);
+      };
+    </script>
+    </body>
+    </html>
+  `;
+}
 
+// Chuẩn bị dữ liệu hiển thị cho 1 tờ vé (không mở cửa sổ in) — tách khỏi printTicket() để dùng lại
+// được cho cả in nhiều vé gộp chung 1 cửa sổ (xem printTicketsSeparately()).
+function buildTicketPrintData(seats) {
   const currentTrip = (allTripsMeta && allTripsMeta.find(t => t.id === currentTripId)) || { route: 'Sài Gòn - Châu Đốc', time: '07:00' };
   const firstSeat = seats[0];
   const seatsText = seats.map(s => s.code).join(', ');
@@ -1124,6 +1219,7 @@ function printTicket(seats) {
   const totalPrice = unitPrice * seats.length;
   const route = currentTrip.route || 'Sài Gòn - Châu Đốc';
   const time = currentTrip.time || '07:00';
+  const paymentMethod = firstSeat.paymentMethod || 'Tiền mặt';
 
   const qrText = buildScannableQRText(ticketNo, seatsText, customerName, phone, route, time);
   const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=1&data=${encodeURIComponent(qrText)}`;
@@ -1133,17 +1229,30 @@ function printTicket(seats) {
   const dateStr = now.toLocaleDateString('vi-VN');
   const nowStr = `${timeStr} - ${dateStr}`;
 
-  const printHtml = buildTicketPrintHtml({
+  return {
     ticketNo, nowStr, seatsText, customerName, phone, route, time,
-    fromStation, toStation, unitPrice, totalPrice, qrImgUrl
-  });
+    fromStation, toStation, unitPrice, totalPrice, qrImgUrl, paymentMethod
+  };
+}
 
+function printTicket(seats) {
+  if (!seats || seats.length === 0) return;
+  const printHtml = buildTicketPrintHtml(buildTicketPrintData(seats));
   const printWin = window.open('', '_blank', 'width=450,height=600');
   if (printWin) {
     printWin.document.open();
     printWin.document.write(printHtml);
     printWin.document.close();
   }
+}
+
+/* Nút "In lại vé" trong panel xem thông tin ghế đã bán (chỉ hiện khi panel ở chế độ chỉ xem — xem
+   openBookingPanel() ở js/shared/ui.js) — nhân viên chủ động bấm khi cần, không tự động in (VD:
+   sau khi chuyển ghế đã bán sang ghế khác). */
+function reprintCurrentPanelTicket() {
+  const seats = currentPanelSeats.length ? currentPanelSeats : (currentPanelSeat ? [currentPanelSeat] : []);
+  if (!seats.length) return;
+  printTicketsSeparately(seats);
 }
 
 function focusPriceEdit() {
@@ -1197,10 +1306,6 @@ function saveTicket() {
     showToast('Vui lòng nhập trạm trung chuyển');
     return;
   }
-  if (type === 'Rước liền' && !document.getElementById('f_transship').value.trim()) {
-    showToast('Vui lòng nhập địa chỉ rước liền');
-    return;
-  }
   if (type === 'Rước đường' && !document.getElementById('f_transship_select').value.trim()) {
     showToast('Vui lòng chọn địa điểm rước');
     return;
@@ -1241,6 +1346,7 @@ function saveTicket() {
       : document.getElementById('f_transship').value.trim();
     seat.arrivalTransfer = document.getElementById('f_arrival_transfer').value.trim();
     seat.hasLuggage = document.getElementById('f_luggage').checked;
+    seat.luggageNote = seat.hasLuggage ? document.getElementById('f_luggage_note').value.trim() : '';
     seat.price = editedPrice;
     // Ghi chú giữ nguyên đúng những gì gõ ở ô "Ghi chú" — lý do giá 0đ lưu riêng ở zeroPriceReason,
     // chỉ ghép hiển thị chung lúc render (seatNoteWithReason) chứ không ghi đè vào note thật.
@@ -1257,7 +1363,6 @@ function saveTicket() {
     const seat = currentPanelSeat;
     applyFormToSeat(seat);
     syncDepositToTicketGroup(seat);
-    if (type === 'Rước liền') syncRuocLienToPickupList([seat]);
     renderSeats();
     saveSeatBank();
     if (document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
@@ -1272,10 +1377,11 @@ function saveTicket() {
     seat.ticketNo = groupTicketNo;
     seat.paid = false;
     seat.count = seatsTarget.length;
-    seat.state = seat.hasLuggage ? 'cargo' : 'hold';
+    // Ghế có baga vẫn ghi seat.hasLuggage bình thường, không còn chuyển sang state 'cargo' riêng
+    // (đã bỏ loại ghế màu xanh biển trên sơ đồ) — luôn giữ 'hold' như ghế đặt thường.
+    seat.state = 'hold';
   });
 
-  if (type === 'Rước liền') syncRuocLienToPickupList(seatsTarget);
   renderSeats();
   saveSeatBank();
   if (document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
@@ -1295,10 +1401,6 @@ function sellTicket() {
     showToast('Vui lòng nhập trạm trung chuyển');
     return;
   }
-  if (type === 'Rước liền' && !document.getElementById('f_transship').value.trim()) {
-    showToast('Vui lòng nhập địa chỉ rước liền');
-    return;
-  }
   if (type === 'Rước đường' && !document.getElementById('f_transship_select').value.trim()) {
     showToast('Vui lòng chọn địa điểm rước');
     return;
@@ -1328,6 +1430,49 @@ function sellTicket() {
     return;
   }
 
+  const seatsToSell = currentPanelSeats.length ? currentPanelSeats : (currentPanelSeat ? [currentPanelSeat] : []);
+  if (!seatsToSell.length) { closePanel(); return; }
+
+  // Form hợp lệ — chưa bán ngay, mở modal bắt buộc chọn phương thức thanh toán trước khi thật sự bán
+  // + in vé. Việc bán vé thật sự chuyển sang confirmSellPayment().
+  document.querySelectorAll('input[name="sellPaymentMethod"]').forEach(r => { r.checked = r.value === 'Tiền mặt'; });
+  document.getElementById('sellPaymentModal').classList.add('open');
+}
+
+function closeSellPaymentModal() {
+  document.getElementById('sellPaymentModal').classList.remove('open');
+}
+
+function confirmSellPayment() {
+  const paymentMethod = document.querySelector('input[name="sellPaymentMethod"]:checked')?.value || 'Tiền mặt';
+
+  // Bán nhanh từ thanh chuyển ghế (sellFromTransferBar()) — các ghế này có thể thuộc nhiều vé/khách
+  // khác nhau nên KHÔNG đi qua panel sửa vé (không có 1 bộ dữ liệu chung để hiện), chỉ đánh dấu đã
+  // bán bằng đúng dữ liệu sẵn có của từng ghế, không đụng tới thông tin khách/tuyến/giá/cọc.
+  if (sellFromTransferBarSeats && sellFromTransferBarSeats.length) {
+    const seats = sellFromTransferBarSeats;
+    sellFromTransferBarSeats = null;
+    seats.forEach(seat => {
+      seat.paid = true;
+      seat.state = 'sold';
+      seat.paymentMethod = paymentMethod;
+    });
+    renderSeats();
+    saveSeatBank();
+    if (document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
+    closeSellPaymentModal();
+    showToast(seats.length > 1
+      ? `Đã bán vé thành công cho ${seats.length} ghế`
+      : `Đã bán vé thành công — Ghế ${seats[0].code}`);
+    printTicketsSeparately(seats);
+    return;
+  }
+
+  const type = document.getElementById('f_type').value;
+  const editedPrice = getEditedPrice();
+  const depositEnabled = document.getElementById('f_deposit_enabled').checked;
+  const depositAmountRaw = parseInt(document.getElementById('f_deposit_amount').value, 10) || 0;
+
   const applyFormToSeat = (seat) => {
     seat.customerName = document.getElementById('f_name').value.trim();
     seat.phone = collectPhoneValues('f_phone', 'f_phone_extra');
@@ -1339,6 +1484,7 @@ function sellTicket() {
       : document.getElementById('f_transship').value.trim();
     seat.arrivalTransfer = document.getElementById('f_arrival_transfer').value.trim();
     seat.hasLuggage = document.getElementById('f_luggage').checked;
+    seat.luggageNote = seat.hasLuggage ? document.getElementById('f_luggage_note').value.trim() : '';
     seat.price = editedPrice;
     // Ghi chú giữ nguyên đúng những gì gõ ở ô "Ghi chú" — lý do giá 0đ lưu riêng ở zeroPriceReason,
     // chỉ ghép hiển thị chung lúc render (seatNoteWithReason) chứ không ghi đè vào note thật.
@@ -1346,10 +1492,11 @@ function sellTicket() {
     seat.zeroPriceReason = editedPrice === 0 ? document.getElementById('f_zero_price_reason').value.trim() : '';
     seat.depositAmount = depositEnabled ? depositAmountRaw : 0;
     seat.depositMethod = depositEnabled ? (document.querySelector('input[name="f_deposit_method"]:checked')?.value || 'Tiền mặt') : '';
+    seat.paymentMethod = paymentMethod;
   };
 
   const seatsToSell = currentPanelSeats.length ? currentPanelSeats : (currentPanelSeat ? [currentPanelSeat] : []);
-  if (!seatsToSell.length) { closePanel(); return; }
+  if (!seatsToSell.length) { closeSellPaymentModal(); closePanel(); return; }
 
   const groupTicketNo = (currentPanelMode === 'edit' && currentPanelSeat && currentPanelSeat.ticketNo)
     ? currentPanelSeat.ticketNo
@@ -1368,6 +1515,7 @@ function sellTicket() {
   saveSeatBank();
   if (document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
 
+  closeSellPaymentModal();
   closePanel();
   showToast(seatsToSell.length > 1
     ? 'Đã bán vé thành công cho ' + seatsToSell.length + ' ghế'
@@ -1376,8 +1524,61 @@ function sellTicket() {
     if (typeof exitMultiSelectMode === 'function') exitMultiSelectMode();
   }
 
-  // In vé trực tiếp có mã QR xác nhận lên xe
-  printTicket(seatsToSell);
+  // In vé trực tiếp có mã QR xác nhận lên xe — in riêng từng ghế 1 tờ, kể cả vé nhóm nhiều ghế
+  // (xem printTicketsSeparately()), không gộp chung nhiều ghế vào 1 tờ vé nữa.
+  printTicketsSeparately(seatsToSell);
+}
+
+/* In riêng 1 tờ vé cho MỖI ghế (kể cả các ghế cùng 1 vé nhóm) thay vì gộp chung như trước — áp dụng
+   cho mọi luồng bán vé (bán qua panel lẫn bán nhanh từ thanh chuyển ghế). Số vé (ticketNo) trên từng
+   tờ vẫn đúng vì mỗi ghế tự mang sẵn ticketNo chung của cả nhóm, chỉ khác là giá/route hiện đúng theo
+   từng ghế thay vì cộng gộp cả nhóm.
+   Gộp tất cả các tờ vào CHUNG 1 cửa sổ in (mỗi tờ 1 trang, ngăn cách bằng page-break) thay vì gọi
+   window.open() riêng cho từng tờ — gọi nhiều window.open() liên tiếp trong cùng 1 lần bấm sẽ bị
+   trình duyệt chặn popup từ tờ thứ 2 trở đi (chỉ tờ đầu mở được, không báo lỗi gì nên nhìn như "chỉ
+   in được 1 vé"). */
+function printTicketsSeparately(seats) {
+  if (!seats || seats.length === 0) return;
+  const dataList = seats.map(seat => buildTicketPrintData([seat]));
+  const printHtml = buildMultiTicketPrintHtml(dataList);
+  const printWin = window.open('', '_blank', 'width=450,height=600');
+  if (printWin) {
+    printWin.document.open();
+    printWin.document.write(printHtml);
+    printWin.document.close();
+  }
+}
+
+/* Bán nhanh (các) ghế đang chọn làm nguồn ở thanh chuyển ghế — không mở panel sửa vé (các ghế có thể
+   thuộc nhiều vé/khách khác nhau nên không có 1 bộ dữ liệu chung để hiện lên panel), chỉ hỏi xác nhận
+   phương thức thanh toán rồi đánh dấu đã bán, giữ nguyên toàn bộ thông tin khách/tuyến/giá/cọc sẵn có
+   của từng ghế. Chỉ khả dụng khi tất cả ghế đó chưa bán và đang ở đúng chuyến hiện xem (xem điều kiện
+   hiện nút trong updateTransferHint() ở js/shared/booking.js). */
+function sellFromTransferBar() {
+  if (transferSourceCancelId || !selectedSourceSeats.length || transferSourceTripId !== currentTripId) return;
+  const seats = selectedSourceSeats.map(code => findSeatInTrip(transferSourceTripId, code)).filter(Boolean);
+  if (!seats.length || seats.some(s => s.state === 'sold')) {
+    showToast('Chỉ có thể bán ghế chưa bán');
+    return;
+  }
+  exitMultiSelectMode();
+  sellFromTransferBarSeats = seats;
+  document.querySelectorAll('input[name="sellPaymentMethod"]').forEach(r => { r.checked = r.value === 'Tiền mặt'; });
+  document.getElementById('sellPaymentModal').classList.add('open');
+}
+
+/* In lại vé cho (các) ghế đang chọn làm nguồn ở thanh chuyển ghế — chỉ khả dụng khi tất cả ghế đó
+   ĐÃ bán và đang ở đúng chuyến hiện xem (xem điều kiện hiện nút trong updateTransferHint() ở
+   js/shared/booking.js). Không thoát chế độ chuyển ghế sau khi in — in vé không đổi dữ liệu gì nên
+   nhân viên có thể tiếp tục bấm "Chuyển ghế" ngay sau đó nếu cần. */
+function reprintFromTransferBar() {
+  if (transferSourceCancelId || !selectedSourceSeats.length || transferSourceTripId !== currentTripId) return;
+  const seats = selectedSourceSeats.map(code => findSeatInTrip(transferSourceTripId, code)).filter(Boolean);
+  if (!seats.length || seats.some(s => s.state !== 'sold')) {
+    showToast('Chỉ có thể in lại vé cho ghế đã bán');
+    return;
+  }
+  printTicketsSeparately(seats);
 }
 
 /* ---- Modal chỉ định xe: đổi loại xe -> đổi sơ đồ ghế ---- */
@@ -1963,11 +2164,37 @@ document.addEventListener('click', (e) => {
 renderCalendar();
 updateCalTrigger();
 
-/* ---- Zone 1: lọc danh sách phơi theo giờ khởi hành (dropdown giờ tròn cố định) ---- */
-function onZone1HourFilterChange() {
-  zone1HourFilter = document.getElementById('zone1HourFilter')?.value || 'all';
+/* ---- Zone 1: lọc danh sách phơi theo giờ khởi hành (popover 2 cột Sáng/Chiều thay cho <select> cũ) ---- */
+function toggleZone1HourPopover(force) {
+  const popover = document.getElementById('zone1HourPopover');
+  const btn = document.getElementById('zone1HourFilterBtn');
+  if (!popover || !btn) return;
+  const willOpen = typeof force === 'boolean' ? force : !popover.classList.contains('open');
+  popover.classList.toggle('open', willOpen);
+  btn.classList.toggle('open', willOpen);
+  if (willOpen) updateZone1HourPopoverSelection();
+}
+
+function updateZone1HourPopoverSelection() {
+  document.querySelectorAll('#zone1HourPopover [data-action="selectZone1Hour"]').forEach(b => {
+    const val = JSON.parse(b.getAttribute('data-args'))[0];
+    b.classList.toggle('selected', val === zone1HourFilter);
+  });
+}
+
+function selectZone1Hour(value) {
+  zone1HourFilter = value;
+  const label = document.getElementById('zone1HourFilterLabel');
+  if (label) label.textContent = value === 'all' ? 'Tất cả các giờ' : (String(value).padStart(2, '0') + ':00');
+  toggleZone1HourPopover(false);
   renderZone1TripList();
 }
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#zone1HourPopover') && !e.target.closest('#zone1HourFilterBtn')) {
+    toggleZone1HourPopover(false);
+  }
+});
 
 /* ===================== CHUYỂN MÀN "Đặt vé" <-> "Lịch sử hành khách" ===================== */
 // ticketstaff không có #bookingView bọc riêng như callcenter (zone1/right-col nằm thẳng trong .main) nên

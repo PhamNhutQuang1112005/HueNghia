@@ -13,6 +13,8 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 
 /* ---- Zone 4: Panel đặt vé ---- */
 function openBookingPanel(seats, options = {}) {
+  const depositModalEl = document.getElementById('depositModal');
+  if (depositModalEl) depositModalEl.classList.remove('open');
   const mode = options.mode || 'booking';
   currentPanelMode = mode;
   currentPanelSeats = seats.slice();
@@ -24,8 +26,12 @@ function openBookingPanel(seats, options = {}) {
   const isReadOnly = mode === 'edit' && seat && seat.state === 'sold';
   const saveBtn = document.getElementById('savePanelBtn');
   const sellBtn = document.getElementById('sellPanelBtn');
+  const reprintBtn = document.getElementById('reprintPanelBtn');
   if (saveBtn) saveBtn.style.display = isReadOnly ? 'none' : '';
   if (sellBtn) sellBtn.style.display = isReadOnly ? 'none' : '';
+  // Vé đã bán không tự động in lại (VD: sau khi chuyển ghế) — chỉ hiện nút này để nhân viên chủ động
+  // bấm in khi cần (chỉ có ở ticketstaff, callcenter không có #reprintPanelBtn/chức năng in).
+  if (reprintBtn) reprintBtn.style.display = isReadOnly ? '' : 'none';
   document.getElementById('panelSeatCode').textContent = seats.map(s => s.code).join(', ');
   document.getElementById('panelTitleMode').textContent = isReadOnly ? 'Thông tin ghế' : (mode === 'edit' ? 'Sửa thông tin ghế' : 'Đặt vé');
   document.getElementById('t_seat').textContent = seat.code;
@@ -75,6 +81,7 @@ function openBookingPanel(seats, options = {}) {
   const destinationEl = document.getElementById('f_destination');
   const arrivalTransferEl = document.getElementById('f_arrival_transfer');
   const luggageEl = document.getElementById('f_luggage');
+  const luggageNoteEl = document.getElementById('f_luggage_note');
   if (mode === 'edit' && seat) {
     const phones = (seat.phone || '').split(',').map(p => p.trim()).filter(Boolean);
     phoneEl.value = phones[0] || '';
@@ -96,6 +103,7 @@ function openBookingPanel(seats, options = {}) {
     }
     if (arrivalTransferEl) arrivalTransferEl.value = seat.arrivalTransfer || '';
     if (luggageEl) luggageEl.checked = !!seat.hasLuggage;
+    if (luggageNoteEl) luggageNoteEl.value = seat.hasLuggage ? (seat.luggageNote || '') : '';
     onGuestTypeChange();
     setStationValue(seat.firstStop || DEFAULT_STAFF_STATION);
   } else {
@@ -109,6 +117,7 @@ function openBookingPanel(seats, options = {}) {
     if (transshipSelectEl) transshipSelectEl.value = '';
     if (arrivalTransferEl) arrivalTransferEl.value = '';
     if (luggageEl) luggageEl.checked = false;
+    if (luggageNoteEl) luggageNoteEl.value = '';
     onGuestTypeChange();
   }
   refreshTicket();

@@ -9,8 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../css/shared/variables.css?v=1">
 <link rel="stylesheet" href="../css/shared/base.css?v=1">
-<link rel="stylesheet" href="../css/shared/booking-ui.css?v=74">
-<link rel="stylesheet" href="../css/ticketstaff.css?v=51">
+<link rel="stylesheet" href="../css/shared/booking-ui.css?v=86">
+<link rel="stylesheet" href="../css/ticketstaff.css?v=52">
 </head>
 <body>
 
@@ -136,35 +136,48 @@
         </div>
       </div>
 
-      <div>
-        <label class="field-label" for="zone1HourFilter">Khung giờ</label>
-        <select id="zone1HourFilter" data-change-action="onZone1HourFilterChange">
-          <option value="all">Tất cả các giờ</option>
-          <option value="0">00:00</option>
-          <option value="1">01:00</option>
-          <option value="2">02:00</option>
-          <option value="3">03:00</option>
-          <option value="4">04:00</option>
-          <option value="5">05:00</option>
-          <option value="6">06:00</option>
-          <option value="7">07:00</option>
-          <option value="8">08:00</option>
-          <option value="9">09:00</option>
-          <option value="10">10:00</option>
-          <option value="11">11:00</option>
-          <option value="12">12:00</option>
-          <option value="13">13:00</option>
-          <option value="14">14:00</option>
-          <option value="15">15:00</option>
-          <option value="16">16:00</option>
-          <option value="17">17:00</option>
-          <option value="18">18:00</option>
-          <option value="19">19:00</option>
-          <option value="20">20:00</option>
-          <option value="21">21:00</option>
-          <option value="22">22:00</option>
-          <option value="23">23:00</option>
-        </select>
+      <div style="position:relative;">
+        <label class="field-label" for="zone1HourFilterBtn">Khung giờ</label>
+        <button type="button" class="filter-select" id="zone1HourFilterBtn" data-action="toggleZone1HourPopover">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          <span id="zone1HourFilterLabel">Tất cả các giờ</span>
+          <svg class="filter-date-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="hour-filter-popover" id="zone1HourPopover">
+          <button type="button" class="hour-filter-all" data-action="selectZone1Hour" data-args='["all"]'>Tất cả các giờ</button>
+          <div class="hour-filter-cols">
+            <div class="hour-filter-col">
+              <div class="hour-filter-col-title">Sáng</div>
+              <button type="button" data-action="selectZone1Hour" data-args='["0"]'>00:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["1"]'>01:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["2"]'>02:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["3"]'>03:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["4"]'>04:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["5"]'>05:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["6"]'>06:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["7"]'>07:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["8"]'>08:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["9"]'>09:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["10"]'>10:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["11"]'>11:00</button>
+            </div>
+            <div class="hour-filter-col">
+              <div class="hour-filter-col-title">Chiều</div>
+              <button type="button" data-action="selectZone1Hour" data-args='["12"]'>12:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["13"]'>13:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["14"]'>14:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["15"]'>15:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["16"]'>16:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["17"]'>17:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["18"]'>18:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["19"]'>19:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["20"]'>20:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["21"]'>21:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["22"]'>22:00</button>
+              <button type="button" data-action="selectZone1Hour" data-args='["23"]'>23:00</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:6px;">
@@ -360,7 +373,6 @@
           <span class="seat-legend-item" title="Ghế đã đặt — mới giữ chỗ, chưa xuất vé chính thức."><span class="seat-legend-dot hold"></span>Vàng — Đã đặt</span>
           <span class="seat-legend-item" title="Ghế đã bán — đã xuất vé chính thức."><span class="seat-legend-dot sold"></span>Đỏ — Đã bán</span>
           <span class="seat-legend-item" title="Ghế free — được đánh dấu miễn phí/không thu phí theo chỉ định của nhân viên."><span class="seat-legend-dot free"></span>Xám — Ghế free</span>
-          <span class="seat-legend-item" title="Ghế có ghi chú đặc biệt — thường có hàng hóa/baga kèm theo khách."><span class="seat-legend-dot cargo"></span>Xanh biển — Có ghi chú</span>
         </div>
       </section>
 
@@ -534,6 +546,14 @@
         <span class="hint" id="stickyHint"></span>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-secondary" type="button" data-action="cancelTransferSelection">Hủy</button>
+          <button class="btn btn-sell" id="stickySellBtn" type="button" data-action="sellFromTransferBar" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="m5 13 4 4L19 7"/></svg>
+            Bán vé
+          </button>
+          <button class="btn btn-sell" id="stickyReprintBtn" type="button" data-action="reprintFromTransferBar" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            In lại vé
+          </button>
           <button class="btn btn-secondary" id="stickyActionBtn" type="button" data-action="confirmSelectionAction">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3v18"/><path d="m21 7-4-4-4 4"/><path d="M7 21V3"/><path d="m3 17 4 4 4-4"/></svg>
             Chuyển ghế
@@ -860,7 +880,6 @@
             <select id="f_type" data-change-action="onGuestTypeChange">
               <option>Khách trạm</option>
               <option>Trung chuyển</option>
-              <option>Rước liền</option>
               <option>Rước đường</option>
             </select>
           </div>
@@ -931,6 +950,13 @@
             </label>
           </div>
         </div>
+
+        <div class="form-row" id="f_luggage_note_row" style="--cols:1; display:none;">
+          <div class="form-field">
+            <label for="f_luggage_note">Ghi chú baga</label>
+            <input type="text" id="f_luggage_note" placeholder="VD: 1 vali lớn, 2 túi xách..." data-input-action="refreshTicket">
+          </div>
+        </div>
       </div>
 
       <div class="panel-ticket-wrap">
@@ -950,7 +976,7 @@
           <div class="kv"><span>Trạm đến</span><span id="t_destination">—</span></div>
           <div class="kv" id="t_transship_row" style="display:none;"><span id="t_transship_label">Trạm trung chuyển</span><span id="t_transship">—</span></div>
           <div class="kv" id="t_arrival_transfer_row" style="display:none;"><span>TC đến</span><span id="t_arrival_transfer">—</span></div>
-          <div class="kv" id="t_luggage_row" style="display:none;"><span>Baga</span><span>Có</span></div>
+          <div class="kv" id="t_luggage_row" style="display:none;"><span>Baga</span><span id="t_luggage_val">Có</span></div>
           <div class="kv"><span>Ghi chú</span><span id="t_note">—</span></div>
           <div class="kv" id="t_deposit_row" style="display:none;"><span>Đã cọc</span><span id="t_deposit">—</span></div>
           <div class="ticket-dash"></div>
@@ -969,22 +995,9 @@
           </div>
           <div class="deposit-block">
             <label class="checkbox-inline">
-              <input type="checkbox" id="f_deposit_enabled" data-change-action="refreshTicket">
+              <input type="checkbox" id="f_deposit_enabled" data-change-action="onDepositToggle">
               Đặt cọc
             </label>
-            <div class="deposit-fields" id="depositFieldsWrap" style="display:none;">
-              <div>
-                <label for="f_deposit_amount">Số tiền cọc <span style="color:var(--red);">*</span></label>
-                <input type="number" id="f_deposit_amount" min="0" step="10000" placeholder="VD: 100000" data-input-action="refreshTicket">
-              </div>
-              <div>
-                <label>Phương thức</label>
-                <div class="deposit-method-row">
-                  <label class="radio-inline"><input type="radio" name="f_deposit_method" value="Tiền mặt" checked data-change-action="refreshTicket"> Tiền mặt</label>
-                  <label class="radio-inline"><input type="radio" name="f_deposit_method" value="Chuyển khoản" data-change-action="refreshTicket"> Chuyển khoản</label>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -1000,10 +1013,73 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="m5 13 4 4L19 7"/></svg>
         Bán vé
       </button>
+      <button class="btn btn-sell" id="reprintPanelBtn" data-action="reprintCurrentPanelTicket" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        In lại vé
+      </button>
     </div>
   </div>
 </div>
 
+
+<!-- ===== MODAL: ĐẶT CỌC ===== -->
+<div class="modal-overlay" id="depositModal">
+  <div class="modal">
+    <h3>Đặt cọc</h3>
+    <div class="deposit-fields" id="depositFieldsWrap">
+      <div class="form-field">
+        <label for="f_deposit_amount">Số tiền cọc <span style="color:var(--red);">*</span></label>
+        <input type="number" id="f_deposit_amount" min="0" step="10000" placeholder="VD: 100000" data-input-action="refreshTicket">
+      </div>
+      <div class="form-field">
+        <label>Phương thức</label>
+        <div class="pay-method-toggle">
+          <label class="pay-method-option">
+            <input type="radio" name="f_deposit_method" value="Tiền mặt" checked data-change-action="refreshTicket">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+            <span>Tiền mặt</span>
+          </label>
+          <label class="pay-method-option">
+            <input type="radio" name="f_deposit_method" value="Chuyển khoản" data-change-action="refreshTicket">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><path d="M6 15h3"/></svg>
+            <span>Chuyển khoản</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="cancelDepositModal">Hủy</button>
+      <button class="btn btn-primary" data-action="closeDepositModal">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== MODAL: XÁC NHẬN PHƯƠNG THỨC THANH TOÁN KHI BÁN VÉ ===== -->
+<div class="modal-overlay" id="sellPaymentModal">
+  <div class="modal">
+    <h3>Xác nhận thanh toán</h3>
+    <div class="form-field">
+      <label>Phương thức thanh toán <span style="color:var(--red);">*</span></label>
+      <div class="pay-method-toggle" style="margin-top:6px;">
+        <label class="pay-method-option">
+          <input type="radio" name="sellPaymentMethod" value="Tiền mặt" checked>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+          <span>Tiền mặt</span>
+        </label>
+        <label class="pay-method-option">
+          <input type="radio" name="sellPaymentMethod" value="Chuyển khoản">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><path d="M6 15h3"/></svg>
+          <span>Chuyển khoản</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="closeSellPaymentModal">Đóng</button>
+      <button class="btn btn-primary" data-action="confirmSellPayment">Xác nhận &amp; In vé</button>
+    </div>
+  </div>
+</div>
 
 
 <!-- ===== MODAL: HỦY VÉ ===== -->
@@ -1179,7 +1255,6 @@
               <select id="rbGuestType" data-change-action="onRebookGuestTypeChange">
                 <option value="Khách trạm">Khách trạm</option>
                 <option value="Trung chuyển">Trung chuyển</option>
-                <option value="Rước liền">Rước liền</option>
                 <option value="Rước đường">Rước đường</option>
               </select>
             </div>
@@ -1309,10 +1384,10 @@
 <script src="../js/shared/storage-keys.js?v=2"></script>
 <script src="../js/shared/format.js?v=5"></script>
 <script src="../js/shared/constants.js?v=3"></script>
-<script src="../js/shared/seat-bank.js?v=2"></script>
-<script src="../js/shared/ui.js?v=10"></script>
-<script src="../js/shared/booking.js?v=37"></script>
-<script src="../js/ticketstaff.js?v=78"></script>
+<script src="../js/shared/seat-bank.js?v=3"></script>
+<script src="../js/shared/ui.js?v=13"></script>
+<script src="../js/shared/booking.js?v=42"></script>
+<script src="../js/ticketstaff.js?v=95"></script>
 <script src="../js/shared/events.js?v=2"></script>
 </body>
 </html>

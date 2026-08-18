@@ -11,7 +11,8 @@ function buildSequentialSeatCodes(total) {
 
 function generateTripSeatPlanForVehicleType(vehicleType, tripId = '1') {
   const codes = getSeatCodesForVehicleType(vehicleType);
-  const pattern = ['sold', 'empty', 'hold', 'empty', 'sold', 'empty', 'hold', 'free', 'empty', 'sold', 'cargo', 'empty'];
+  // Đã bỏ 'cargo' khỏi vòng lặp mẫu — không còn loại ghế màu xanh biển riêng trên sơ đồ ghế.
+  const pattern = ['sold', 'empty', 'hold', 'empty', 'sold', 'empty', 'hold', 'free', 'empty', 'sold', 'hold', 'empty'];
   let seatCustIdx = (parseInt(tripId || '1') * 7) % nameSamples.length;
   const buildFloor = floorCodes => floorCodes.map((code) => {
     if (code.endsWith('_hidden')) return { code, state: 'hidden' };
