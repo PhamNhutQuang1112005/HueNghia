@@ -8,6 +8,16 @@ function formatHistoryDate(dateStr) {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
+// Giờ:phút nhân viên thao tác (đặt/sửa/bán vé) — ghi từ seat.actionTime (ISO string, stamp lúc lưu form
+// hoặc lúc bán nhanh/đặt lại), hiện ở cột "Thời gian" bảng Lịch sử. Ghi chú lịch sử cũ (CUSTOMER_HISTORY_DATA,
+// dữ liệu mẫu dựng sẵn) không có trường này nên trả về "—" thay vì báo lỗi.
+function formatActionTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 function getPastDate(daysAgo) {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
@@ -52,4 +62,16 @@ function seatNoteWithReason(seat) {
     return seat.note ? `${seat.zeroPriceReason} — ${seat.note}` : seat.zeroPriceReason;
   }
   return seat.note || '';
+}
+
+// Thoát ký tự đặc biệt HTML trước khi chèn text tự do (ghi chú khách nhập tay...) vào template string —
+// nếu không, ghi chú chứa dấu ngoặc kép/&/< sẽ phá vỡ thuộc tính title="..." hoặc bị trình duyệt hiểu
+// nhầm thành thẻ HTML, làm lệch cả layout hàng đó (ví dụ ghi chú có dấu " sẽ cắt đứt title giữa chừng).
+function escapeHtml(str) {
+  return (str || '').toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

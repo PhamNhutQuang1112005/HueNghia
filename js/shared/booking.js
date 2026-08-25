@@ -196,6 +196,7 @@ function renderPassengerHistoryRowHtml(r, idx) {
   const sellStaffStr = r.sellStaff ? (getStaffCode(r.sellStaff) || r.sellStaff) : (r.paid ? 'NV05' : '—');
   const priceStr = r.price ? r.price.toLocaleString('vi-VN') + 'đ' : '—';
   const seatCount = r.seat ? r.seat.split(',').map(s => s.trim()).filter(Boolean).length : 0;
+  const actionTimeStr = formatActionTime(r.actionTime);
 
   return `
     <tr>
@@ -205,11 +206,23 @@ function renderPassengerHistoryRowHtml(r, idx) {
       </td>
       <td class="ch-col-ellipsis" title="${r.name || '—'}">${r.name || '—'}</td>
       <td class="mono ch-col-nowrap">${r.phone || '—'}</td>
-      <td>${firstStopHtml}</td>
-      <td>${lastStopHtml}</td>
+      <td>
+        <div class="pax-route">
+          <div class="pax-route-row pax-route-from">
+            <svg class="pax-route-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
+            <div class="pax-route-text">${firstStopHtml}</div>
+          </div>
+          <div class="pax-route-connector"></div>
+          <div class="pax-route-row pax-route-to">
+            <svg class="pax-route-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+            <div class="pax-route-text">${lastStopHtml}</div>
+          </div>
+        </div>
+      </td>
       <td class="mono" title="${r.seat || '—'}">${seatCount || '—'}</td>
       <td style="text-align:right;">${priceStr}</td>
       <td style="font-size:11.5px;color:var(--text-sub);">Đặt: <b>${bookStaffStr}</b><br>Bán: <b>${sellStaffStr}</b></td>
+      <td class="mono">${actionTimeStr}</td>
       <td><button type="button" class="btn ph-rebook-btn" data-action="openRebookFromHistory" data-args='${JSON.stringify([idx])}'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Đặt lại</button></td>
     </tr>
   `;
@@ -1286,6 +1299,7 @@ function scanTripSeatBankHistory(matchSeatFn) {
           helper: bank.helper || '',
           bookStaff: getStaffCode(seat.staff) || 'NV01',
           sellStaff: seat.paid ? (getStaffCode(seat.staff) || 'NV05') : '—',
+          actionTime: seat.actionTime || '',
           isToday: true,
           tripId
         });

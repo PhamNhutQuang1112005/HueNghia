@@ -401,6 +401,11 @@ function renderTransshipTables() {
   if (dropoffCntEl) dropoffCntEl.textContent = `${dropoffList.length} khách`;
   if (tabCntEl) tabCntEl.textContent = `(${pickupList.length} | ${dropoffList.length})`;
 
+  // 2 bảng dưới đây dùng chung định dạng .pax-table với bảng "Hành khách" (cột Ghế theo kiểu SL:/VT:,
+  // cột Ghi chú theo kiểu icon-chỉ-hiện-khi-có-nội-dung + escapeHtml, không in đậm tên/SĐT/tiền) để giao
+  // diện nhất quán giữa các tab. escapeHtml() áp dụng cho mọi text tự do (tên tài xế/khách, địa chỉ, ghi
+  // chú) vì đây đều là dữ liệu nhập tay — chèn thẳng vào title="..."/HTML mà không escape sẽ vỡ layout
+  // giống lỗi từng gặp ở cột Ghi chú bảng Hành khách nếu text chứa dấu ngoặc kép/&/<.
   // Render Table 1: DANH SÁCH TRUNG CHUYỂN ĐÓN
   if (pickupBody) {
     if (pickupList.length === 0) {
@@ -410,28 +415,39 @@ function renderTransshipTables() {
         const item = g.main;
         const driverKey = `${(item.phone || '').replace(/\s+/g, '')}_don`;
         const assignedDriver = shuttleDriverMap[driverKey];
+        const driverTooltip = assignedDriver
+          ? `SĐT: ${assignedDriver.driverPhone || '—'} · Biển số: ${assignedDriver.driverPlate || '—'}${assignedDriver.driverVehicleType ? ' · ' + assignedDriver.driverVehicleType : ''}`
+          : '';
         const driverCellHtml = assignedDriver
-          ? `<b title="SĐT: ${assignedDriver.driverPhone || '—'} · Biển số: ${assignedDriver.driverPlate || '—'}${assignedDriver.driverVehicleType ? ' · ' + assignedDriver.driverVehicleType : ''}">${assignedDriver.driverName}</b>`
-          : `<span style="color:var(--text-sub); font-style:italic;">Chưa gán tài xế</span>`;
-        const pickupLoc = item.pickupAddress || item.transship || item.transshipStation || item.firstStop || '—';
-        const seatCodes = g.members ? g.members.map(s => s.code).join(', ') : (item.code || '—');
+          ? `<span title="${escapeHtml(driverTooltip)}">${escapeHtml(assignedDriver.driverName)}</span>`
+          : `<span class="ts-driver-unassigned">Chưa gán tài xế</span>`;
+        const pickupLoc = escapeHtml(item.pickupAddress || item.transship || item.transshipStation || item.firstStop || '—');
+        const seatCodes = g.members ? g.members.map(s => s.code) : [item.code || '—'];
         const seatCount = g.members ? g.members.length : 1;
         const phone = item.phone || '—';
         const totalPrice = item.price ? (item.price * seatCount).toLocaleString('vi-VN') + 'đ' : '—';
-        const note = seatNoteWithReason(item) || '—';
+        const note = seatNoteWithReason(item);
+        const noteSafe = escapeHtml(note);
+        const noteHtml = note
+          ? `<div class="pax-note-row"><svg class="pax-note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="pax-note-clamp">${noteSafe}</span></div>`
+          : `<span class="pax-note-empty">—</span>`;
+        const customerNameSafe = escapeHtml(item.customerName || 'Khách');
         const statusBadge = item.paid ? '<span class="ts-status-badge ongoing">Đang đón</span>' : '<span class="ts-status-badge pending">Chờ đón</span>';
 
         return `
           <tr>
-            <td>${idx + 1}</td>
-            <td>${driverCellHtml}</td>
-            <td class="ts-address">${pickupLoc}</td>
-            <td><b>${seatCodes}</b> (${seatCount} ghế)</td>
-            <td style="font-weight:600;">${item.customerName || 'Khách'}</td>
-            <td>${phone}</td>
-            <td style="font-weight:700;color:var(--text-main);">${totalPrice}</td>
-            <td>${statusBadge}</td>
-            <td class="ts-note">${note}</td>
+            <td class="mono pax-col-stt">${idx + 1}</td>
+            <td class="pax-col-driver">${driverCellHtml}</td>
+            <td class="pax-col-address">${pickupLoc}</td>
+            <td class="pax-col-seat">
+              <div class="pax-seat-line"><span class="pax-seat-label">SL:</span> ${seatCount}</div>
+              <div class="pax-seat-line"><span class="pax-seat-label">VT:</span> ${seatCodes.join(', ')}</div>
+            </td>
+            <td class="pax-col-name">${customerNameSafe}</td>
+            <td class="pax-col-phone">${phone}</td>
+            <td class="pax-col-total">${totalPrice}</td>
+            <td class="pax-col-status">${statusBadge}</td>
+            <td class="pax-col-note" title="${noteSafe}">${noteHtml}</td>
           </tr>
         `;
       }).join('');
@@ -445,24 +461,32 @@ function renderTransshipTables() {
     } else {
       dropoffBody.innerHTML = dropoffList.map((g, idx) => {
         const item = g.main;
-        const dropoffLoc = item.dropoffAddress || item.arrivalTransfer || item.lastStop || '—';
-        const seatCodes = g.members ? g.members.map(s => s.code).join(', ') : (item.code || '—');
+        const dropoffLoc = escapeHtml(item.dropoffAddress || item.arrivalTransfer || item.lastStop || '—');
+        const seatCodes = g.members ? g.members.map(s => s.code) : [item.code || '—'];
         const seatCount = g.members ? g.members.length : 1;
         const phone = item.phone || '—';
         const totalPrice = item.price ? (item.price * seatCount).toLocaleString('vi-VN') + 'đ' : '—';
-        const note = seatNoteWithReason(item) || '—';
+        const note = seatNoteWithReason(item);
+        const noteSafe = escapeHtml(note);
+        const noteHtml = note
+          ? `<div class="pax-note-row"><svg class="pax-note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="pax-note-clamp">${noteSafe}</span></div>`
+          : `<span class="pax-note-empty">—</span>`;
+        const customerNameSafe = escapeHtml(item.customerName || 'Khách');
         const statusBadge = item.paid ? '<span class="ts-status-badge done">Đã trả</span>' : '<span class="ts-status-badge blue">Chờ trả</span>';
 
         return `
           <tr>
-            <td>${idx + 1}</td>
-            <td class="ts-address">${dropoffLoc}</td>
-            <td><b>${seatCodes}</b> (${seatCount} ghế)</td>
-            <td style="font-weight:600;">${item.customerName || 'Khách'}</td>
-            <td>${phone}</td>
-            <td style="font-weight:700;color:var(--text-main);">${totalPrice}</td>
-            <td>${statusBadge}</td>
-            <td class="ts-note">${note}</td>
+            <td class="mono pax-col-stt">${idx + 1}</td>
+            <td class="pax-col-address">${dropoffLoc}</td>
+            <td class="pax-col-seat">
+              <div class="pax-seat-line"><span class="pax-seat-label">SL:</span> ${seatCount}</div>
+              <div class="pax-seat-line"><span class="pax-seat-label">VT:</span> ${seatCodes.join(', ')}</div>
+            </td>
+            <td class="pax-col-name">${customerNameSafe}</td>
+            <td class="pax-col-phone">${phone}</td>
+            <td class="pax-col-total">${totalPrice}</td>
+            <td class="pax-col-status">${statusBadge}</td>
+            <td class="pax-col-note" title="${noteSafe}">${noteHtml}</td>
           </tr>
         `;
       }).join('');
@@ -516,12 +540,12 @@ function renderPassengerList() {
   const tbody = document.getElementById('paxTableBody');
   if (tbody) {
     if (groups.length === 0) {
-      tbody.innerHTML = '<tr class="pax-empty-row"><td colspan="11">Không có hành khách phù hợp bộ lọc</td></tr>';
+      tbody.innerHTML = '<tr class="pax-empty-row"><td colspan="9">Không có hành khách phù hợp bộ lọc</td></tr>';
     } else {
       tbody.innerHTML = groups.map((g, index) => {
         const s = g.main;
         const count = g.members.length;
-        const codesStr = g.members.map(m => m.code).join(', ');
+        const seatCodes = g.members.map(m => m.code);
         // Vé giá 0đ (qua ô "Lý do giá 0đ") cũng tính là vé miễn phí như ghế trạng thái 'free', không
         // riêng gì ghế state==='free' — cả 2 trường hợp đều không có gì để thu/nợ.
         const isFree = s.state === 'free' || s.price === 0;
@@ -530,24 +554,49 @@ function renderPassengerList() {
         // thích ở applyFormToSeat lúc lưu vé. Vé đã "Bán" (paid) thì đã thu đủ, không còn cọc dở dang.
         const daThuAmount = isFree ? 0 : (s.paid ? totalPrice : Math.min(s.depositAmount || 0, totalPrice));
         const conNoAmount = isFree ? 0 : (totalPrice - daThuAmount);
+        const { firstStopHtml, lastStopHtml } = getHistoryStopsDisplay(s);
+        const note = seatNoteWithReason(s);
+
         const daThuText = isFree ? 'Miễn phí' : (daThuAmount > 0 ? daThuAmount.toLocaleString('vi-VN') + 'đ' : '—');
         const conNoText = isFree ? 'Miễn phí' : (conNoAmount > 0 ? conNoAmount.toLocaleString('vi-VN') + 'đ' : '—');
-        const payCellClass = isFree ? ' free' : '';
-        const { firstStopHtml, lastStopHtml } = getHistoryStopsDisplay(s);
+
+        const luggageHtml = s.hasLuggage
+          ? `<span class="pax-luggage-mark yes" title="Có hành lý ký gửi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg></span>`
+          : `<span class="pax-luggage-empty">—</span>`;
+
+        // Ghi chú do nhân viên nhập tay có thể chứa dấu ngoặc kép/&/< — phải escapeHtml() trước khi chèn,
+        // nếu không sẽ phá vỡ thuộc tính title="..." hoặc bị hiểu nhầm thành thẻ HTML, làm lệch cả hàng.
+        const noteSafe = escapeHtml(note);
+        const noteHtml = note
+          ? `<div class="pax-note-row"><svg class="pax-note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="pax-note-clamp">${noteSafe}</span></div>`
+          : `<span class="pax-note-empty">—</span>`;
 
         return `
         <tr data-action="fillSearchInputWithPhone" data-args='${JSON.stringify([s.phone])}' style="cursor:pointer;">
-          <td class="mono">${index + 1}</td>
-          <td>${s.customerName || '—'}</td>
-          <td class="mono">${s.phone}</td>
-          <td>${firstStopHtml}</td>
-          <td>${lastStopHtml}</td>
-          <td class="mono">${count}</td>
-          <td>${codesStr}</td>
-          <td class="pax-pay-cell${payCellClass}"><div class="pax-pay-amount">${daThuText}</div></td>
-          <td class="pax-pay-cell${payCellClass}"><div class="pax-pay-amount">${conNoText}</div></td>
-          <td class="pax-luggage-cell"><span class="pax-luggage-mark ${s.hasLuggage ? 'yes' : 'no'}">${s.hasLuggage ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span></td>
-          <td class="pax-note-cell" title="${seatNoteWithReason(s) || ''}"><span class="pax-note-clamp">${seatNoteWithReason(s) || '—'}</span></td>
+          <td class="mono pax-col-stt">${index + 1}</td>
+          <td class="pax-col-name">${s.customerName || '—'}</td>
+          <td class="pax-col-phone">${s.phone || '—'}</td>
+          <td class="pax-col-route">
+            <div class="pax-route">
+              <div class="pax-route-row pax-route-from">
+                <svg class="pax-route-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
+                <div class="pax-route-text">${firstStopHtml}</div>
+              </div>
+              <div class="pax-route-connector"></div>
+              <div class="pax-route-row pax-route-to">
+                <svg class="pax-route-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+                <div class="pax-route-text">${lastStopHtml}</div>
+              </div>
+            </div>
+          </td>
+          <td class="pax-col-seat">
+            <div class="pax-seat-line"><span class="pax-seat-label">SL:</span> ${count}</div>
+            <div class="pax-seat-line"><span class="pax-seat-label">VT:</span> ${seatCodes.join(', ')}</div>
+          </td>
+          <td class="pax-col-paid">${daThuText}</td>
+          <td class="pax-col-debt">${conNoText}</td>
+          <td class="pax-col-luggage">${luggageHtml}</td>
+          <td class="pax-col-note" title="${noteSafe}">${noteHtml}</td>
         </tr>
         `;
       }).join('');
@@ -1354,6 +1403,21 @@ function saveTicket() {
     seat.zeroPriceReason = editedPrice === 0 ? document.getElementById('f_zero_price_reason').value.trim() : '';
     seat.depositAmount = depositEnabled ? depositAmountRaw : 0;
     seat.depositMethod = depositEnabled ? (document.querySelector('input[name="f_deposit_method"]:checked')?.value || 'Tiền mặt') : '';
+    // Mốc giờ nhân viên thao tác — hiện ở cột "Thời gian" bảng Lịch sử (xem formatActionTime trong
+    // shared/format.js). Ghi đè mỗi lần lưu form (tạo mới lẫn sửa vé) nên luôn phản ánh lần thao tác
+    // gần nhất trên ghế này, không riêng lần đặt đầu tiên.
+    seat.actionTime = new Date().toISOString();
+    // Gắn nhãn trạm bán/giai đoạn bán CHỈ 1 LẦN lúc tạo vé mới (seat.soldPhase chưa có) — sửa vé sau đó
+    // không được đổi lại đã bán ở trạm nào/giai đoạn nào, tránh sai lệch báo cáo doanh thu theo trạm và
+    // lịch sử Re-open (xem js/ticketstaff-manifest-core.js).
+    if (!seat.soldPhase) {
+      seat.sellingStation = (typeof getCurrentStation === 'function') ? getCurrentStation() : '';
+      const tripStatus = (typeof getTripLifecycleStatus === 'function') ? getTripLifecycleStatus(currentTripId) : 'SELLING';
+      seat.soldPhase = tripStatus === 'SELLING' ? 'PRE_DEPART' : 'POST_DEPART';
+      seat.reopenEventId = (tripStatus === 'REOPEN' && typeof getActiveReopenEvent === 'function')
+        ? ((getActiveReopenEvent(currentTripId) || {}).id || null)
+        : null;
+    }
   };
 
   const seatsTarget = currentPanelSeats.length ? currentPanelSeats : (currentPanelSeat ? [currentPanelSeat] : []);
@@ -1456,6 +1520,7 @@ function confirmSellPayment() {
       seat.paid = true;
       seat.state = 'sold';
       seat.paymentMethod = paymentMethod;
+      seat.actionTime = new Date().toISOString();
     });
     renderSeats();
     saveSeatBank();
@@ -1493,6 +1558,19 @@ function confirmSellPayment() {
     seat.depositAmount = depositEnabled ? depositAmountRaw : 0;
     seat.depositMethod = depositEnabled ? (document.querySelector('input[name="f_deposit_method"]:checked')?.value || 'Tiền mặt') : '';
     seat.paymentMethod = paymentMethod;
+    // Mốc giờ nhân viên thao tác — hiện ở cột "Thời gian" bảng Lịch sử (xem formatActionTime trong
+    // shared/format.js).
+    seat.actionTime = new Date().toISOString();
+    // Gắn nhãn trạm bán/giai đoạn bán CHỈ 1 LẦN lúc tạo vé mới (seat.soldPhase chưa có) — xem giải thích
+    // ở applyFormToSeat phía trên.
+    if (!seat.soldPhase) {
+      seat.sellingStation = (typeof getCurrentStation === 'function') ? getCurrentStation() : '';
+      const tripStatus = (typeof getTripLifecycleStatus === 'function') ? getTripLifecycleStatus(currentTripId) : 'SELLING';
+      seat.soldPhase = tripStatus === 'SELLING' ? 'PRE_DEPART' : 'POST_DEPART';
+      seat.reopenEventId = (tripStatus === 'REOPEN' && typeof getActiveReopenEvent === 'function')
+        ? ((getActiveReopenEvent(currentTripId) || {}).id || null)
+        : null;
+    }
   };
 
   const seatsToSell = currentPanelSeats.length ? currentPanelSeats : (currentPanelSeat ? [currentPanelSeat] : []);
@@ -2268,14 +2346,16 @@ function renderZone1TripList() {
 
     return `
       <div class="trip-card ${selected}" data-trip="${t.id}" data-action="selectTrip" data-args='${JSON.stringify(["__this__", t.time, t.route])}' title="${tooltipText}">
-        <div class="trip-card-row1">
-          <div class="trip-info-left">
+        <div class="z1-header">
+          <div class="z1-time-block">
+            <div class="z1-clock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
             <span class="trip-time">${t.time}</span>
-            <span class="trip-plate-inline">${plate}</span>
           </div>
+          <div class="z1-divider"></div>
+          <span class="trip-plate-inline">${plate}</span>
           <div class="trip-seat-tag ${seatTagClass}">${bookedSeats}/${totalSeats}</div>
         </div>
-        <div class="trip-card-row2">
+        <div class="z1-name-row">
           <span class="trip-name-text">${displayTripName}</span>
         </div>
       </div>
@@ -2452,6 +2532,17 @@ function confirmRebookAndSell() {
       seat.paid = true;
       seat.count = rebookSelectedSeats.length;
       seat.staff = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.username : 'system';
+      seat.actionTime = new Date().toISOString();
+      // Đặt lại vé có thể chọn sang 1 phơi xe KHÁC phơi đang xem (rebookSelectedTripId, không phải
+      // currentTripId) — phải kiểm tra trạng thái đúng phơi đích thì gắn nhãn trạm/giai đoạn mới đúng.
+      if (!seat.soldPhase) {
+        seat.sellingStation = (typeof getCurrentStation === 'function') ? getCurrentStation() : '';
+        const tripStatus = (typeof getTripLifecycleStatus === 'function') ? getTripLifecycleStatus(rebookSelectedTripId) : 'SELLING';
+        seat.soldPhase = tripStatus === 'SELLING' ? 'PRE_DEPART' : 'POST_DEPART';
+        seat.reopenEventId = (tripStatus === 'REOPEN' && typeof getActiveReopenEvent === 'function')
+          ? ((getActiveReopenEvent(rebookSelectedTripId) || {}).id || null)
+          : null;
+      }
       soldCount++;
     }
   });

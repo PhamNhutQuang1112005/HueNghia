@@ -350,8 +350,8 @@ body.zone1-collapsed .zone1-toggle-handle svg {
 
 /* ===== ZONE 1 ===== */
 .zone1 {
-  width: 350px;
-  flex: 0 0 350px;
+  width: 352px;
+  flex: 0 0 352px;
   border-right: 1px solid var(--border-gray);
   display: flex;
   flex-direction: column;
@@ -690,14 +690,145 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   letter-spacing: .4px;
 }
 
-/* Danh sách phơi trước đây các thẻ .trip-card nằm sát nhau (không có gap nào giữa các <div> con của
-   #tripListSGCD/#tripListCDSG) nên khó phân biệt ranh giới từng phơi — xếp lại thành flex-column có
-   khoảng cách rõ ràng giữa các thẻ. */
+/* Danh sách phơi Zone 1: mỗi thẻ 1 hàng ngang — icon đồng hồ + giờ chạy bên trái, biển số + tuyến đường
+   ở giữa (xếp dọc), SL ghế dạng badge bo góc nổi bật bên phải. Khác hẳn kiểu thẻ 2 hàng dọc (row1/row2)
+   vẫn dùng trong các modal "Đặt lại vé"/"Chỉ định xe" (xem .trip-card/.trip-card-row1/.trip-card-row2
+   gốc bên dưới, không bị ảnh hưởng bởi phần scoped #tripListSGCD/#tripListCDSG này). */
 #tripListSGCD,
 #tripListCDSG {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+}
+
+/* Thẻ phơi Zone 1 chia 2 phần xếp dọc: header (icon+giờ | divider | biển số ..... badge) và bên dưới là
+   tên phơi chiếm trọn bề rộng card — không còn thụt lề theo icon/divider của header nữa. */
+#tripListSGCD .trip-card,
+#tripListCDSG .trip-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border-left: 4px solid var(--border-gray);
+}
+
+#tripListSGCD .trip-card.selected,
+#tripListCDSG .trip-card.selected {
+  border-width: 2px;
+  border-left: 4px solid var(--red);
+}
+
+/* Header: icon+giờ, divider, biển số cùng hàng bên trái; badge ghim cứng bên phải bằng margin-left:auto
+   (không cần wrapper riêng) — biển số + badge đều nằm trên header như yêu cầu. */
+#tripListSGCD .z1-header,
+#tripListCDSG .z1-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+/* Icon + giờ: bề rộng PX cố định, đủ rộng cho "07:00"/"08:30" + icon ở mọi trường hợp — không overflow,
+   không clip, không co giãn theo nội dung hay theo bề rộng card. */
+#tripListSGCD .z1-time-block,
+#tripListCDSG .z1-time-block {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 70px;
+  width: 70px;
+}
+
+#tripListSGCD .z1-clock,
+#tripListCDSG .z1-clock {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: var(--red-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+#tripListSGCD .z1-clock svg,
+#tripListCDSG .z1-clock svg {
+  width: 13px;
+  height: 13px;
+  stroke: var(--red);
+}
+
+#tripListSGCD .trip-time,
+#tripListCDSG .trip-time {
+  font-size: 13px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+#tripListSGCD .z1-divider,
+#tripListCDSG .z1-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border-gray);
+  flex: 0 0 auto;
+}
+
+/* Biển số dùng lại nguyên kiểu pill nền đỏ nhạt/chữ đỏ gốc của .trip-plate-inline (xem định nghĩa gốc
+   bên dưới, dùng chung với các modal) — cỡ chữ theo nội dung (flex:0 0 auto), không kéo giãn lấp đầy
+   header để không biến thành 1 thanh màu dài; khoảng trống còn lại giữa biển số và badge để trống. */
+#tripListSGCD .trip-plate-inline,
+#tripListCDSG .trip-plate-inline {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Badge SL ghế: bề rộng PX cố định (không % theo card, không auto theo nội dung), luôn ghim cứng bên
+   phải header nhờ margin-left:auto — không tham gia quyết định bề rộng biển số hay tên phơi. */
+#tripListSGCD .trip-seat-tag,
+#tripListCDSG .trip-seat-tag {
+  border-radius: 6px;
+  padding: 0;
+  font-size: 11px;
+  margin-left: auto;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Tên phơi/tuyến nằm hẳn 1 hàng riêng bên dưới header, chiếm trọn bề rộng card — không còn icon định vị
+   phía trước, không còn phải thẳng cột với biển số/icon giờ ở header nữa. */
+#tripListSGCD .z1-name-row,
+#tripListCDSG .z1-name-row {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+  padding-left: 4px;
+}
+
+/* Tên phơi được phép xuống tối đa 2 dòng tự nhiên thay vì ép 1 dòng rồi "..." quá sớm; overflow-wrap
+   phòng trường hợp 1 từ đơn lẻ quá dài. min-width:0 bắt buộc vì đây là flex item chứa nowrap-tương-đương
+   (line-clamp) — mặc định min-width:auto sẽ khiến chữ tràn ra khỏi hàng thay vì xuống dòng đúng chỗ. */
+#tripListSGCD .trip-name-text,
+#tripListCDSG .trip-name-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--text-main);
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  overflow: hidden;
 }
 
 .trip-card {
@@ -771,25 +902,26 @@ body.zone1-collapsed .zone1-toggle-handle svg {
   color: var(--red);
 }
 
-/* Cỡ chữ + chiều cao SL ghế bằng đúng .trip-time (13px, line-height 1.15) — bỏ padding dọc (chỉ giữ
-   padding ngang cho khung nền màu) để chiều cao khối không cao hơn dòng chữ giờ bên cạnh. */
+/* SL ghế là khối chữ nhật nền đặc (đỏ/xanh theo loại xe), không bo góc, chữ trắng — dễ phân biệt hơn
+   kiểu chữ màu trên nền trong suốt trước đây. */
 .trip-seat-tag {
   font-size: 13px;
   font-weight: 800;
-  padding: 0 6px;
-  border-radius: 4px;
+  padding: 2px 7px;
+  border-radius: 0;
   white-space: nowrap;
   flex: 0 0 auto;
   margin-left: auto;
   line-height: 1.15;
+  color: white;
 }
 
 .trip-seat-tag.tag-limo {
-  color: #e11d48;
+  background: #e11d48;
 }
 
 .trip-seat-tag.tag-normal {
-  color: #16a34a;
+  background: #16a34a;
 }
 
 /* row2 = "thân" thẻ phơi (tên phơi) — luôn nền trắng, đổi màu nhẹ khi hover/chọn để giữ phản hồi thị
@@ -2367,6 +2499,14 @@ button.ph-rebook-btn svg {
   flex-direction: column;
 }
 
+/* Bảng "Lịch sử" (tab Lịch sử) không bọc khung viền như bảng Hành khách/Ghế hủy — theo đúng định dạng
+   bảng "Phơi xe" (.shuttle-table ở tab Phơi xe, css/callcenter.css): bảng nằm thẳng trong .grid-wrap,
+   không có border/bo góc bao quanh, chỉ còn viền dưới mỗi hàng (.pax-table.pax-table--history đã có). */
+.pax-table-wrap--history {
+  border: none;
+  border-radius: 0;
+}
+
 /* .grid-wrap/.grid-empty: callcenter.css đã có sẵn bộ này cho #phoiView (nạp sau booking-ui.css nên vẫn
    thắng, không đổi phoiView) — ticketstaff.css không có, cần thêm ở đây để #historyView dùng chung được
    trên cả 2 trang mà không phải viết trùng 2 lần. */
@@ -2400,91 +2540,89 @@ button.ph-rebook-btn svg {
 .pax-table {
   width: 100%;
   table-layout: fixed;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-family: inherit;
   font-size: 13px;
   min-width: 0;
 }
 
+/* Định dạng header giống hệt bảng "Lịch sử hành khách" (.pax-table--history, tab Lịch sử) để 2 bảng
+   nhất quán trong cùng hệ thống — nền trắng, chữ thường 12px/700, viền dưới 2px var(--border-gray). */
 .pax-table thead th {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: #f1f5f9;
+  background: var(--white);
   color: var(--text-sub);
   font-size: 12px;
   font-weight: 700;
-  text-transform: none;
-  letter-spacing: normal;
-  padding: 10px 14px;
-  border-bottom: 1px solid #e2e8f0;
-  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--border-gray);
+  white-space: normal;
+  vertical-align: bottom;
   text-align: left;
 }
 
-.pax-table thead th:nth-child(1),
-.pax-table thead th:nth-child(3),
-.pax-table thead th:nth-child(6),
-.pax-table thead th:nth-child(7),
-.pax-table thead th:nth-child(8),
-.pax-table thead th:nth-child(9),
-.pax-table thead th:nth-child(10) {
+/* Bảng "Hành khách" gộp còn 9 cột theo nhóm thông tin (Hành trình = điểm đi/đến, Ghế = số vé+mã ghế)
+   thay vì 11 cột rời rạc như trước, riêng Họ và tên/SĐT/Đã thu/Chưa thu vẫn tách cột riêng — chọn bằng
+   class thay vì nth-child để không lệ thuộc thứ tự cột, đồng thời không lẫn với
+   .pax-table--cancelled/.pax-table--history (tự override riêng bên dưới, độ đặc hiệu cao hơn nên luôn
+   thắng ở đây). */
+/* STT/SĐT/Đã thu/Chưa thu/Baga chỉ có 1 dòng nội dung, bề rộng ổn định giữa các hàng nên canh giữa
+   không lệch tiêu đề. Riêng Ghế có 2 dòng dài ngắn khác nhau (SL:/VT:) — nếu canh giữa, mỗi dòng tự
+   center riêng khiến 2 dòng lệch nhau và lệch luôn với tiêu đề cột, nên canh trái để tiêu đề thẳng hàng
+   với điểm bắt đầu của nội dung bên dưới (xem .pax-seat-line). */
+.pax-col-stt,
+.pax-col-phone,
+.pax-col-paid,
+.pax-col-debt,
+.pax-col-luggage {
   text-align: center;
 }
 
-.pax-table thead th:nth-child(1),
-.pax-table tbody td:nth-child(1) {
-  width: 40px;
-  padding-left: 8px;
-  padding-right: 8px;
-  text-align: center;
+.pax-col-seat {
+  text-align: left;
 }
 
-/* Bề rộng cột cố định theo tỉ lệ — tránh bảng co giãn lệch khi nội dung dài/ngắn khác nhau giữa các dòng.
-   Nhóm rộng (Họ tên/SĐT/Điểm đi/Điểm đến): nhiều chữ, cần thoáng. Nhóm vừa (Vị trí/Đã thu/Còn nợ):
-   số ngắn. Nhóm hẹp (Số vé/Baga): 1 số hoặc 1 icon. Cột "Ghi chú" không đặt width, tự nhận phần còn
-   lại (rộng nhất) — giới hạn chiều cao 2 dòng bằng line-clamp thay vì ép hẹp width. */
-.pax-table thead th:nth-child(2),
-.pax-table tbody td:nth-child(2) {
-  width: 14%;
+.pax-col-stt {
+  width: 44px;
+  padding-left: 6px;
+  padding-right: 6px;
 }
 
-.pax-table thead th:nth-child(3),
-.pax-table tbody td:nth-child(3) {
+.pax-col-name {
+  width: 13%;
+}
+
+/* SĐT phải giữ đủ rộng + không xuống dòng — số điện thoại 10 chữ số bị bẻ dòng giữa chừng thì rất khó
+   đọc, không như các cột chữ khác có thể tự xuống dòng bình thường. */
+.pax-col-phone {
   width: 10%;
+  white-space: nowrap;
 }
 
-.pax-table thead th:nth-child(4),
-.pax-table tbody td:nth-child(4) {
-  width: 13%;
+.pax-col-route {
+  width: 25%;
 }
 
-.pax-table thead th:nth-child(5),
-.pax-table tbody td:nth-child(5) {
-  width: 13%;
-}
-
-.pax-table thead th:nth-child(6),
-.pax-table tbody td:nth-child(6) {
-  width: 5%;
-}
-
-.pax-table thead th:nth-child(7),
-.pax-table tbody td:nth-child(7) {
-  width: 7%;
-}
-
-.pax-table thead th:nth-child(8),
-.pax-table tbody td:nth-child(8),
-.pax-table thead th:nth-child(9),
-.pax-table tbody td:nth-child(9) {
+.pax-col-seat {
   width: 9%;
 }
 
-.pax-table thead th:nth-child(10),
-.pax-table tbody td:nth-child(10) {
-  width: 46px;
+.pax-col-paid,
+.pax-col-debt {
+  width: 9%;
 }
+
+.pax-col-luggage {
+  width: 52px;
+}
+
+/* Ghi chú (.pax-col-note) không đặt width, tự nhận phần còn lại — cột rộng nhất trong 9 cột, kèm
+   line-clamp 2 dòng ở .pax-note-clamp để không kéo dài chiều cao hàng khi ghi chú nhiều chữ. */
 
 /* Bảng ghế hủy (tab "Ghế hủy") dùng chung .pax-table nhưng thứ tự/số cột khác bảng Hành khách
    (8 cột: STT, Vị trí, Họ và tên, SĐT, Chặng đi, Số tiền, Nguyên nhân hủy, Thời gian hủy) —
@@ -2492,6 +2630,7 @@ button.ph-rebook-btn svg {
 .pax-table--cancelled thead th:nth-child(1),
 .pax-table--cancelled tbody td:nth-child(1) {
   width: 40px;
+  text-align: center;
 }
 
 .pax-table--cancelled thead th:nth-child(2),
@@ -2503,6 +2642,7 @@ button.ph-rebook-btn svg {
 .pax-table--cancelled thead th:nth-child(3),
 .pax-table--cancelled tbody td:nth-child(3) {
   width: 17%;
+  text-align: center;
 }
 
 .pax-table--cancelled thead th:nth-child(4),
@@ -2518,24 +2658,28 @@ button.ph-rebook-btn svg {
 .pax-table--cancelled thead th:nth-child(6),
 .pax-table--cancelled tbody td:nth-child(6) {
   width: 11%;
+  text-align: center;
 }
 
 .pax-table--cancelled thead th:nth-child(7),
 .pax-table--cancelled tbody td:nth-child(7) {
   width: 22%;
+  text-align: center;
 }
 
 .pax-table--cancelled thead th:nth-child(8),
 .pax-table--cancelled tbody td:nth-child(8) {
   width: 18%;
+  text-align: center;
 }
 
 /* Bảng trang "Lịch sử hành khách" (historyView) dùng chung .pax-table nhưng có 10 cột riêng, thứ tự khác
    hẳn bảng Hành khách/Ghế hủy — nếu không ghi đè, cột 1 (cần rộng nhất) bị bó theo width 40px của cột STT
    bảng Hành khách. Chọn cả 2 lớp (.pax-table.pax-table--history) để độ đặc hiệu chắc chắn cao hơn
    .pax-table đơn, không phụ thuộc thứ tự khai báo trong file.
-   Thứ tự cột: 1 Ngày, 2 Tên phơi, 3 Tên hành khách, 4 SĐT, 5 Trạm đi, 6 Trạm đến, 7 SL ghế, 8 Giá vé,
-   9 Nhân viên, 10 Chức năng (nút "Đặt lại vé").
+   Thứ tự cột: 1 Ngày, 2 Tên phơi, 3 Tên hành khách, 4 SĐT, 5 Hành trình (gộp Trạm đi/Trạm đến, dùng lại
+   đúng kiểu trình bày .pax-route ở cột "Hành trình" bảng Hành khách), 6 SL ghế, 7 Giá vé, 8 Nhân viên,
+   9 Thời gian (giờ nhân viên thao tác), 10 Chức năng (nút "Đặt lại vé").
    Kiểu chữ/bảng lấy theo mẫu .shuttle-table (bảng "Danh sách phơi xe" trang callcenter, css/callcenter.css)
    — header xám nhạt in hoa dính (sticky), hàng có hover — nhưng .shuttle-table chỉ tồn tại ở callcenter.css
    (ticketstaff.html không nạp file đó), nên style được viết đè trực tiếp ở đây (file dùng chung) để cả 2
@@ -2577,18 +2721,17 @@ button.ph-rebook-btn svg {
   text-align: left;
 }
 
-/* Tên phơi + Trạm đi/Trạm đến là 3 cột thông tin chuyến đi quan trọng nhất — ưu tiên rộng hơn hẳn các
-   cột còn lại. */
+/* Tên phơi — thông tin chuyến đi, ưu tiên rộng hơn hẳn các cột còn lại. */
 .pax-table.pax-table--history thead th:nth-child(2),
 .pax-table.pax-table--history tbody td:nth-child(2) {
-  width: 20%;
+  width: 16%;
   text-align: left;
 }
 
 /* Hành khách + SĐT — đủ rộng để tên và số hiện trên 1 hàng, không cần xuống dòng hay cắt bớt. */
 .pax-table.pax-table--history thead th:nth-child(3),
 .pax-table.pax-table--history tbody td:nth-child(3) {
-  width: 14%;
+  width: 12%;
   text-align: left;
 }
 
@@ -2599,7 +2742,7 @@ button.ph-rebook-btn svg {
 
 .pax-table.pax-table--history thead th:nth-child(4),
 .pax-table.pax-table--history tbody td:nth-child(4) {
-  width: 10%;
+  width: 9%;
   text-align: left;
 }
 
@@ -2607,35 +2750,40 @@ button.ph-rebook-btn svg {
   white-space: nowrap;
 }
 
+/* Hành trình — gộp Trạm đi/Trạm đến thành 1 cột duy nhất, dùng lại nguyên .pax-route/.pax-route-row/
+   .pax-route-connector/.pax-route-text từ cột "Hành trình" ở bảng Hành khách (chấm đỏ = điểm đi, ghim
+   xám = điểm đến, nối bằng 1 đường kẻ ngắn) để 2 bảng trình bày hành trình giống hệt nhau. */
 .pax-table.pax-table--history thead th:nth-child(5),
 .pax-table.pax-table--history tbody td:nth-child(5) {
-  width: 12%;
-  text-align: left;
-}
-
-.pax-table.pax-table--history thead th:nth-child(6),
-.pax-table.pax-table--history tbody td:nth-child(6) {
-  width: 12%;
+  width: 20%;
   text-align: left;
 }
 
 /* Số ghế chỉ hiện số lượng (1-2 chữ số, mã ghế cụ thể xem qua title) nên rất hẹp. */
-.pax-table.pax-table--history thead th:nth-child(7),
-.pax-table.pax-table--history tbody td:nth-child(7) {
-  width: 4%;
+.pax-table.pax-table--history thead th:nth-child(6),
+.pax-table.pax-table--history tbody td:nth-child(6) {
+  width: 5%;
   text-align: center;
 }
 
-.pax-table.pax-table--history thead th:nth-child(8),
-.pax-table.pax-table--history tbody td:nth-child(8) {
+.pax-table.pax-table--history thead th:nth-child(7),
+.pax-table.pax-table--history tbody td:nth-child(7) {
   width: 7%;
   text-align: right;
 }
 
+.pax-table.pax-table--history thead th:nth-child(8),
+.pax-table.pax-table--history tbody td:nth-child(8) {
+  width: 8%;
+  text-align: left;
+}
+
+/* Thời gian — mốc giờ nhân viên thao tác (đặt/sửa/bán vé), lấy từ seat.actionTime ghi lại lúc lưu form
+   (applyFormToSeat) hoặc lúc bán nhanh/đặt lại — cột ngắn, chỉ hiện giờ:phút nên căn giữa như cột SL. */
 .pax-table.pax-table--history thead th:nth-child(9),
 .pax-table.pax-table--history tbody td:nth-child(9) {
   width: 7%;
-  text-align: left;
+  text-align: center;
 }
 
 /* Chức năng — rộng hơn hẳn con số cũ (4%): nút "Đặt lại" (icon + chữ, white-space:nowrap) cần đủ chỗ,
@@ -2643,15 +2791,18 @@ button.ph-rebook-btn svg {
    đã khai table-layout:fixed — đây là nguyên nhân chính khiến phải cuộn ngang mới xem hết bảng. */
 .pax-table.pax-table--history thead th:nth-child(10),
 .pax-table.pax-table--history tbody td:nth-child(10) {
-  width: 7%;
+  width: 8%;
   text-align: center;
   padding-left: 4px;
   padding-right: 4px;
 }
 
+/* Định dạng hàng cũng theo đúng bảng "Lịch sử hành khách" — không có vằn xen kẽ (zebra), hover đổi nền
+   var(--surface-2) đơn giản, viền dưới var(--surface), padding/cỡ chữ đồng bộ 2 bảng. */
 .pax-table tbody td {
-  padding: 9px 12px;
-  border-bottom: 1px solid #ECECEC;
+  padding: 12px;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--surface);
   vertical-align: middle;
   color: var(--text-main);
   white-space: normal;
@@ -2659,8 +2810,148 @@ button.ph-rebook-btn svg {
   word-break: break-word;
 }
 
-.pax-table tbody td.pax-note-cell {
-  text-align: left;
+.pax-table tbody tr {
+  transition: background .12s ease;
+}
+
+.pax-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pax-table tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.pax-table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.pax-empty-row td {
+  text-align: center;
+  color: var(--text-sub);
+  padding: 32px 12px;
+  font-weight: 600;
+}
+
+.pax-col-name {
+  color: var(--text-main);
+}
+
+/* ===== Cột "Hành trình": điểm đi/đến dạng timeline dọc, chấm đỏ = đi, ghim xám = đến ===== */
+.pax-route {
+  display: flex;
+  flex-direction: column;
+}
+
+.pax-route-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pax-route-icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  margin-top: 3px;
+}
+
+.pax-route-from .pax-route-icon {
+  color: var(--red);
+}
+
+.pax-route-to .pax-route-icon {
+  color: var(--text-sub);
+}
+
+.pax-route-connector {
+  width: 1px;
+  height: 8px;
+  background: var(--border-gray);
+  margin-left: 6px;
+}
+
+.pax-route-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.35;
+}
+
+/* ===== Cột "Ghế": 2 dòng nhãn tắt SL: (số lượng vé)/VT: (vị trí, mã ghế) — cùng kiểu label:value
+   như "Đã thu/Còn nợ" ở cột Thanh toán bên cạnh. Label đặt width cố định (thay vì để chữ tự co giãn)
+   để "SL:"/"VT:" và phần giá trị theo sau luôn thẳng cột với nhau giữa 2 dòng. */
+.pax-seat-line {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.pax-seat-line + .pax-seat-line {
+  margin-top: 3px;
+}
+
+.pax-seat-label {
+  flex: 0 0 20px;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+
+/* ===== Cột "Baga": chỉ hiện icon vali khi có hành lý, còn lại để trống nhẹ nhàng thay vì vẽ khung
+   rỗng — giảm nhiễu mắt khi bảng có nhiều hàng không ký gửi hành lý. ===== */
+.pax-luggage-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: #EFF3F6;
+  color: #7C8792;
+}
+
+.pax-luggage-mark.yes {
+  background: #E0ECFF;
+  color: #1D4ED8;
+}
+
+.pax-luggage-mark svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pax-luggage-empty {
+  color: var(--border-gray);
+  font-size: 13px;
+}
+
+/* ===== Cột "Ghi chú": icon ghi chú chỉ hiện khi có nội dung — giúp mắt lướt bảng bắt được ngay hàng
+   nào cần chú ý mà không phải đọc hết chữ. Line-clamp 2 dòng giữ chiều cao hàng đồng đều.
+   QUAN TRỌNG: display:flex đặt thẳng lên <td> (thay vì lên 1 <div> bọc bên trong) sẽ "blockify" ô đó
+   thành box flex, khiến trình duyệt không còn xem nó là table-cell — ô thoát khỏi lưới hàng/cột của
+   bảng, border không còn đồng bộ chiều cao với các ô khác cùng hàng, và toàn cột trông như 1 khối tách
+   rời khỏi bảng. Vì vậy layout icon+chữ được đặt ở .pax-note-row (div con), còn <td.pax-col-note> giữ
+   nguyên display:table-cell mặc định — cùng nguyên tắc đã áp dụng cho .pax-note-clamp bên dưới. */
+.pax-note-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.pax-note-icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--text-sub);
+}
+
+.pax-note-empty {
+  color: var(--border-gray);
+  font-style: italic;
 }
 
 /* display:-webkit-box đặt thẳng lên <td> làm ô thoát khỏi mô hình "table-cell", khiến trình duyệt
@@ -2674,84 +2965,7 @@ button.ph-rebook-btn svg {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
-}
-
-.pax-table tbody td:nth-child(1),
-.pax-table tbody td:nth-child(3),
-.pax-table tbody td:nth-child(4) {
-  overflow: visible;
-}
-
-.pax-table tbody td:nth-child(3),
-.pax-table tbody td:nth-child(6),
-.pax-table tbody td:nth-child(7),
-.pax-table tbody td:nth-child(8),
-.pax-table tbody td:nth-child(9) {
-  text-align: center;
-}
-
-.pax-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.pax-table tbody tr:nth-child(even) {
-  background: #FCFCFC;
-}
-
-.pax-table tbody tr:hover {
-  background: #FAFAFA;
-}
-
-.pax-empty-row td {
-  text-align: center;
-  color: var(--text-sub);
-  padding: 28px 12px;
-  font-weight: 600;
-}
-
-.pax-pay-amount {
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--text-main);
-  margin-top: 0px;
-  line-height: 1.3;
-}
-
-.pax-pay-cell {
-  white-space: nowrap;
-}
-
-/* Vé 0đ (giá vé sửa còn 0đ, có lý do) hoặc ghế state 'free' — không có gì để thu/nợ, hiện "Miễn phí"
-   màu xám nhạt thay vì số tiền, chỉ đổi màu chữ chứ không tô nền (giữ đúng yêu cầu bỏ màu nền ở đây). */
-.pax-pay-cell.free .pax-pay-amount {
-  color: var(--seat-free);
-}
-
-.pax-luggage-cell {
-  text-align: center;
-}
-
-.pax-luggage-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  background: #fff;
-  border: 1px solid var(--border-gray);
-  color: #fff;
-}
-
-.pax-luggage-mark svg {
-  width: 12px;
-  height: 12px;
-  stroke-width: 3;
-}
-
-.pax-luggage-mark.yes {
-  background: #9AA0A6;
-  border-color: #9AA0A6;
+  min-width: 0;
 }
 
 textarea {
@@ -3777,48 +3991,28 @@ textarea:focus {
   background: #94a3b8;
 }
 
-.transship-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  text-align: left;
+/* 2 bảng "Trung chuyển đón/trả" dùng chung class .pax-table với bảng "Hành khách" (header/hàng/hover/
+   zebra tự động đồng bộ theo đúng các quy tắc .pax-table đã có) — không còn .transship-table riêng để
+   tránh 2 bảng lệch định dạng nhau. Cột STT/Ghế/Ghi chú dùng lại nguyên .pax-col-stt/.pax-col-seat/
+   .pax-col-note đã có sẵn (cùng ý nghĩa, cùng cách trình bày với bảng Hành khách); các cột chỉ riêng
+   2 bảng này mới có (Tài xế/Địa chỉ/Tổng tiền/Trạng thái) khai thêm ở đây. */
+.pax-col-driver {
+  width: 12%;
 }
 
-.transship-table th {
-  background: #f1f5f9;
+.pax-col-address {
+  width: 22%;
+}
+
+.pax-col-total,
+.pax-col-status {
+  width: 10%;
+  text-align: center;
+}
+
+.ts-driver-unassigned {
   color: var(--text-sub);
-  font-weight: 700;
-  font-size: 12px;
-  padding: 10px 14px;
-  border-bottom: 1px solid #e2e8f0;
-  white-space: nowrap;
-}
-
-.transship-table td {
-  padding: 10px 14px;
-  border-bottom: 1px solid #f1f5f9;
-  color: var(--text-main);
-  vertical-align: middle;
-}
-
-.transship-table tr:last-child td {
-  border-bottom: none;
-}
-
-.transship-table tr:hover {
-  background: #f8fafc;
-}
-
-.ts-address {
-  font-weight: 600;
-  color: #0f172a;
-  max-width: 240px;
-  word-break: break-word;
-}
-
-.ts-note {
-  color: var(--text-sub);
-  font-size: 12.5px;
+  font-style: italic;
 }
 
 .ts-empty {

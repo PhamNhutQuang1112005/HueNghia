@@ -133,13 +133,29 @@ let seatPlanUp = [
 const todayStr = new Date().toISOString().split("T")[0];
 
 function loadAllTrips() {
+  const canonicalTemplates = [...DEFAULT_SGCD_TRIPS, ...DEFAULT_CDSG_TRIPS, ...DEFAULT_EXTRA_TEMPLATE_TRIPS];
   const saved = localStorage.getItem(HN_TRIPS_KEY);
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        // Chỉ đẩy các phơi có ngày CŨ hơn hôm nay (dữ liệu demo để lâu ngày không mở app) lên lại hôm
+        // nay — KHÔNG đụng vào phơi của hôm nay/tương lai, để phơi tạo hàng loạt cho các ngày sau vẫn
+        // hiển thị đúng ngày đã tạo thay vì bị dồn hết về hôm nay mỗi lần nạp lại trang.
         parsed.forEach(t => {
-          t.date = todayStr;
+          if (t.date && t.date < todayStr) t.date = todayStr;
+          // Gắn lại cờ isTemplate cho phơi đã lưu từ TRƯỚC khi tính năng "phơi mẫu" tồn tại (localStorage
+          // cũ không có cờ này) — khớp theo id với danh sách mẫu cố định, nếu không chế độ chọn mẫu tạo
+          // hàng loạt sẽ không thấy phơi mẫu nào cả dù dữ liệu vẫn còn nguyên.
+          if (!t.isTemplate) {
+            const canon = canonicalTemplates.find(c => c.id === t.id);
+            if (canon) t.isTemplate = true;
+          }
+        });
+        // Bổ sung phơi mẫu cố định nào còn thiếu trong dữ liệu đã lưu (VD lưu từ trước khi thêm mẫu
+        // Long Xuyên/Cần Thơ) — không đụng tới phơi mẫu đã có (giữ nguyên nếu người dùng đã sửa).
+        canonicalTemplates.forEach(tpl => {
+          if (!parsed.some(t => t.id === tpl.id)) parsed.push({ ...tpl });
         });
         localStorage.setItem(HN_TRIPS_KEY, JSON.stringify(parsed));
         return parsed;
@@ -148,7 +164,7 @@ function loadAllTrips() {
       console.error("Failed to parse trips", e);
     }
   }
-  return [...DEFAULT_SGCD_TRIPS, ...DEFAULT_CDSG_TRIPS];
+  return canonicalTemplates;
 }
 
 let allTripsMeta = loadAllTrips();
@@ -193,6 +209,24 @@ if (!savedBank) {
   extraLeftoverSeats = tripSeatBank['1'].extraSeats || [];
   subSeats = tripSeatBank['1'].subSeats || [];
   cancelledSeats = tripSeatBank['1'].cancelledSeats || [];
+
+  // Vá sơ đồ ghế cho phơi nào chưa có trong tripSeatBank đã lưu — VD phơi mẫu cố định mới được
+  // loadAllTrips() bổ sung vào (Long Xuyên/Cần Thơ) nhưng tripSeatBank cũ (lưu từ trước) chưa có entry.
+  allTripsMeta.forEach(t => {
+    if (!tripSeatBank[t.id]) {
+      const plan = generateTripSeatPlanForVehicleType(t.vehicleType || 'Giường nằm 34 chỗ');
+      tripSeatBank[t.id] = {
+        down: plan.down,
+        up: plan.up,
+        plate: t.plate || '',
+        vehicleType: t.vehicleType || 'Giường nằm 34 chỗ',
+        driver: t.plate ? 'Phạm Quốc Bảo' : '',
+        helper: t.plate ? 'Đỗ Văn Sơn' : '',
+        cancelledSeats: []
+      };
+    }
+  });
+  saveSeatBank();
 }
 
 let currentTripId = '1';
@@ -386,12 +420,12 @@ function renderPassengerList() {
   const tbody = document.getElementById('paxTableBody');
   if (tbody) {
     if (!groups.length) {
-      tbody.innerHTML = '<tr class="pax-empty-row"><td colspan="11">Không có hành khách phù hợp bộ lọc</td></tr>';
+      tbody.innerHTML = '<tr class="pax-empty-row"><td colspan="9">Không có hành khách phù hợp bộ lọc</td></tr>';
     } else {
       tbody.innerHTML = groups.map((g, index) => {
         const s = g.main;
         const count = g.members.length;
-        const codesStr = g.members.map(m => m.code).join(', ');
+        const seatCodes = g.members.map(m => m.code);
         // Vé giá 0đ (qua ô "Lý do giá 0đ") cũng tính là vé miễn phí như ghế trạng thái 'free', không
         // riêng gì ghế state==='free' — cả 2 trường hợp đều không có gì để thu/nợ.
         const isFree = s.state === 'free' || s.price === 0;
@@ -400,24 +434,49 @@ function renderPassengerList() {
         // thích ở applyFormToSeat lúc lưu vé. Vé đã "Bán" (paid) thì đã thu đủ, không còn cọc dở dang.
         const daThuAmount = isFree ? 0 : (s.paid ? totalPrice : Math.min(s.depositAmount || 0, totalPrice));
         const conNoAmount = isFree ? 0 : (totalPrice - daThuAmount);
+        const { firstStopHtml, lastStopHtml } = getHistoryStopsDisplay(s);
+        const note = seatNoteWithReason(s);
+
         const daThuText = isFree ? 'Miễn phí' : (daThuAmount > 0 ? daThuAmount.toLocaleString('vi-VN') + 'đ' : '—');
         const conNoText = isFree ? 'Miễn phí' : (conNoAmount > 0 ? conNoAmount.toLocaleString('vi-VN') + 'đ' : '—');
-        const payCellClass = isFree ? ' free' : '';
-        const { firstStopHtml, lastStopHtml } = getHistoryStopsDisplay(s);
+
+        const luggageHtml = s.hasLuggage
+          ? `<span class="pax-luggage-mark yes" title="Có hành lý ký gửi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg></span>`
+          : `<span class="pax-luggage-empty">—</span>`;
+
+        // Ghi chú do nhân viên nhập tay có thể chứa dấu ngoặc kép/&/< — phải escapeHtml() trước khi chèn,
+        // nếu không sẽ phá vỡ thuộc tính title="..." hoặc bị hiểu nhầm thành thẻ HTML, làm lệch cả hàng.
+        const noteSafe = escapeHtml(note);
+        const noteHtml = note
+          ? `<div class="pax-note-row"><svg class="pax-note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="pax-note-clamp">${noteSafe}</span></div>`
+          : `<span class="pax-note-empty">—</span>`;
 
         return `
         <tr data-action="fillSearchInputWithPhone" data-args='${JSON.stringify([s.phone])}' style="cursor:pointer;">
-          <td class="mono">${index + 1}</td>
-          <td>${s.customerName || '—'}</td>
-          <td class="mono">${s.phone}</td>
-          <td>${firstStopHtml}</td>
-          <td>${lastStopHtml}</td>
-          <td class="mono">${count}</td>
-          <td>${codesStr}</td>
-          <td class="pax-pay-cell${payCellClass}"><div class="pax-pay-amount">${daThuText}</div></td>
-          <td class="pax-pay-cell${payCellClass}"><div class="pax-pay-amount">${conNoText}</div></td>
-          <td class="pax-luggage-cell"><span class="pax-luggage-mark ${s.hasLuggage ? 'yes' : 'no'}">${s.hasLuggage ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span></td>
-          <td class="pax-note-cell" title="${seatNoteWithReason(s) || ''}"><span class="pax-note-clamp">${seatNoteWithReason(s) || '—'}</span></td>
+          <td class="mono pax-col-stt">${index + 1}</td>
+          <td class="pax-col-name">${s.customerName || '—'}</td>
+          <td class="pax-col-phone">${s.phone || '—'}</td>
+          <td class="pax-col-route">
+            <div class="pax-route">
+              <div class="pax-route-row pax-route-from">
+                <svg class="pax-route-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
+                <div class="pax-route-text">${firstStopHtml}</div>
+              </div>
+              <div class="pax-route-connector"></div>
+              <div class="pax-route-row pax-route-to">
+                <svg class="pax-route-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+                <div class="pax-route-text">${lastStopHtml}</div>
+              </div>
+            </div>
+          </td>
+          <td class="pax-col-seat">
+            <div class="pax-seat-line"><span class="pax-seat-label">SL:</span> ${count}</div>
+            <div class="pax-seat-line"><span class="pax-seat-label">VT:</span> ${seatCodes.join(', ')}</div>
+          </td>
+          <td class="pax-col-paid">${daThuText}</td>
+          <td class="pax-col-debt">${conNoText}</td>
+          <td class="pax-col-luggage">${luggageHtml}</td>
+          <td class="pax-col-note" title="${noteSafe}">${noteHtml}</td>
         </tr>`;
       }).join('');
     }
@@ -461,6 +520,11 @@ function renderTransshipTables() {
   if (dropoffCntEl) dropoffCntEl.textContent = `${dropoffList.length} khách`;
   if (tabCntEl) tabCntEl.textContent = `(${pickupList.length} | ${dropoffList.length})`;
 
+  // 2 bảng dưới đây dùng chung định dạng .pax-table với bảng "Hành khách" (cột Ghế theo kiểu SL:/VT:,
+  // cột Ghi chú theo kiểu icon-chỉ-hiện-khi-có-nội-dung + escapeHtml, không in đậm tên/SĐT/tiền) để giao
+  // diện nhất quán giữa các tab. escapeHtml() áp dụng cho mọi text tự do (tên tài xế/khách, địa chỉ, ghi
+  // chú) vì đây đều là dữ liệu nhập tay — chèn thẳng vào title="..."/HTML mà không escape sẽ vỡ layout
+  // giống lỗi từng gặp ở cột Ghi chú bảng Hành khách nếu text chứa dấu ngoặc kép/&/<.
   if (pickupBody) {
     if (!pickupList.length) {
       pickupBody.innerHTML = '<tr><td colspan="9" class="ts-empty">Không có hành khách cần trung chuyển đón trong chuyến này</td></tr>';
@@ -469,28 +533,39 @@ function renderTransshipTables() {
         const item = g.main;
         const driverKey = `${(item.phone || '').replace(/\s+/g, '')}_don`;
         const assignedDriver = shuttleDriverMap[driverKey];
+        const driverTooltip = assignedDriver
+          ? `SĐT: ${assignedDriver.driverPhone || '—'} · Biển số: ${assignedDriver.driverPlate || '—'}${assignedDriver.driverVehicleType ? ' · ' + assignedDriver.driverVehicleType : ''}`
+          : '';
         const driverCellHtml = assignedDriver
-          ? `<b title="SĐT: ${assignedDriver.driverPhone || '—'} · Biển số: ${assignedDriver.driverPlate || '—'}${assignedDriver.driverVehicleType ? ' · ' + assignedDriver.driverVehicleType : ''}">${assignedDriver.driverName}</b>`
-          : `<span style="color:var(--text-sub); font-style:italic;">Chưa gán tài xế</span>`;
-        const pickupLoc = item.pickupAddress || item.transship || item.transshipStation || item.firstStop || '—';
-        const seatCodes = g.members ? g.members.map(s => s.code).join(', ') : (item.code || '—');
+          ? `<span title="${escapeHtml(driverTooltip)}">${escapeHtml(assignedDriver.driverName)}</span>`
+          : `<span class="ts-driver-unassigned">Chưa gán tài xế</span>`;
+        const pickupLoc = escapeHtml(item.pickupAddress || item.transship || item.transshipStation || item.firstStop || '—');
+        const seatCodes = g.members ? g.members.map(s => s.code) : [item.code || '—'];
         const seatCount = g.members ? g.members.length : 1;
         const phone = item.phone || '—';
         const totalPrice = item.price ? (item.price * seatCount).toLocaleString('vi-VN') + 'đ' : '—';
-        const note = seatNoteWithReason(item) || '—';
+        const note = seatNoteWithReason(item);
+        const noteSafe = escapeHtml(note);
+        const noteHtml = note
+          ? `<div class="pax-note-row"><svg class="pax-note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="pax-note-clamp">${noteSafe}</span></div>`
+          : `<span class="pax-note-empty">—</span>`;
+        const customerNameSafe = escapeHtml(item.customerName || 'Khách');
         const statusBadge = item.paid ? '<span class="ts-status-badge ongoing">Đang đón</span>' : '<span class="ts-status-badge pending">Chờ đón</span>';
 
         return `
           <tr>
-            <td>${idx + 1}</td>
-            <td>${driverCellHtml}</td>
-            <td class="ts-address">${pickupLoc}</td>
-            <td><b>${seatCodes}</b> (${seatCount} ghế)</td>
-            <td style="font-weight:600;">${item.customerName || 'Khách'}</td>
-            <td>${phone}</td>
-            <td style="font-weight:700;color:var(--text-main);">${totalPrice}</td>
-            <td>${statusBadge}</td>
-            <td class="ts-note">${note}</td>
+            <td class="mono pax-col-stt">${idx + 1}</td>
+            <td class="pax-col-driver">${driverCellHtml}</td>
+            <td class="pax-col-address">${pickupLoc}</td>
+            <td class="pax-col-seat">
+              <div class="pax-seat-line"><span class="pax-seat-label">SL:</span> ${seatCount}</div>
+              <div class="pax-seat-line"><span class="pax-seat-label">VT:</span> ${seatCodes.join(', ')}</div>
+            </td>
+            <td class="pax-col-name">${customerNameSafe}</td>
+            <td class="pax-col-phone">${phone}</td>
+            <td class="pax-col-total">${totalPrice}</td>
+            <td class="pax-col-status">${statusBadge}</td>
+            <td class="pax-col-note" title="${noteSafe}">${noteHtml}</td>
           </tr>`;
       }).join('');
     }
@@ -502,24 +577,32 @@ function renderTransshipTables() {
     } else {
       dropoffBody.innerHTML = dropoffList.map((g, idx) => {
         const item = g.main;
-        const dropoffLoc = item.dropoffAddress || item.arrivalTransfer || item.lastStop || '—';
-        const seatCodes = g.members ? g.members.map(s => s.code).join(', ') : (item.code || '—');
+        const dropoffLoc = escapeHtml(item.dropoffAddress || item.arrivalTransfer || item.lastStop || '—');
+        const seatCodes = g.members ? g.members.map(s => s.code) : [item.code || '—'];
         const seatCount = g.members ? g.members.length : 1;
         const phone = item.phone || '—';
         const totalPrice = item.price ? (item.price * seatCount).toLocaleString('vi-VN') + 'đ' : '—';
-        const note = seatNoteWithReason(item) || '—';
+        const note = seatNoteWithReason(item);
+        const noteSafe = escapeHtml(note);
+        const noteHtml = note
+          ? `<div class="pax-note-row"><svg class="pax-note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="pax-note-clamp">${noteSafe}</span></div>`
+          : `<span class="pax-note-empty">—</span>`;
+        const customerNameSafe = escapeHtml(item.customerName || 'Khách');
         const statusBadge = item.paid ? '<span class="ts-status-badge done">Đã trả</span>' : '<span class="ts-status-badge blue">Chờ trả</span>';
 
         return `
           <tr>
-            <td>${idx + 1}</td>
-            <td class="ts-address">${dropoffLoc}</td>
-            <td><b>${seatCodes}</b> (${seatCount} ghế)</td>
-            <td style="font-weight:600;">${item.customerName || 'Khách'}</td>
-            <td>${phone}</td>
-            <td style="font-weight:700;color:var(--text-main);">${totalPrice}</td>
-            <td>${statusBadge}</td>
-            <td class="ts-note">${note}</td>
+            <td class="mono pax-col-stt">${idx + 1}</td>
+            <td class="pax-col-address">${dropoffLoc}</td>
+            <td class="pax-col-seat">
+              <div class="pax-seat-line"><span class="pax-seat-label">SL:</span> ${seatCount}</div>
+              <div class="pax-seat-line"><span class="pax-seat-label">VT:</span> ${seatCodes.join(', ')}</div>
+            </td>
+            <td class="pax-col-name">${customerNameSafe}</td>
+            <td class="pax-col-phone">${phone}</td>
+            <td class="pax-col-total">${totalPrice}</td>
+            <td class="pax-col-status">${statusBadge}</td>
+            <td class="pax-col-note" title="${noteSafe}">${noteHtml}</td>
           </tr>`;
       }).join('');
     }
@@ -728,14 +811,16 @@ function renderZone1TripList() {
 
     return `
       <div class="trip-card ${selected}" data-trip="${t.id}" data-action="selectTrip" data-args='${JSON.stringify(["__this__", t.time, t.route])}' title="${tooltipText}">
-        <div class="trip-card-row1">
-          <div class="trip-info-left">
+        <div class="z1-header">
+          <div class="z1-time-block">
+            <div class="z1-clock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
             <span class="trip-time">${t.time}</span>
-            <span class="trip-plate-inline">${plate}</span>
           </div>
+          <div class="z1-divider"></div>
+          <span class="trip-plate-inline">${plate}</span>
           <div class="trip-seat-tag ${seatTagClass}">${bookedSeats}/${totalSeats + subSeatsCount}</div>
         </div>
-        <div class="trip-card-row2">
+        <div class="z1-name-row">
           <span class="trip-name-text">${displayTripName}</span>
         </div>
       </div>
@@ -1230,6 +1315,10 @@ function saveTicket() {
     seat.zeroPriceReason = editedPrice === 0 ? document.getElementById('f_zero_price_reason').value.trim() : '';
     seat.depositAmount = depositEnabled ? depositAmountRaw : 0;
     seat.depositMethod = depositEnabled ? (document.querySelector('input[name="f_deposit_method"]:checked')?.value || 'Tiền mặt') : '';
+    // Mốc giờ nhân viên thao tác — hiện ở cột "Thời gian" bảng Lịch sử (xem formatActionTime trong
+    // shared/format.js). Ghi đè mỗi lần lưu form (tạo mới lẫn sửa vé) nên luôn phản ánh lần thao tác
+    // gần nhất trên ghế này, không riêng lần đặt đầu tiên.
+    seat.actionTime = new Date().toISOString();
   };
 
   const seatsTarget = currentPanelSeats.length ? currentPanelSeats : (currentPanelSeat ? [currentPanelSeat] : []);
@@ -1680,22 +1769,98 @@ const ROUTES_CFG = {
   'chieu-di': [
     { label: 'Sài Gòn - Châu Đốc', abbr: 'SG-CD', price: 280000 },
     { label: 'Sài Gòn - Long Xuyên', abbr: 'SG-LX', price: 150000 },
-    { label: 'Sài Gòn - Cần Thơ', abbr: 'SG-CT', price: 180000 }
+    { label: 'Sài Gòn - Cần Thơ', abbr: 'SG-CT', price: 180000 },
+    { label: 'Sài Gòn - An Giang', abbr: 'SG-AG', price: 160000 }
   ],
   'chieu-ve': [
     { label: 'Châu Đốc - Sài Gòn', abbr: 'CD-SG', price: 280000 },
     { label: 'Long Xuyên - Sài Gòn', abbr: 'LX-SG', price: 150000 },
-    { label: 'Cần Thơ - Sài Gòn', abbr: 'CT-SG', price: 180000 }
+    { label: 'Cần Thơ - Sài Gòn', abbr: 'CT-SG', price: 180000 },
+    { label: 'An Giang - Sài Gòn', abbr: 'AG-SG', price: 160000 },
+    { label: 'Châu Đốc - An Giang', abbr: 'CD-AG', price: 90000 },
+    { label: 'An Giang - Châu Đốc', abbr: 'AG-CD', price: 90000 }
   ]
 };
 
+// Cấu hình "Hướng đi" cho modal Tạo phơi xe (singleModal) — 1 dropdown phẳng liệt kê thẳng từng cặp
+// tuyến theo dạng mũi tên (thay vì 2 bước Chiều đi/Chiều về rồi mới chọn Tuyến như ROUTES_CFG ở trên,
+// ROUTES_CFG vẫn giữ nguyên để các chỗ khác dùng — tìm tên viết tắt/giá khi lưu phơi, tên gợi ý khi để
+// trống Tên phơi). Mỗi hướng có sẵn danh sách Trạm đi/Trạm đến cụ thể để chọn, và danh sách trạm dọc
+// đường có thể nhận thêm khách (Trạm có thể nhận). "An Giang" là điểm mới, trạm tự đặt tên — khác với
+// Long Xuyên (đã có sẵn dữ liệu ở nơi khác trong hệ thống) nên không dùng chung trạm.
+const TRIP_DIRECTIONS_CFG = {
+  'sg-cd': {
+    label: 'SG → CĐ', route: 'Sài Gòn - Châu Đốc', price: 280000,
+    fromStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương', 'Trạm An Sương', 'Trạm Q.5'],
+    toStations: ['Bến xe Châu Đốc', 'Trạm Châu Đốc', 'Trạm Tân Châu'],
+    pickupStations: ['Trạm An Sương', 'Trạm Q.5', 'Trạm Kinh Dương Vương', 'Trạm Tân Châu']
+  },
+  'cd-sg': {
+    label: 'CĐ → SG', route: 'Châu Đốc - Sài Gòn', price: 280000,
+    fromStations: ['Bến xe Châu Đốc', 'Trạm Châu Đốc', 'Trạm Tân Châu'],
+    toStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương', 'Trạm An Sương'],
+    pickupStations: ['Trạm Tân Châu', 'Trạm An Sương']
+  },
+  'sg-lx': {
+    label: 'SG → LX', route: 'Sài Gòn - Long Xuyên', price: 150000,
+    fromStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương', 'Trạm An Sương'],
+    toStations: ['Bến xe Long Xuyên', 'Trạm Long Xuyên'],
+    pickupStations: ['Trạm An Sương']
+  },
+  'lx-sg': {
+    label: 'LX → SG', route: 'Long Xuyên - Sài Gòn', price: 150000,
+    fromStations: ['Bến xe Long Xuyên', 'Trạm Long Xuyên'],
+    toStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương'],
+    pickupStations: []
+  },
+  'sg-ct': {
+    label: 'SG → CT', route: 'Sài Gòn - Cần Thơ', price: 180000,
+    fromStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương', 'Trạm An Sương'],
+    toStations: ['Bến xe Cần Thơ', 'Bến Ninh Kiều'],
+    pickupStations: ['Trạm An Sương']
+  },
+  'ct-sg': {
+    label: 'CT → SG', route: 'Cần Thơ - Sài Gòn', price: 180000,
+    fromStations: ['Bến xe Cần Thơ', 'Bến Ninh Kiều'],
+    toStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương'],
+    pickupStations: []
+  },
+  'sg-ag': {
+    label: 'SG → AG', route: 'Sài Gòn - An Giang', price: 160000,
+    fromStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương', 'Trạm An Sương'],
+    toStations: ['Bến xe An Giang', 'Trạm Châu Thành', 'Trạm Tri Tôn'],
+    pickupStations: ['Trạm An Sương']
+  },
+  'ag-sg': {
+    label: 'AG → SG', route: 'An Giang - Sài Gòn', price: 160000,
+    fromStations: ['Bến xe An Giang', 'Trạm Châu Thành', 'Trạm Tri Tôn'],
+    toStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương'],
+    pickupStations: []
+  },
+  'cd-ag': {
+    label: 'CĐ → AG', route: 'Châu Đốc - An Giang', price: 90000,
+    fromStations: ['Bến xe Châu Đốc', 'Trạm Châu Đốc', 'Trạm Tân Châu'],
+    toStations: ['Bến xe An Giang', 'Trạm Châu Thành', 'Trạm Tri Tôn'],
+    pickupStations: ['Trạm Tân Châu']
+  },
+  'ag-cd': {
+    label: 'AG → CĐ', route: 'An Giang - Châu Đốc', price: 90000,
+    fromStations: ['Bến xe An Giang', 'Trạm Châu Thành', 'Trạm Tri Tôn'],
+    toStations: ['Bến xe Châu Đốc', 'Trạm Châu Đốc'],
+    pickupStations: []
+  }
+};
+
 // Global variables specific to Phơi xe
-let bulkTimes = [];
-let contextMenuTargetId = null;
+let phoiBulkMode = false; // chế độ chọn "phơi mẫu" để tạo hàng loạt — xem toggleBulkTemplateMode()
+let bulkTemplateIds = [];
 
 // View Switcher (SPA)
 function switchView(viewName) {
   if (viewName === currentView) return;
+  // Rời khỏi tab Phơi xe khi đang ở chế độ chọn "phơi mẫu" (tạo hàng loạt) — thoát luôn chế độ chọn để
+  // tránh trạng thái treo lơ lửng khi quay lại tab này lần sau.
+  if (currentView === 'phoi' && viewName !== 'phoi' && phoiBulkMode) toggleBulkTemplateMode();
   currentView = viewName;
 
   const bookingView = document.getElementById('bookingView');
@@ -1735,7 +1900,10 @@ function switchView(viewName) {
     if (!Array.isArray(allTripsMeta) || allTripsMeta.length === 0) {
       allTripsMeta = loadAllTrips();
     }
-    allTripsMeta.forEach(t => { t.date = todayStr; });
+    // Chỉ đẩy phơi có ngày cũ hơn hôm nay lên lại hôm nay — giữ nguyên phơi hôm nay/tương lai (phơi tạo
+    // hàng loạt cho các ngày sau vẫn phải hiện đúng ngày đó mỗi lần quay lại tab Phơi xe, không bị dồn
+    // hết về hôm nay).
+    allTripsMeta.forEach(t => { if (t.date && t.date < todayStr) t.date = todayStr; });
 
     applyFilters();
   } else if (viewName === 'history') {
@@ -1839,28 +2007,74 @@ function onRouteSelect(modalType) {
   }
 }
 
-function suggestSingleTripName() {
-  const routeVal = document.getElementById("tripRoute").value;
-  const timeVal = document.getElementById("tripTime").value;
-  const noteVal = document.getElementById("tripNote").value.trim();
-  const nameInput = document.getElementById("tripName");
-
-  if (!routeVal || !timeVal) return;
-
-  let baseName = `${routeVal} (${timeVal})`;
-  if (noteVal) {
-    baseName += ` - ${noteVal}`;
-  }
-  nameInput.value = baseName;
+// Đổ danh sách "Hướng đi" (modal Tạo phơi xe đơn) từ TRIP_DIRECTIONS_CFG — gọi lại mỗi lần mở modal
+// (openSingleModal/openEditModal) thay vì đổ 1 lần lúc nạp trang, để không phụ thuộc thứ tự script chạy
+// trước/sau khi HTML đã sẵn sàng.
+function populateTripDirectionSelect() {
+  const sel = document.getElementById("tripDirection");
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- Chọn hướng tuyến --</option>' +
+    Object.keys(TRIP_DIRECTIONS_CFG).map(key => `<option value="${key}">${TRIP_DIRECTIONS_CFG[key].label}</option>`).join('');
 }
 
-// Listeners for suggestions in single modal
-const tripTimeInput = document.getElementById("tripTime");
-if (tripTimeInput) tripTimeInput.addEventListener("input", suggestSingleTripName);
-const tripRouteInput = document.getElementById("tripRoute");
-if (tripRouteInput) tripRouteInput.addEventListener("change", suggestSingleTripName);
-const tripNoteInput = document.getElementById("tripNote");
-if (tripNoteInput) tripNoteInput.addEventListener("input", suggestSingleTripName);
+// Chọn "Hướng đi" xong mới có Trạm đi/Trạm đến/Trạm có thể nhận cụ thể để chọn (mỗi hướng 1 bộ trạm
+// riêng, xem TRIP_DIRECTIONS_CFG) — đổi hướng thì đổ lại toàn bộ 3 ô này từ đầu, đồng thời set sẵn giá vé
+// mặc định theo hướng (nhân viên vẫn sửa lại được nếu cần).
+function onTripDirectionChange() {
+  const dirKey = document.getElementById("tripDirection").value;
+  const fromSel = document.getElementById("tripFromStation");
+  const toSel = document.getElementById("tripToStation");
+  const priceInput = document.getElementById("tripPrice");
+  const cfg = TRIP_DIRECTIONS_CFG[dirKey];
+
+  if (!cfg) {
+    fromSel.innerHTML = '<option value="">-- Chọn hướng đi trước --</option>';
+    toSel.innerHTML = '<option value="">-- Chọn hướng đi trước --</option>';
+    renderPickupStationPills([]);
+    return;
+  }
+
+  fromSel.innerHTML = '<option value="">-- Chọn trạm đi --</option>' +
+    cfg.fromStations.map(s => `<option value="${s}">${s}</option>`).join('');
+  toSel.innerHTML = '<option value="">-- Chọn trạm đến --</option>' +
+    cfg.toStations.map(s => `<option value="${s}">${s}</option>`).join('');
+  renderPickupStationPills(cfg.pickupStations);
+  priceInput.value = cfg.price;
+
+  updateSingleTripNameSuggestion();
+}
+
+// "Trạm có thể nhận thêm khách" hiện dạng chip checkbox nằm ngang (không phải <select multiple> cao
+// lêu nghêu) — mỗi chip tự đổi màu qua class "checked" khi tick (xem toggleStationPill bên dưới), vì
+// component chọn nhiều bằng checkbox không có trạng thái ":checked" ở cấp <label> để CSS tự bắt được.
+function renderPickupStationPills(stations) {
+  const container = document.getElementById("tripPickupStations");
+  if (!container) return;
+  if (!stations || !stations.length) {
+    container.innerHTML = '<span class="station-pick-empty">Không có trạm dọc đường</span>';
+    return;
+  }
+  container.innerHTML = stations.map(s => `
+    <label class="station-pick-pill">
+      <input type="checkbox" value="${s}" data-change-action="toggleStationPill" data-args='["__this__"]'>
+      ${s}
+    </label>`).join('');
+}
+
+function toggleStationPill(checkbox) {
+  const pill = checkbox.closest('.station-pick-pill');
+  if (pill) pill.classList.toggle('checked', checkbox.checked);
+}
+
+// Tên phơi tự cập nhật theo đúng format "Trạm đi - Trạm đến" mỗi khi 1 trong 2 ô đổi — nhân viên vẫn
+// gõ tay đè lên được sau đó nếu muốn tên khác, chỉ auto-fill lại khi Trạm đi/Trạm đến đổi tiếp.
+function updateSingleTripNameSuggestion() {
+  const fromVal = document.getElementById("tripFromStation").value;
+  const toVal = document.getElementById("tripToStation").value;
+  const nameInput = document.getElementById("tripName");
+  if (!fromVal || !toVal) return;
+  nameInput.value = `${fromVal} - ${toVal}`;
+}
 
 // Search Filters implementation
 function applyFilters() {
@@ -1881,6 +2095,13 @@ function applyFilters() {
 
   const filtered = allTripsMeta.filter(t => {
     if (!t) return false;
+
+    // Chế độ chọn "phơi mẫu" (tạo hàng loạt) luôn hiện đủ toàn bộ danh sách mẫu cố định (isTemplate:true,
+    // xem constants.js), bỏ qua mọi bộ lọc tên/ngày/hướng/tuyến đang để dở trên thanh lọc — nếu không,
+    // bấm "Tạo phơi xe hàng loạt" lúc đang lọc dở (VD đổi "Ngày khởi hành" sang hôm khác) sẽ lọc mất hết
+    // mẫu do các bộ lọc đó vốn để tìm phơi thật, không áp dụng được cho danh sách mẫu.
+    if (phoiBulkMode) return t.isTemplate && t.status !== 'Đã hủy';
+
     const timeStr = t.time || '';
     const routeStr = t.route || '';
     const plateStr = t.plate || '';
@@ -1907,7 +2128,9 @@ function applyFilters() {
       if (!matchName && !customNameMatches) return false;
     }
 
-    if (fDate && fDate !== todayStr && t.date && t.date !== fDate) return false;
+    // Lọc đúng theo ngày đã chọn — kể cả khi ngày đó trùng hôm nay (trước đây "hôm nay" bị coi là giá
+    // trị mặc định "bỏ qua lọc ngày", khiến danh sách trộn lẫn phơi của mọi ngày lại với nhau).
+    if (fDate && t.date && t.date !== fDate) return false;
 
     if (fDir) {
       if (fDir === 'chieu-di' && !routeStr.startsWith('Sài Gòn')) return false;
@@ -1935,12 +2158,12 @@ function resetPhoiFilters() {
   applyFilters();
 }
 
-// Table rendering
+// Card grid rendering
 function renderTable(trips) {
-  const tbody = document.getElementById("tripsTableBody");
+  const grid = document.getElementById("tripsCardGrid");
   const emptyState = document.getElementById("emptyState");
-  if (!tbody) return;
-  tbody.innerHTML = '';
+  if (!grid) return;
+  grid.innerHTML = '';
 
   if (!Array.isArray(trips) || trips.length === 0) {
     if (emptyState) emptyState.style.display = "flex";
@@ -1948,23 +2171,13 @@ function renderTable(trips) {
   }
   if (emptyState) emptyState.style.display = "none";
 
-  trips.forEach((t, i) => {
+  trips.forEach((t) => {
     if (!t) return;
     const timeStr = t.time || '00:00';
     const routeStr = t.route || '';
     const timeFormatted = timeStr.replace(':', 'h');
 
-    let abbr = '';
-    if (typeof ROUTES_CFG === 'object' && ROUTES_CFG) {
-      Object.keys(ROUTES_CFG).forEach(k => {
-        if (Array.isArray(ROUTES_CFG[k])) {
-          const found = ROUTES_CFG[k].find(r => r.label === routeStr);
-          if (found) abbr = found.abbr;
-        }
-      });
-    }
     const displayName = t.name || `${routeStr} (${timeFormatted})`;
-    const noteHtml = t.note ? `<div class="phoi-note-sub" style="font-size:11.5px; color:var(--text-sub); font-weight:500; margin-top:3px;"><span style="font-weight:700; color:var(--red); padding:1px 5px; background:var(--red-light); border-radius:3px; font-size:10.5px; margin-right:4px;">GC</span>${t.note}</div>` : '';
 
     const plan = (typeof tripSeatBank === 'object' && tripSeatBank) ? tripSeatBank[t.id] : null;
     let emptyCount = 0;
@@ -1987,7 +2200,6 @@ function renderTable(trips) {
         formattedDate = t.date;
       }
     }
-    const scheduleStr = `${timeStr} – ${formattedDate}`;
 
     let statusClass = 'chua-chi-dinh';
     let label = t.status || 'Chưa chỉ định xe';
@@ -1996,408 +2208,112 @@ function renderTable(trips) {
     if (label === 'Đã khởi hành') statusClass = 'da-khoi-hanh';
     if (label === 'Đã hủy') statusClass = 'da-huy';
 
-    const tr = document.createElement("tr");
-    tr.setAttribute("data-id", t.id);
-    tr.addEventListener("dblclick", () => openEditModal(t.id));
+    const sellDisabled = label === 'Đã hủy';
 
-    tr.innerHTML = `
-      <td>${i + 1}</td>
-      <td>${scheduleStr}</td>
-      <td>
-        <div class="phoi-name-main" style="font-weight:700; color:var(--text-main); font-size:13px; line-height:1.35;">${displayName}</div>
-        ${noteHtml}
-      </td>
-      <td>${t.plate || '—'}</td>
-      <td style="text-align:center;">${emptyCount}/${totalCount}</td>
-      <td style="text-align:right;">${(t.price || 280000).toLocaleString('vi-VN')}đ</td>
-      <td style="text-align:center;"><span class="badge ${statusClass}">${label}</span></td>
-      <td class="actions-cell">
-        <button class="dots-btn" data-action="showContextMenu" data-stop-propagation="1" data-args='${JSON.stringify(["__event__", t.id])}'>...</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
+    const card = document.createElement("div");
+    card.setAttribute("data-id", t.id);
 
-// Single Modal triggers
-function openSingleModal() {
-  document.getElementById("singleModalTitle").textContent = "Tạo phơi xe mới";
-  document.getElementById("singleForm").reset();
-  document.getElementById("editTripId").value = '';
-  document.getElementById("editStatusRow").style.display = "none";
-  document.getElementById("btnSaveSingle").disabled = false;
+    // Chế độ chọn "phơi mẫu" để tạo hàng loạt (bật/tắt bằng nút "Tạo phơi xe hàng loạt") — thẻ phơi lược
+    // bớt route-btn/footer, cả thẻ trở thành 1 điểm bấm chọn/bỏ chọn giống chọn ghế ở sơ đồ ghế, có dấu
+    // tích ở góc phải trên báo trạng thái đã chọn (xem toggleBulkTemplateMode/toggleBulkTemplateSelect).
+    if (phoiBulkMode) {
+      const selected = bulkTemplateIds.includes(t.id);
+      card.className = `phoi-card phoi-card-selectable status-${statusClass}${selected ? ' selected' : ''}`;
+      card.setAttribute("data-action", "toggleBulkTemplateSelect");
+      card.setAttribute("data-args", JSON.stringify([t.id]));
 
-  const today = new Date().toISOString().split("T")[0];
-  document.getElementById("tripDate").value = today;
-  document.getElementById("singleModal").classList.add("active");
-  document.getElementById("singleModal").classList.add("open");
-}
-
-// Expose these helpers to global scope for button onclick events
-window.openSingleModal = openSingleModal;
-window.closeSingleModal = closeSingleModal;
-window.openBulkModal = openBulkModal;
-window.closeBulkModal = closeBulkModal;
-window.addBulkTime = addBulkTime;
-window.removeBulkTime = removeBulkTime;
-window.onModalDirectionChange = onModalDirectionChange;
-window.onFilterDirectionChange = onFilterDirectionChange;
-window.onRouteSelect = onRouteSelect;
-window.saveSingleTrip = saveSingleTrip;
-window.generateBulkTrips = generateBulkTrips;
-window.showContextMenu = showContextMenu;
-window.onContextEdit = onContextEdit;
-window.onContextDelete = onContextDelete;
-window.switchView = switchView;
-window.applyFilters = applyFilters;
-
-function closeSingleModal() {
-  document.getElementById("singleModal").classList.remove("active");
-  document.getElementById("singleModal").classList.remove("open");
-}
-
-function openEditModal(id) {
-  const trip = allTripsMeta.find(t => t.id === id);
-  if (!trip) return;
-
-  document.getElementById("singleModalTitle").textContent = "Chỉnh sửa phơi xe";
-  document.getElementById("editTripId").value = id;
-  document.getElementById("editStatusRow").style.display = "flex";
-
-  document.getElementById("tripName").value = trip.name || '';
-  document.getElementById("tripDate").value = trip.date || '';
-  document.getElementById("tripTime").value = trip.time || '';
-  document.getElementById("tripVehicleType").value = trip.vehicleType || 'Limousine 24 Phòng';
-  document.getElementById("tripPrice").value = trip.price || 280000;
-  document.getElementById("tripNote").value = trip.note || '';
-
-  document.getElementById("tripStatus").value = trip.status || 'Chưa chỉ định xe';
-  document.getElementById("tripPlate").value = trip.plate || '';
-
-  let direction = 'chieu-di';
-  if (!trip.route.startsWith('Sài Gòn')) direction = 'chieu-ve';
-  document.getElementById("tripDirection").value = direction;
-
-  onModalDirectionChange('single');
-  document.getElementById("tripRoute").value = trip.route;
-
-  const isReadOnly = (trip.status === 'Đã khởi hành' || trip.status === 'Đã hủy');
-  const inputs = document.querySelectorAll("#singleForm input, #singleForm select, #singleForm button[type='submit']");
-  inputs.forEach(el => {
-    if (el.id !== 'btnSaveSingle') el.disabled = isReadOnly;
-  });
-  document.getElementById("btnSaveSingle").disabled = isReadOnly;
-
-  document.getElementById("singleModal").classList.add("active");
-  document.getElementById("singleModal").classList.add("open");
-}
-
-// Cập nhật phơi đã có. Trả về false nếu người dùng huỷ xác nhận đổi loại xe (báo cho saveSingleTrip
-// dừng lại, không lưu/đóng modal) — giữ đúng hành vi early-return của bản gốc.
-function updateExistingTrip(id, fields) {
-  const { finalName, dateVal, routeVal, timeVal, vehicleVal, priceVal, noteVal, statusVal, plateVal } = fields;
-  const tripIdx = allTripsMeta.findIndex(t => t.id === id);
-  if (tripIdx === -1) return true;
-  const trip = allTripsMeta[tripIdx];
-
-  trip.name = finalName;
-  trip.date = dateVal;
-  trip.route = routeVal;
-  trip.time = timeVal;
-  trip.price = priceVal;
-  trip.note = noteVal;
-  trip.status = statusVal;
-
-  if (trip.vehicleType !== vehicleVal) {
-    const confirmed = confirm("Cảnh báo: Thay đổi loại xe sẽ xoá toàn bộ sơ đồ ghế cũ và sinh lại ghế trống mới. Tiếp tục?");
-    if (!confirmed) return false;
-    trip.vehicleType = vehicleVal;
-    tripSeatBank[id] = generateNewEmptyPlan(vehicleVal, priceVal);
-  }
-
-  trip.plate = plateVal;
-
-  if (tripSeatBank[id]) {
-    tripSeatBank[id].plate = plateVal;
-    tripSeatBank[id].vehicleType = vehicleVal;
-    if (plateVal) {
-      tripSeatBank[id].driver = tripSeatBank[id].driver || 'Phạm Quốc Bảo';
-      tripSeatBank[id].helper = tripSeatBank[id].helper || 'Đỗ Văn Sơn';
+      card.innerHTML = `
+        <div class="phoi-card-select-check">${selected ? '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+        <div class="phoi-card-top">
+          <div class="phoi-card-schedule">
+            <div class="phoi-card-time-row">
+              <span class="phoi-card-time">${timeStr}</span>
+              <span class="trip-plate-inline">${t.plate || '—'}</span>
+            </div>
+            <span class="phoi-card-date">${formattedDate}</span>
+          </div>
+          <span class="status-badge ${statusClass}"><span class="status-dot"></span>${label}</span>
+        </div>
+        <div class="phoi-card-name">${displayName}</div>
+        <div class="phoi-card-meta">
+          <div class="phoi-card-meta-item">
+            <label>Loại xe</label>
+            <span>${t.vehicleType || '—'}</span>
+          </div>
+          <div class="phoi-card-meta-item">
+            <label>Ghế trống</label>
+            <span>${emptyCount}/${totalCount}</span>
+          </div>
+          <div class="phoi-card-meta-item">
+            <label>Giá vé</label>
+            <span>${(t.price || 280000).toLocaleString('vi-VN')}đ</span>
+          </div>
+        </div>
+      `;
+      grid.appendChild(card);
+      return;
     }
-  }
-  return true;
+
+    card.className = `phoi-card status-${statusClass}`;
+    card.addEventListener("dblclick", () => openEditModal(t.id));
+
+    card.innerHTML = `
+      <div class="phoi-card-top">
+        <div class="phoi-card-schedule">
+          <div class="phoi-card-time-row">
+            <span class="phoi-card-time">${timeStr}</span>
+            <span class="trip-plate-inline">${t.plate || '—'}</span>
+          </div>
+          <span class="phoi-card-date">${formattedDate}</span>
+        </div>
+        <button type="button" class="phoi-route-btn" title="Xem lộ trình" data-action="showTripRoute" data-stop-propagation="1" data-args='${JSON.stringify([t.id])}'>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" />
+            <path d="M15 5.764v15.472" />
+            <path d="M9 3.236v15.472" />
+          </svg>
+        </button>
+        <span class="status-badge ${statusClass}"><span class="status-dot"></span>${label}</span>
+      </div>
+      <div class="phoi-card-name">${displayName}</div>
+      <div class="phoi-card-meta">
+        <div class="phoi-card-meta-item">
+          <label>Loại xe</label>
+          <span>${t.vehicleType || '—'}</span>
+        </div>
+        <div class="phoi-card-meta-item">
+          <label>Ghế trống</label>
+          <span>${emptyCount}/${totalCount}</span>
+        </div>
+        <div class="phoi-card-meta-item">
+          <label>Giá vé</label>
+          <span>${(t.price || 280000).toLocaleString('vi-VN')}đ</span>
+        </div>
+      </div>
+      <div class="phoi-card-footer">
+        <button type="button" class="btn btn-secondary phoi-edit-btn" data-action="openEditModal" data-stop-propagation="1" data-args='${JSON.stringify([t.id])}'>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px;">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+          </svg>
+          Chỉnh sửa
+        </button>
+        <button type="button" class="btn btn-primary phoi-sell-btn" data-action="sellTicketForTrip" data-stop-propagation="1" data-args='${JSON.stringify([t.id])}' ${sellDisabled ? 'disabled' : ''}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;">
+            <path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4V9Z" />
+            <path d="M13 5v2M13 17v2M13 11v2" />
+          </svg>
+          Bán vé
+        </button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
 }
 
-function createNewTrip(fields) {
-  const { finalName, dateVal, routeVal, timeVal, vehicleVal, priceVal, noteVal } = fields;
-  const newId = (Date.now().toString() + Math.random().toString(36).substr(2, 5));
-  const newTrip = {
-    id: newId,
-    name: finalName,
-    date: dateVal,
-    route: routeVal,
-    time: timeVal,
-    vehicleType: vehicleVal,
-    price: priceVal,
-    note: noteVal,
-    status: 'Chưa chỉ định xe',
-    plate: ''
-  };
-
-  allTripsMeta.push(newTrip);
-
-  tripSeatBank[newId] = generateNewEmptyPlan(vehicleVal, priceVal);
-  tripSeatBank[newId].plate = '';
-  tripSeatBank[newId].vehicleType = vehicleVal;
-  tripSeatBank[newId].driver = '';
-  tripSeatBank[newId].helper = '';
-  tripSeatBank[newId].subSeats = [];
-  tripSeatBank[newId].extraSeats = [];
-}
-
-function saveSingleTrip(e) {
-  e.preventDefault();
-
+// Nút "Hủy phơi xe" trong modal "Chỉnh sửa phơi xe" (chỉ hiện khi sửa phơi có sẵn — xem openEditModal).
+function cancelTripFromModal() {
   const id = document.getElementById("editTripId").value;
-  const nameVal = document.getElementById("tripName").value.trim();
-  const dateVal = document.getElementById("tripDate").value;
-  const dirVal = document.getElementById("tripDirection").value;
-  const routeVal = document.getElementById("tripRoute").value;
-  const timeVal = document.getElementById("tripTime").value;
-  const vehicleVal = document.getElementById("tripVehicleType").value;
-  const priceVal = parseInt(document.getElementById("tripPrice").value) || 280000;
-  const noteVal = document.getElementById("tripNote").value.trim();
-  const statusVal = document.getElementById("tripStatus").value || 'Chưa chỉ định xe';
-  const plateVal = document.getElementById("tripPlate").value.trim();
-
-  let abbr = '';
-  ROUTES_CFG[dirVal].forEach(r => {
-    if (r.label === routeVal) abbr = r.abbr;
-  });
-  const suggested = `${abbr} ${timeVal.replace(':', 'h')}`;
-  const finalName = nameVal || suggested;
-
-  const isDuplicateName = allTripsMeta.some(t =>
-    t.id !== id &&
-    t.date === dateVal &&
-    t.status !== 'Đã hủy' &&
-    (t.name ? t.name.toLowerCase() === finalName.toLowerCase() : `${ROUTES_CFG[t.route.startsWith('Sài Gòn') ? 'chieu-di' : 'chieu-ve'].find(r => r.label === t.route).abbr} ${t.time.replace(':', 'h')}`.toLowerCase() === finalName.toLowerCase())
-  );
-
-  if (isDuplicateName) {
-    alert(`Lỗi (BR-01): Tên phơi "${finalName}" đã tồn tại trong ngày khởi hành ${dateVal}.`);
-    return;
-  }
-
-  const fields = { finalName, dateVal, routeVal, timeVal, vehicleVal, priceVal, noteVal, statusVal, plateVal };
-
-  if (id) {
-    if (!updateExistingTrip(id, fields)) return;
-  } else {
-    createNewTrip(fields);
-  }
-
-  saveData();
-  refreshTripsList();
-  applyFilters();
-  closeSingleModal();
-}
-
-// Bulk Modal operations
-function openBulkModal() {
-  document.getElementById("bulkForm").reset();
-  bulkTimes = [];
-  renderTimeTags();
-
-  const today = new Date().toISOString().split("T")[0];
-  document.getElementById("bulkFromDate").value = today;
-  document.getElementById("bulkToDate").value = today;
-
-  document.getElementById("bulkModal").classList.add("active");
-  document.getElementById("bulkModal").classList.add("open");
-}
-
-function closeBulkModal() {
-  document.getElementById("bulkModal").classList.remove("active");
-  document.getElementById("bulkModal").classList.remove("open");
-}
-
-function addBulkTime() {
-  const timeInput = document.getElementById("bulkTimeInput");
-  const timeVal = timeInput.value;
-  if (!timeVal) return;
-
-  if (bulkTimes.includes(timeVal)) {
-    alert("Giờ khởi hành này đã có trong danh sách.");
-    return;
-  }
-  bulkTimes.push(timeVal);
-  bulkTimes.sort();
-  timeInput.value = '';
-  renderTimeTags();
-}
-
-function removeBulkTime(time) {
-  bulkTimes = bulkTimes.filter(t => t !== time);
-  renderTimeTags();
-}
-
-function renderTimeTags() {
-  const container = document.getElementById("bulkTimeTags");
-  container.innerHTML = '';
-  bulkTimes.forEach(t => {
-    container.innerHTML += `
-      <span class="time-tag">
-        ${t}
-        <button type="button" data-action="removeBulkTime" data-args='${JSON.stringify([t])}'>&times;</button>
-      </span>
-    `;
-  });
-}
-
-// Tính danh sách ngày (chuỗi yyyy-mm-dd) rơi vào các thứ trong tuần đã chọn, trong khoảng from..to.
-function computeBulkTripDates(fromDateStr, toDateStr, weekdays) {
-  const fromDate = new Date(fromDateStr);
-  const toDate = new Date(toDateStr);
-  const validDates = [];
-  let current = new Date(fromDate);
-  while (current <= toDate) {
-    if (weekdays.includes(current.getDay())) {
-      validDates.push(current.toISOString().split("T")[0]);
-    }
-    current.setDate(current.getDate() + 1);
-  }
-  return validDates;
-}
-
-// Tạo phơi xe cho từng cặp (ngày × giờ), bỏ qua nếu trùng tên hoặc trùng lịch với phơi đã có.
-function createBulkTrips(validDates, routeVal, abbr, vehicleVal, priceVal) {
-  let createdCount = 0;
-  let skippedCount = 0;
-
-  validDates.forEach(dateVal => {
-    bulkTimes.forEach(timeVal => {
-      const hhmm = timeVal.replace(':', 'h');
-      const finalName = `${abbr} ${hhmm}`;
-
-      const duplicateName = allTripsMeta.some(t =>
-        t.date === dateVal &&
-        t.status !== 'Đã hủy' &&
-        (t.name ? t.name.toLowerCase() === finalName.toLowerCase() : `${ROUTES_CFG[t.route.startsWith('Sài Gòn') ? 'chieu-di' : 'chieu-ve'].find(r => r.label === t.route).abbr} ${t.time.replace(':', 'h')}`.toLowerCase() === finalName.toLowerCase())
-      );
-
-      const duplicateSchedule = allTripsMeta.some(t =>
-        t.date === dateVal &&
-        t.route === routeVal &&
-        t.time === timeVal &&
-        t.status !== 'Đã hủy'
-      );
-
-      if (duplicateName || duplicateSchedule) {
-        skippedCount++;
-      } else {
-        const newId = (Date.now().toString() + Math.random().toString(36).substr(2, 5));
-        const newTrip = {
-          id: newId,
-          name: finalName,
-          date: dateVal,
-          route: routeVal,
-          time: timeVal,
-          vehicleType: vehicleVal,
-          price: priceVal,
-          status: 'Chưa chỉ định xe',
-          plate: '',
-          note: ''
-        };
-        allTripsMeta.push(newTrip);
-
-        tripSeatBank[newId] = generateNewEmptyPlan(vehicleVal, priceVal);
-        tripSeatBank[newId].plate = '';
-        tripSeatBank[newId].vehicleType = vehicleVal;
-        tripSeatBank[newId].driver = '';
-        tripSeatBank[newId].helper = '';
-        tripSeatBank[newId].subSeats = [];
-        tripSeatBank[newId].extraSeats = [];
-
-        createdCount++;
-      }
-    });
-  });
-
-  return { createdCount, skippedCount };
-}
-
-function generateBulkTrips(e) {
-  e.preventDefault();
-
-  const dirVal = document.getElementById("bulkDirection").value;
-  const routeVal = document.getElementById("bulkRoute").value;
-  const fromDateStr = document.getElementById("bulkFromDate").value;
-  const toDateStr = document.getElementById("bulkToDate").value;
-  const vehicleVal = document.getElementById("bulkVehicleType").value;
-  const priceVal = parseInt(document.getElementById("bulkPrice").value) || 280000;
-
-  const checkedBoxes = document.querySelectorAll("input[name='bulkWeekdays']:checked");
-  if (checkedBoxes.length === 0) {
-    alert("Vui lòng chọn ít nhất một thứ lặp lại trong tuần.");
-    return;
-  }
-  const weekdays = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
-
-  if (bulkTimes.length === 0) {
-    alert("Vui lòng thêm ít nhất một mốc giờ khởi hành.");
-    return;
-  }
-
-  let abbr = '';
-  ROUTES_CFG[dirVal].forEach(r => {
-    if (r.label === routeVal) abbr = r.abbr;
-  });
-
-  if (new Date(toDateStr) < new Date(fromDateStr)) {
-    alert("Ngày kết thúc không được nhỏ hơn ngày bắt đầu.");
-    return;
-  }
-
-  const validDates = computeBulkTripDates(fromDateStr, toDateStr, weekdays);
-
-  const totalExpected = validDates.length * bulkTimes.length;
-  if (totalExpected === 0) {
-    alert("Không tìm thấy ngày nào trùng khớp với cấu hình lặp lại trong khoảng thời gian đã chọn.");
-    return;
-  }
-
-  const confirmed = confirm(`Hệ thống sẽ tạo khoảng ${totalExpected} phơi xe. Xác nhận tạo?`);
-  if (!confirmed) return;
-
-  const { createdCount, skippedCount } = createBulkTrips(validDates, routeVal, abbr, vehicleVal, priceVal);
-
-  saveData();
-  refreshTripsList();
-  applyFilters();
-  closeBulkModal();
-
-  alert(`Kết quả tạo hàng loạt:\n- Tạo thành công: ${createdCount} phơi xe.\n- Bỏ qua: ${skippedCount} phơi xe (do trùng lịch hoặc trùng tên phơi).`);
-}
-
-// Row Context Menu
-function showContextMenu(e, id) {
-  contextMenuTargetId = id;
-  const menu = document.getElementById("rowContextMenu");
-  menu.style.display = "block";
-  menu.style.left = `${e.pageX - 100}px`;
-  menu.style.top = `${e.pageY}px`;
-}
-
-function onContextEdit() {
-  if (contextMenuTargetId) {
-    openEditModal(contextMenuTargetId);
-  }
-}
-
-function onContextDelete() {
-  if (!contextMenuTargetId) return;
-  const id = contextMenuTargetId;
   const trip = allTripsMeta.find(t => t.id === id);
   if (!trip) return;
 
@@ -2432,35 +2348,467 @@ function onContextDelete() {
     saveData();
     refreshTripsList();
     applyFilters();
+    closeSingleModal();
   }
 }
+window.cancelTripFromModal = cancelTripFromModal;
+window.openEditModal = openEditModal;
+
+// Nút "Bán vé" trên thẻ phơi (trang Phơi xe) — chuyển sang tab Đặt vé và chọn sẵn đúng phơi đó ở Zone 1
+// để nhân viên bán vé ngay, không phải tự tìm lại chuyến trong danh sách.
+function sellTicketForTrip(tripId) {
+  if (typeof selectZone1Hour === 'function') selectZone1Hour('all');
+  switchView('booking');
+  const cardEl = document.querySelector(`.trip-card[data-trip="${tripId}"]`);
+  if (cardEl) {
+    const trip = allTripsMeta.find(t => t.id === tripId);
+    selectTrip(cardEl, trip ? trip.time : '', trip ? trip.route : '');
+  } else {
+    showToast('Không tìm thấy phơi xe này trong danh sách đặt vé.');
+  }
+}
+window.sellTicketForTrip = sellTicketForTrip;
+
+// Icon bản đồ trên thẻ phơi — mở modal xem lộ trình (điểm xuất phát, các điểm đón dọc đường, điểm đến)
+// dựng từ đúng dữ liệu đã lưu khi tạo/sửa phơi (trip.fromStation/toStation/pickupStations).
+const TRIP_ROUTE_STEP_ICONS = {
+  start: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.86-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.14-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.2"/></svg>',
+  end: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h13l-3 4 3 4H5"/></svg>'
+};
+
+function renderTripRouteStep(step) {
+  return `
+    <div class="trip-route-step ${step.type}">
+      <div class="trip-route-step-marker">${TRIP_ROUTE_STEP_ICONS[step.type]}</div>
+      <div class="trip-route-step-body">
+        <div class="trip-route-step-label">${step.label}</div>
+        <div class="trip-route-step-name">${step.name}</div>
+      </div>
+    </div>
+  `;
+}
+
+function showTripRoute(tripId) {
+  const trip = allTripsMeta.find(t => t.id === tripId);
+  if (!trip) return;
+
+  const nameEl = document.getElementById('tripRouteName');
+  const metaEl = document.getElementById('tripRouteMeta');
+  const timelineEl = document.getElementById('tripRouteTimeline');
+  if (!timelineEl) return;
+
+  if (nameEl) nameEl.textContent = trip.name || `${trip.route} (${trip.time})`;
+
+  let formattedDate = '';
+  if (trip.date && typeof trip.date === 'string') {
+    const parts = trip.date.split('-');
+    if (parts.length === 3) formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  if (metaEl) metaEl.textContent = [trip.time, formattedDate, trip.plate].filter(Boolean).join(' • ');
+
+  const steps = [];
+  if (trip.fromStation) steps.push({ type: 'start', label: 'Điểm xuất phát', name: trip.fromStation });
+  (Array.isArray(trip.pickupStations) ? trip.pickupStations : []).forEach(s => {
+    steps.push({ type: 'stop', label: 'Điểm đón khách', name: s });
+  });
+  if (trip.toStation) steps.push({ type: 'end', label: 'Điểm đến', name: trip.toStation });
+
+  timelineEl.innerHTML = steps.length
+    ? steps.map(renderTripRouteStep).join('')
+    : `<p class="trip-route-empty">Chưa có thông tin lộ trình chi tiết cho phơi xe này.</p>`;
+
+  document.getElementById('tripRouteModal').classList.add('open');
+}
+window.showTripRoute = showTripRoute;
+
+// Single Modal triggers
+function openSingleModal() {
+  document.getElementById("singleModalTitle").textContent = "Tạo phơi xe mới";
+  document.getElementById("singleForm").reset();
+  document.getElementById("editTripId").value = '';
+  document.getElementById("editStatusRow").style.display = "none";
+  document.getElementById("btnSaveSingle").disabled = false;
+  document.getElementById("btnCancelTrip").style.display = "none";
+
+  populateTripDirectionSelect();
+  onTripDirectionChange();
+
+  const today = new Date().toISOString().split("T")[0];
+  document.getElementById("tripDate").value = today;
+  document.getElementById("singleModal").classList.add("active");
+  document.getElementById("singleModal").classList.add("open");
+}
+
+// Expose these helpers to global scope for button onclick events
+window.openSingleModal = openSingleModal;
+window.closeSingleModal = closeSingleModal;
+window.onModalDirectionChange = onModalDirectionChange;
+window.onFilterDirectionChange = onFilterDirectionChange;
+window.onRouteSelect = onRouteSelect;
+window.onTripDirectionChange = onTripDirectionChange;
+window.toggleStationPill = toggleStationPill;
+window.updateSingleTripNameSuggestion = updateSingleTripNameSuggestion;
+window.saveSingleTrip = saveSingleTrip;
+window.switchView = switchView;
+window.applyFilters = applyFilters;
+
+function closeSingleModal() {
+  document.getElementById("singleModal").classList.remove("active");
+  document.getElementById("singleModal").classList.remove("open");
+}
+
+function openEditModal(id) {
+  const trip = allTripsMeta.find(t => t.id === id);
+  if (!trip) return;
+
+  document.getElementById("singleModalTitle").textContent = "Chỉnh sửa phơi xe";
+  document.getElementById("editTripId").value = id;
+  document.getElementById("editStatusRow").style.display = "flex";
+
+  document.getElementById("tripDate").value = trip.date || '';
+  document.getElementById("tripTime").value = trip.time || '';
+  document.getElementById("tripVehicleType").value = trip.vehicleType || 'Limousine 24 Phòng';
+  document.getElementById("tripNote").value = trip.note || '';
+
+  document.getElementById("tripStatus").value = trip.status || 'Chưa chỉ định xe';
+  document.getElementById("tripPlate").value = trip.plate || '';
+
+  // Suy ngược đúng key hướng đi (vd 'sg-cd') từ chuỗi route đã lưu ('Sài Gòn - Châu Đốc') để chọn sẵn
+  // trong dropdown "Hướng đi" — phơi tạo trước khi có tính năng này (chưa lưu fromStation/toStation) vẫn
+  // suy ra đúng hướng qua route, chỉ là Trạm đi/Trạm đến sẽ để trống cho nhân viên tự chọn lại.
+  populateTripDirectionSelect();
+  const dirKey = Object.keys(TRIP_DIRECTIONS_CFG).find(k => TRIP_DIRECTIONS_CFG[k].route === trip.route) || '';
+  document.getElementById("tripDirection").value = dirKey;
+  onTripDirectionChange();
+
+  document.getElementById("tripFromStation").value = trip.fromStation || '';
+  document.getElementById("tripToStation").value = trip.toStation || '';
+  const savedPickups = Array.isArray(trip.pickupStations) ? trip.pickupStations : [];
+  document.querySelectorAll("#tripPickupStations input[type='checkbox']").forEach(cb => {
+    cb.checked = savedPickups.includes(cb.value);
+    cb.closest('.station-pick-pill').classList.toggle('checked', cb.checked);
+  });
+
+  // Ghi đè lại giá vé/tên phơi thật của phơi này — onTripDirectionChange() ở trên vừa set giá mặc định
+  // theo hướng nên phải set lại SAU, nếu không sẽ mất giá vé thật đã lưu trước đó.
+  document.getElementById("tripPrice").value = trip.price || 280000;
+  document.getElementById("tripName").value = trip.name || '';
+
+  const isReadOnly = (trip.status === 'Đã khởi hành' || trip.status === 'Đã hủy');
+  const inputs = document.querySelectorAll("#singleForm input, #singleForm select, #singleForm button[type='submit']");
+  inputs.forEach(el => {
+    if (el.id !== 'btnSaveSingle') el.disabled = isReadOnly;
+  });
+  document.getElementById("btnSaveSingle").disabled = isReadOnly;
+
+  const btnCancelTrip = document.getElementById("btnCancelTrip");
+  btnCancelTrip.style.display = "";
+  btnCancelTrip.disabled = isReadOnly;
+
+  document.getElementById("singleModal").classList.add("active");
+  document.getElementById("singleModal").classList.add("open");
+}
+
+// Cập nhật phơi đã có. Trả về false nếu người dùng huỷ xác nhận đổi loại xe (báo cho saveSingleTrip
+// dừng lại, không lưu/đóng modal) — giữ đúng hành vi early-return của bản gốc.
+function updateExistingTrip(id, fields) {
+  const { finalName, dateVal, routeVal, fromStationVal, toStationVal, pickupStationsVal, timeVal, vehicleVal, priceVal, noteVal, statusVal, plateVal } = fields;
+  const tripIdx = allTripsMeta.findIndex(t => t.id === id);
+  if (tripIdx === -1) return true;
+  const trip = allTripsMeta[tripIdx];
+
+  trip.name = finalName;
+  trip.date = dateVal;
+  trip.route = routeVal;
+  trip.fromStation = fromStationVal;
+  trip.toStation = toStationVal;
+  trip.pickupStations = pickupStationsVal;
+  trip.time = timeVal;
+  trip.price = priceVal;
+  trip.note = noteVal;
+  trip.status = statusVal;
+
+  if (trip.vehicleType !== vehicleVal) {
+    const confirmed = confirm("Cảnh báo: Thay đổi loại xe sẽ xoá toàn bộ sơ đồ ghế cũ và sinh lại ghế trống mới. Tiếp tục?");
+    if (!confirmed) return false;
+    trip.vehicleType = vehicleVal;
+    tripSeatBank[id] = generateNewEmptyPlan(vehicleVal, priceVal);
+  }
+
+  trip.plate = plateVal;
+
+  if (tripSeatBank[id]) {
+    tripSeatBank[id].plate = plateVal;
+    tripSeatBank[id].vehicleType = vehicleVal;
+    if (plateVal) {
+      tripSeatBank[id].driver = tripSeatBank[id].driver || 'Phạm Quốc Bảo';
+      tripSeatBank[id].helper = tripSeatBank[id].helper || 'Đỗ Văn Sơn';
+    }
+  }
+  return true;
+}
+
+function createNewTrip(fields) {
+  const { finalName, dateVal, routeVal, fromStationVal, toStationVal, pickupStationsVal, timeVal, vehicleVal, priceVal, noteVal } = fields;
+  const newId = (Date.now().toString() + Math.random().toString(36).substr(2, 5));
+  const newTrip = {
+    id: newId,
+    name: finalName,
+    date: dateVal,
+    route: routeVal,
+    fromStation: fromStationVal,
+    toStation: toStationVal,
+    pickupStations: pickupStationsVal,
+    time: timeVal,
+    vehicleType: vehicleVal,
+    price: priceVal,
+    note: noteVal,
+    status: 'Chưa chỉ định xe',
+    plate: ''
+  };
+
+  allTripsMeta.push(newTrip);
+
+  tripSeatBank[newId] = generateNewEmptyPlan(vehicleVal, priceVal);
+  tripSeatBank[newId].plate = '';
+  tripSeatBank[newId].vehicleType = vehicleVal;
+  tripSeatBank[newId].driver = '';
+  tripSeatBank[newId].helper = '';
+  tripSeatBank[newId].subSeats = [];
+  tripSeatBank[newId].extraSeats = [];
+}
+
+function saveSingleTrip(e) {
+  e.preventDefault();
+
+  const id = document.getElementById("editTripId").value;
+  const nameVal = document.getElementById("tripName").value.trim();
+  const dateVal = document.getElementById("tripDate").value;
+  const dirVal = document.getElementById("tripDirection").value;
+  const fromStationVal = document.getElementById("tripFromStation").value;
+  const toStationVal = document.getElementById("tripToStation").value;
+  const pickupStationsVal = Array.from(document.querySelectorAll("#tripPickupStations input[type='checkbox']:checked")).map(cb => cb.value);
+  const timeVal = document.getElementById("tripTime").value;
+  const vehicleVal = document.getElementById("tripVehicleType").value;
+  const priceVal = parseInt(document.getElementById("tripPrice").value) || 280000;
+  const noteVal = document.getElementById("tripNote").value.trim();
+  const statusVal = document.getElementById("tripStatus").value || 'Chưa chỉ định xe';
+  const plateVal = document.getElementById("tripPlate").value.trim();
+
+  const dirCfg = TRIP_DIRECTIONS_CFG[dirVal];
+  if (!dirCfg || !fromStationVal || !toStationVal) {
+    showToast('Vui lòng chọn đầy đủ Hướng đi, Trạm đi và Trạm đến');
+    return;
+  }
+  const routeVal = dirCfg.route;
+  const suggested = `${fromStationVal} - ${toStationVal}`;
+  const finalName = nameVal || suggested;
+
+  const isDuplicateName = allTripsMeta.some(t =>
+    t.id !== id &&
+    t.date === dateVal &&
+    t.status !== 'Đã hủy' &&
+    (t.name ? t.name.toLowerCase() === finalName.toLowerCase() : `${ROUTES_CFG[t.route.startsWith('Sài Gòn') ? 'chieu-di' : 'chieu-ve'].find(r => r.label === t.route).abbr} ${t.time.replace(':', 'h')}`.toLowerCase() === finalName.toLowerCase())
+  );
+
+  if (isDuplicateName) {
+    alert(`Lỗi (BR-01): Tên phơi "${finalName}" đã tồn tại trong ngày khởi hành ${dateVal}.`);
+    return;
+  }
+
+  const fields = { finalName, dateVal, routeVal, fromStationVal, toStationVal, pickupStationsVal, timeVal, vehicleVal, priceVal, noteVal, statusVal, plateVal };
+
+  if (id) {
+    if (!updateExistingTrip(id, fields)) return;
+  } else {
+    createNewTrip(fields);
+  }
+
+  saveData();
+  refreshTripsList();
+  applyFilters();
+  closeSingleModal();
+}
+
+// ===== Tạo phơi xe hàng loạt từ "phơi mẫu" =====
+// Thay cho modal cũ: bấm "Tạo phơi xe hàng loạt" để bật chế độ chọn — thẻ phơi trong danh sách trở
+// thành "phơi mẫu" bấm chọn được (giống chọn ghế ở sơ đồ ghế), thanh dính đáy hiện ra cho chọn khoảng
+// Từ ngày/Đến ngày rồi bấm "Tạo hàng loạt" để nhân bản các phơi mẫu đã chọn cho mỗi ngày trong khoảng đó.
+// Bấm lại nút "Tạo phơi xe hàng loạt" (hoặc "Hủy" trên thanh) để thoát chế độ chọn, quay về danh sách
+// phơi bình thường — sau khi tạo thành công cũng tự thoát để thấy ngay các phơi vừa tạo trong danh sách.
+function toggleBulkTemplateMode() {
+  phoiBulkMode = !phoiBulkMode;
+  bulkTemplateIds = [];
+
+  const labelEl = document.getElementById("btnBulkCreateLabel");
+  const btn = document.getElementById("btnBulkCreate");
+  const bar = document.getElementById("bulkTemplateBar");
+  const singleCreateBtn = document.getElementById("btnSingleCreate");
+
+  if (phoiBulkMode) {
+    if (labelEl) labelEl.textContent = "Hủy chọn phơi mẫu";
+    if (btn) btn.classList.add("active-bulk");
+    if (bar) bar.style.display = "flex";
+    if (singleCreateBtn) singleCreateBtn.style.display = "none";
+
+    const today = new Date().toISOString().split("T")[0];
+    const fromEl = document.getElementById("bulkTplFromDate");
+    const toEl = document.getElementById("bulkTplToDate");
+    if (fromEl) { fromEl.value = today; fromEl.min = today; }
+    if (toEl) { toEl.value = today; toEl.min = today; }
+  } else {
+    if (labelEl) labelEl.textContent = "Tạo phơi xe hàng loạt";
+    if (btn) btn.classList.remove("active-bulk");
+    if (bar) bar.style.display = "none";
+    if (singleCreateBtn) singleCreateBtn.style.display = "";
+  }
+
+  updateBulkTemplateHint();
+  applyFilters();
+}
+window.toggleBulkTemplateMode = toggleBulkTemplateMode;
+
+function toggleBulkTemplateSelect(id) {
+  const idx = bulkTemplateIds.indexOf(id);
+  if (idx === -1) bulkTemplateIds.push(id);
+  else bulkTemplateIds.splice(idx, 1);
+  updateBulkTemplateHint();
+  applyFilters();
+}
+window.toggleBulkTemplateSelect = toggleBulkTemplateSelect;
+
+function updateBulkTemplateHint() {
+  const hint = document.getElementById("bulkTemplateHint");
+  const createBtn = document.getElementById("bulkTemplateCreateBtn");
+  if (hint) {
+    hint.textContent = bulkTemplateIds.length
+      ? `Đã chọn ${bulkTemplateIds.length} phơi mẫu`
+      : "Chọn các phơi mẫu bên trên để tạo hàng loạt theo khoảng ngày";
+  }
+  if (createBtn) createBtn.disabled = bulkTemplateIds.length === 0;
+}
+
+// Tính danh sách ngày (chuỗi yyyy-mm-dd) rơi vào các thứ trong tuần đã chọn, trong khoảng from..to.
+function computeBulkTripDates(fromDateStr, toDateStr, weekdays) {
+  const fromDate = new Date(fromDateStr);
+  const toDate = new Date(toDateStr);
+  const validDates = [];
+  let current = new Date(fromDate);
+  while (current <= toDate) {
+    if (weekdays.includes(current.getDay())) {
+      validDates.push(current.toISOString().split("T")[0]);
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return validDates;
+}
+
+// Nhân bản từng "phơi mẫu" cho mỗi ngày trong khoảng đã chọn — giữ nguyên tuyến/giờ/loại xe/giá/tên/
+// trạm đi-đến/trạm đón dọc đường, KHÔNG copy biển số hay trạng thái của mẫu (phơi mới luôn bắt đầu
+// "Chưa chỉ định xe" như tạo phơi đơn thật sự). Bỏ qua nếu trùng tên hoặc trùng lịch với phơi đã có
+// trong ngày đó — cùng logic trùng lặp với bản modal cũ.
+function createBulkTripsFromTemplates(validDates, templates) {
+  let createdCount = 0;
+  let skippedCount = 0;
+
+  validDates.forEach(dateVal => {
+    templates.forEach(tpl => {
+      const finalName = tpl.name || `${tpl.route} (${tpl.time})`;
+
+      const duplicateName = allTripsMeta.some(t =>
+        t.date === dateVal &&
+        t.status !== 'Đã hủy' &&
+        (t.name || `${t.route} (${t.time})`).toLowerCase() === finalName.toLowerCase()
+      );
+
+      const duplicateSchedule = allTripsMeta.some(t =>
+        t.date === dateVal &&
+        t.route === tpl.route &&
+        t.time === tpl.time &&
+        t.status !== 'Đã hủy'
+      );
+
+      if (duplicateName || duplicateSchedule) {
+        skippedCount++;
+      } else {
+        const newId = (Date.now().toString() + Math.random().toString(36).substr(2, 5));
+        const newTrip = {
+          id: newId,
+          name: finalName,
+          date: dateVal,
+          route: tpl.route,
+          time: tpl.time,
+          vehicleType: tpl.vehicleType,
+          price: tpl.price,
+          status: 'Chưa chỉ định xe',
+          plate: '',
+          note: tpl.note || '',
+          fromStation: tpl.fromStation || '',
+          toStation: tpl.toStation || '',
+          pickupStations: Array.isArray(tpl.pickupStations) ? [...tpl.pickupStations] : []
+        };
+        allTripsMeta.push(newTrip);
+
+        tripSeatBank[newId] = generateNewEmptyPlan(tpl.vehicleType, tpl.price);
+        tripSeatBank[newId].plate = '';
+        tripSeatBank[newId].vehicleType = tpl.vehicleType;
+        tripSeatBank[newId].driver = '';
+        tripSeatBank[newId].helper = '';
+        tripSeatBank[newId].subSeats = [];
+        tripSeatBank[newId].extraSeats = [];
+
+        createdCount++;
+      }
+    });
+  });
+
+  return { createdCount, skippedCount };
+}
+
+function confirmBulkFromTemplates() {
+  if (bulkTemplateIds.length === 0) return;
+
+  const fromDateStr = document.getElementById("bulkTplFromDate").value;
+  const toDateStr = document.getElementById("bulkTplToDate").value;
+  if (!fromDateStr || !toDateStr) {
+    alert("Vui lòng chọn Từ ngày và Đến ngày.");
+    return;
+  }
+  if (new Date(toDateStr) < new Date(fromDateStr)) {
+    alert("Ngày kết thúc không được nhỏ hơn ngày bắt đầu.");
+    return;
+  }
+
+  const validDates = computeBulkTripDates(fromDateStr, toDateStr, [0, 1, 2, 3, 4, 5, 6]);
+  const templates = bulkTemplateIds.map(id => allTripsMeta.find(t => t.id === id)).filter(Boolean);
+  const totalExpected = validDates.length * templates.length;
+
+  const confirmed = confirm(`Hệ thống sẽ tạo khoảng ${totalExpected} phơi xe từ ${templates.length} phơi mẫu đã chọn. Xác nhận tạo?`);
+  if (!confirmed) return;
+
+  const { createdCount, skippedCount } = createBulkTripsFromTemplates(validDates, templates);
+
+  saveData();
+  refreshTripsList();
+  toggleBulkTemplateMode();
+  applyFilters();
+
+  alert(`Kết quả tạo hàng loạt:\n- Tạo thành công: ${createdCount} phơi xe.\n- Bỏ qua: ${skippedCount} phơi xe (do trùng lịch hoặc trùng tên phơi).`);
+}
+window.confirmBulkFromTemplates = confirmBulkFromTemplates;
 
 // Init phơi dates and event listeners
 (function initPhoiDashboard() {
   const today = new Date().toISOString().split("T")[0];
   const filterDate = document.getElementById("filterDate");
   const tripDate = document.getElementById("tripDate");
-  const bulkFromDate = document.getElementById("bulkFromDate");
-  const bulkToDate = document.getElementById("bulkToDate");
 
   if (filterDate) filterDate.value = today;
   if (tripDate) {
     tripDate.value = today;
     tripDate.min = today;
   }
-  if (bulkFromDate) {
-    bulkFromDate.value = today;
-    bulkFromDate.min = today;
-  }
-  if (bulkToDate) {
-    bulkToDate.min = today;
-  }
-
-  // Close context menu clicking outside
-  document.addEventListener("click", () => {
-    const menu = document.getElementById("rowContextMenu");
-    if (menu) menu.style.display = "none";
-  });
 })();
 
 /* ===================== CUSTOMER HISTORY SEARCH ===================== */
@@ -2528,7 +2876,8 @@ function confirmRebook() {
         ticketNo: newTicketNo,
         paid: false,
         count: rebookSelectedSeats.length,
-        staff: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.username : 'system'
+        staff: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.username : 'system',
+        actionTime: new Date().toISOString()
       });
       bookedCount++;
     }

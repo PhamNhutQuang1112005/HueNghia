@@ -9,8 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../css/shared/variables.css?v=1">
 <link rel="stylesheet" href="../css/shared/base.css?v=1">
-<link rel="stylesheet" href="../css/shared/booking-ui.css?v=86">
-<link rel="stylesheet" href="../css/ticketstaff.css?v=52">
+<link rel="stylesheet" href="../css/shared/booking-ui.css?v=103">
+<link rel="stylesheet" href="../css/ticketstaff.css?v=91">
 </head>
 <body>
 
@@ -69,6 +69,10 @@
           <b id="userRoleLabel">Nhân viên bán vé</b>
           <span id="userUsername">banve01</span>
         </div>
+        <button type="button" class="user-menu-item" id="btnOpenShiftClosing" data-action="switchView" data-args='["shiftClosing"]'>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>
+          Kết ca
+        </button>
         <button type="button" class="user-logout-btn" id="logoutBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
           Đăng xuất
@@ -256,6 +260,7 @@
           <div class="z2-title-compact">
             <div class="z2-trip-ico"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9"/><path d="M4 16h16"/><path d="M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M18 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg></div>
             <h1 id="tripTitle">07:00 - Sài Gòn - Châu Đốc</h1>
+            <span class="trip-status-badge" id="tripStatusBadge"></span>
             <span class="car-type"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9"/><path d="M4 16h16"/></svg> Limousine 24 Phòng</span>
             <span class="z2-dot">●</span>
             <span class="z2-meta-inline">06/07/2026</span>
@@ -263,14 +268,23 @@
             <a class="z2-link">Lộ trình <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg></a>
           </div>
           <div class="z2-btn-group">
-            <button class="assign-btn" data-action="openAssignModal">
-              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1Z"/></svg>
-              Chỉ định xe
-            </button>
-            <button class="assign-btn depart-btn" data-action="openDepartModal">
-              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14"/><path d="M5 17a2 2 0 0 1-2-2v-3.2a1 1 0 0 1 .3-.7l2.6-2.6A2 2 0 0 1 7.3 8H16a2 2 0 0 1 1.6.8l2.1 2.8a1 1 0 0 0 .5.3l1.4.4a1 1 0 0 1 .7 1v1.7a2 2 0 0 1-2 2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/></svg>
-              Khởi hành xe
-            </button>
+            <div class="z2-actions-menu" id="z2ActionsMenu">
+              <button type="button" class="z2-actions-btn" id="z2ActionsBtn" aria-haspopup="true" aria-expanded="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+                Thao tác
+                <svg class="z2-actions-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div class="z2-actions-dropdown" id="tripLifecycleActions" style="display:none;">
+                <button class="assign-btn" data-action="openAssignModal">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+                  Chỉ định xe
+                </button>
+                <button class="assign-btn depart-btn" data-action="openDepartModal">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14"/><path d="M5 17a2 2 0 0 1-2-2v-3.2a1 1 0 0 1 .3-.7l2.6-2.6A2 2 0 0 1 7.3 8H16a2 2 0 0 1 1.6.8l2.1 2.8a1 1 0 0 0 .5.3l1.4.4a1 1 0 0 1 .7 1v1.7a2 2 0 0 1-2 2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/></svg>
+                  Khởi hành xe
+                </button>
+              </div>
+            </div>
             <button type="button" class="z2-collapse-btn" data-action="toggleZone2Grid" title="Thu gọn thông tin xe">
               <span class="collapse-text">Thu gọn</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -420,17 +434,15 @@
           <table class="pax-table">
             <thead>
               <tr>
-                <th>STT</th>
-                <th>Họ và tên</th>
-                <th>SĐT</th>
-                <th>Điểm đi</th>
-                <th>Điểm đến</th>
-                <th>Số vé</th>
-                <th>Vị trí</th>
-                <th>Đã thu</th>
-                <th>Còn nợ</th>
-                <th>Baga</th>
-                <th>Ghi chú</th>
+                <th class="pax-col-stt">STT</th>
+                <th class="pax-col-name">Họ và tên</th>
+                <th class="pax-col-phone">SĐT</th>
+                <th class="pax-col-route">Hành trình</th>
+                <th class="pax-col-seat">Ghế</th>
+                <th class="pax-col-paid">Đã thu</th>
+                <th class="pax-col-debt">Còn nợ</th>
+                <th class="pax-col-luggage">Baga</th>
+                <th class="pax-col-note">Ghi chú</th>
               </tr>
             </thead>
             <tbody id="paxTableBody"></tbody>
@@ -450,18 +462,18 @@
             </div>
           </div>
           <div class="transship-table-wrap">
-            <table class="transship-table">
+            <table class="pax-table">
               <thead>
                 <tr>
-                  <th width="50">STT</th>
-                  <th>Tài xế</th>
-                  <th>Địa chỉ đón</th>
-                  <th>Số ghế</th>
-                  <th>Tên HK</th>
-                  <th>Số điện thoại</th>
-                  <th>Tổng tiền</th>
-                  <th>Trạng thái</th>
-                  <th>Ghi chú</th>
+                  <th class="pax-col-stt">STT</th>
+                  <th class="pax-col-driver">Tài xế</th>
+                  <th class="pax-col-address">Địa chỉ đón</th>
+                  <th class="pax-col-seat">Ghế</th>
+                  <th class="pax-col-name">Họ và tên</th>
+                  <th class="pax-col-phone">SĐT</th>
+                  <th class="pax-col-total">Tổng tiền</th>
+                  <th class="pax-col-status">Trạng thái</th>
+                  <th class="pax-col-note">Ghi chú</th>
                 </tr>
               </thead>
               <tbody id="transshipPickupBody"></tbody>
@@ -479,17 +491,17 @@
             </div>
           </div>
           <div class="transship-table-wrap">
-            <table class="transship-table">
+            <table class="pax-table">
               <thead>
                 <tr>
-                  <th width="50">STT</th>
-                  <th>Địa chỉ đón/trả</th>
-                  <th>Số ghế</th>
-                  <th>Tên HK</th>
-                  <th>Số điện thoại</th>
-                  <th>Tổng tiền</th>
-                  <th>Trạng thái</th>
-                  <th>Ghi chú</th>
+                  <th class="pax-col-stt">STT</th>
+                  <th class="pax-col-address">Địa chỉ đón/trả</th>
+                  <th class="pax-col-seat">Ghế</th>
+                  <th class="pax-col-name">Họ và tên</th>
+                  <th class="pax-col-phone">SĐT</th>
+                  <th class="pax-col-total">Tổng tiền</th>
+                  <th class="pax-col-status">Trạng thái</th>
+                  <th class="pax-col-note">Ghi chú</th>
                 </tr>
               </thead>
               <tbody id="transshipDropoffBody"></tbody>
@@ -634,7 +646,7 @@
       </div>
 
       <div class="grid-wrap" style="flex: 1; overflow: auto; padding: 0 20px 20px;">
-        <div class="pax-table-wrap">
+        <div class="pax-table-wrap pax-table-wrap--history">
           <table class="pax-table pax-table--history">
             <thead>
               <tr>
@@ -642,11 +654,11 @@
                 <th>Tên phơi</th>
                 <th>Hành khách</th>
                 <th>Số điện thoại</th>
-                <th>Trạm đi</th>
-                <th>Trạm đến</th>
+                <th>Hành trình</th>
                 <th>SL</th>
                 <th>Giá vé</th>
                 <th>Nhân viên</th>
+                <th>Thời gian</th>
                 <th></th>
               </tr>
             </thead>
@@ -773,6 +785,29 @@
         <div class="grid-empty" id="pkGridEmpty" style="display:none;">
           Không có hành khách nào phù hợp với điều kiện lọc hiện tại.
         </div>
+      </div>
+    </div>
+
+    <!-- ===== TRANG KẾT CA (mở từ dropdown tài khoản, không phải modal) ===== -->
+    <div id="shiftClosingView" class="main-view-container" style="display:none; flex-direction:column;">
+      <div id="shiftClosingBody"></div>
+      <div class="form-row" style="--cols:2;">
+        <div class="form-field">
+          <label for="shiftActualCashInput">Tiền mặt kiểm đếm thực tế (đ) <span style="color:var(--red);">*</span></label>
+          <input type="number" id="shiftActualCashInput" min="0" step="10000" placeholder="0" data-input-action="onShiftActualInput">
+        </div>
+        <div class="form-field">
+          <label for="shiftActualTransferInput">Chuyển khoản xác nhận thực tế (đ) <span style="color:var(--red);">*</span></label>
+          <input type="number" id="shiftActualTransferInput" min="0" step="10000" placeholder="0" data-input-action="onShiftActualInput">
+        </div>
+      </div>
+      <div id="shiftReconcileBox"></div>
+      <label class="checkbox-inline" style="margin-top:10px; align-self:flex-start;">
+        <input type="checkbox" id="shiftAckDiffCheckbox">
+        Tôi đã kiểm tra và xác nhận số liệu đối soát ở trên là chính xác
+      </label>
+      <div class="modal-actions">
+        <button class="btn btn-primary" data-action="confirmShiftClosing" id="btnConfirmShiftClosing">Xác nhận kết ca</button>
       </div>
     </div>
   </div>
@@ -1209,19 +1244,157 @@
 
 <!-- ===== MODAL: KHỞI HÀNH XE ===== -->
 <div class="modal-overlay" id="departModal">
-  <div class="modal">
-    <h3>Khởi hành xe</h3>
-    <div class="form-field">
-      <label>Chuyến xe</label>
-      <div id="departTripInfo" style="font-size:14px;font-weight:700;color:var(--text-main);padding:8px 0;">07:00 - Sài Gòn - Châu Đốc</div>
-    </div>
-    <div class="warn-box">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-      Sau khi xác nhận, chuyến xe sẽ được đánh dấu đã khởi hành và không thể huỷ thao tác này.
+  <div class="modal manifest-modal manifest-modal-wide">
+    <h3>Khởi hành xe — Tổng hợp vé</h3>
+    <div class="manifest-modal-body">
+      <div id="departSummaryBox"></div>
+      <div class="form-field">
+        <label for="departAdvanceInput">Tiền rước đường dự kiến (đ)</label>
+        <input type="number" id="departAdvanceInput" min="0" step="10000" placeholder="0" value="0">
+      </div>
+      <div class="warn-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        Sau khi xác nhận, chuyến xe sẽ khoá bán vé thông thường và tạo phơi — số liệu gốc không thể sửa lại, mọi phát sinh sau đó phải qua Re-open.
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" data-action="closeModal" data-args='["departModal"]'>Đóng</button>
-      <button class="btn btn-primary" data-action="confirmDepart">Xác nhận khởi hành</button>
+      <button class="btn btn-primary" data-action="confirmDepart">Xác nhận khởi hành &amp; tạo phơi</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: RE-OPEN XE ===== -->
+<div class="modal-overlay" id="reopenModal">
+  <div class="modal">
+    <h3>Re-open xe</h3>
+    <div class="form-field">
+      <label>Chuyến xe</label>
+      <div id="reopenTripInfo" class="readonly-line">—</div>
+    </div>
+    <div class="form-row" style="--cols:2;">
+      <div class="form-field">
+        <label>Biển số</label>
+        <div id="reopenPlateInfo" class="readonly-line">—</div>
+      </div>
+      <div class="form-field">
+        <label>Tài xế</label>
+        <div id="reopenDriverInfo" class="readonly-line">—</div>
+      </div>
+    </div>
+    <div class="form-field">
+      <label for="reopenReasonInput">Lý do mở lại <span style="color:var(--red);">*</span></label>
+      <textarea id="reopenReasonInput" rows="3" placeholder="VD: Tài xế gọi báo có thêm 3 khách dọc đường..."></textarea>
+    </div>
+    <div class="form-row" style="--cols:2;">
+      <div class="form-field">
+        <label>Nhân viên thực hiện</label>
+        <div id="reopenStaffInfo" class="readonly-line">—</div>
+      </div>
+      <div class="form-field">
+        <label>Thời gian</label>
+        <div id="reopenTimeInfo" class="readonly-line">—</div>
+      </div>
+    </div>
+    <div class="warn-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      Chỉ Re-open khi tài xế đã gọi về phòng vé yêu cầu. Mọi vé bán thêm sau khi Re-open sẽ được ghi nhận riêng, không ghi đè số liệu phơi gốc.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="closeModal" data-args='["reopenModal"]'>Đóng</button>
+      <button class="btn btn-primary" data-action="confirmReopen">Xác nhận Re-open</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: ĐÓNG RE-OPEN ===== -->
+<div class="modal-overlay" id="closeReopenModal">
+  <div class="modal">
+    <h3>Đóng Re-open</h3>
+    <div id="closeReopenSummaryBox"></div>
+    <div class="warn-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      Sau khi đóng, số vé/tiền phát sinh ở lần Re-open này sẽ được chốt vào lịch sử. Muốn bán thêm phải Re-open lần mới.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="closeModal" data-args='["closeReopenModal"]'>Đóng</button>
+      <button class="btn btn-primary" data-action="confirmCloseReopen">Xác nhận đóng Re-open</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: GHI NHẬN KHÁCH NGOÀI PHƠI ===== -->
+<div class="modal-overlay" id="violationModal">
+  <div class="modal">
+    <h3>Ghi nhận khách ngoài phơi</h3>
+    <div class="violation-alert">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      PHÁT HIỆN KHÁCH KHÔNG CÓ TRÊN PHƠI
+    </div>
+    <div class="form-row" style="--cols:2;">
+      <div class="form-field">
+        <label>Chuyến xe</label>
+        <div id="violationTripInfo" class="readonly-line">—</div>
+      </div>
+      <div class="form-field">
+        <label>Tài xế</label>
+        <div id="violationDriverInfo" class="readonly-line">—</div>
+      </div>
+    </div>
+    <div class="form-row" style="--cols:2;">
+      <div class="form-field">
+        <label>Số khách trên phơi</label>
+        <div id="violationOnManifestInfo" class="readonly-line">—</div>
+      </div>
+      <div class="form-field">
+        <label for="violationActualInput">Số khách kiểm tra thực tế <span style="color:var(--red);">*</span></label>
+        <input type="number" id="violationActualInput" min="0" step="1" data-input-action="onViolationActualInput">
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Chênh lệch</label>
+      <div id="violationDiffInfo" class="readonly-line diff-highlight">—</div>
+    </div>
+    <div class="form-row" style="--cols:2;">
+      <div class="form-field">
+        <label for="violationCheckerInput">Người kiểm tra <span style="color:var(--red);">*</span></label>
+        <input type="text" id="violationCheckerInput" placeholder="Họ tên nhân viên/trạm kiểm tra">
+      </div>
+      <div class="form-field">
+        <label for="violationPenaltyInput">Mức phạt (đ)</label>
+        <input type="number" id="violationPenaltyInput" min="0" step="10000" placeholder="0" value="0">
+      </div>
+    </div>
+    <div class="form-field">
+      <label for="violationNoteInput">Ghi chú</label>
+      <textarea id="violationNoteInput" rows="2" placeholder="Mô tả tình huống phát hiện..."></textarea>
+    </div>
+    <div class="form-field">
+      <label for="violationStatusSelect">Trạng thái xử lý</label>
+      <select id="violationStatusSelect">
+        <option value="Chưa xử lý">Chưa xử lý</option>
+        <option value="Đã xử lý">Đã xử lý</option>
+        <option value="Đã miễn phạt">Đã miễn phạt</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="closeModal" data-args='["violationModal"]'>Đóng</button>
+      <button class="btn btn-primary" data-action="confirmViolation">Ghi nhận</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: XEM PHƠI (tổng hợp + lịch sử Re-open) ===== -->
+<div class="modal-overlay" id="manifestViewModal">
+  <div class="modal manifest-modal manifest-modal-wide">
+    <h3>Phơi chuyến xe</h3>
+    <div id="manifestViewBody" class="manifest-modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="closeModal" data-args='["manifestViewModal"]'>Đóng</button>
+      <button class="btn btn-secondary" data-action="printManifestView">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        In phơi
+      </button>
     </div>
   </div>
 </div>
@@ -1382,12 +1555,14 @@
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg><span id="toastText"></span></div>
 
 <script src="../js/shared/storage-keys.js?v=2"></script>
-<script src="../js/shared/format.js?v=5"></script>
+<script src="../js/shared/format.js?v=9"></script>
 <script src="../js/shared/constants.js?v=3"></script>
 <script src="../js/shared/seat-bank.js?v=3"></script>
 <script src="../js/shared/ui.js?v=13"></script>
-<script src="../js/shared/booking.js?v=42"></script>
-<script src="../js/ticketstaff.js?v=95"></script>
+<script src="../js/shared/booking.js?v=44"></script>
+<script src="../js/ticketstaff.js?v=105"></script>
+<script src="../js/ticketstaff-manifest-core.js?v=5"></script>
+<script src="../js/ticketstaff-manifest-ui.js?v=38"></script>
 <script src="../js/shared/events.js?v=2"></script>
 </body>
 </html>

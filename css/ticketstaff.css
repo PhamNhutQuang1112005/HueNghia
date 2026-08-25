@@ -69,34 +69,37 @@
   }
 }
 
+/* Các nút hành động vòng đời chuyến (Chỉ định xe/Khởi hành xe/Re-open...) giờ chỉ còn xuất hiện bên
+   trong dropdown "Thao tác" (.z2-actions-dropdown) nên style như menu item, không còn là pill màu. */
 .assign-btn {
-  background: linear-gradient(135deg, var(--red) 0%, #d81410 100%);
-  color: white;
+  width: 100%;
+  background: transparent;
+  color: var(--text-main);
   border: none;
-  border-radius: 6px;
-  padding: 5px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.2;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  flex: 0 0 auto;
+  justify-content: flex-start;
+  gap: 8px;
   white-space: nowrap;
-  transition: opacity .12s;
-  height: 28px;
+  transition: background .12s;
+  height: auto;
   box-sizing: border-box;
+  text-align: left;
 }
 
 .assign-btn:hover {
-  opacity: 0.9;
+  background: var(--surface-2);
 }
 
 .assign-btn svg {
-  width: 12px;
-  height: 12px;
-  stroke: white;
+  width: 15px;
+  height: 15px;
+  stroke: var(--text-sub);
   flex: 0 0 auto;
   display: block;
 }
@@ -109,7 +112,12 @@
 }
 
 .depart-btn {
-  background: linear-gradient(135deg, #2b2b2b 0%, #000000 100%);
+  color: var(--red);
+  font-weight: 700;
+}
+
+.depart-btn svg {
+  stroke: var(--red);
 }
 
 /* Searchable Dropdowns */
@@ -675,6 +683,633 @@
 .van-seat.selected .seat-num { color: #ffffff; }
 .van-seat.blocked { color: #C7CBD1; opacity: .55; cursor: not-allowed; }
 .van-seat.blocked .seat-num { color: #ffffff; }
+
+/* ===================== QUẢN LÝ VÒNG ĐỜI CHUYẾN XE (KHỞI HÀNH / RE-OPEN / KẾT CA) =====================
+   Toàn bộ CSS cho tính năng state machine chuyến xe (SELLING → DEPARTED → REOPEN → REOPEN_CLOSED →
+   MANIFEST_CLOSED), modal tạo phơi/Re-open/khách ngoài phơi/kết ca. Logic + render nằm ở
+   js/ticketstaff-manifest-core.js và js/ticketstaff-manifest-ui.js. */
+
+/* Badge trạng thái chuyến — màu đổi theo state, đặt ngay cạnh tên chuyến trên Zone 2. */
+.trip-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.trip-status-badge:empty {
+  display: none;
+}
+
+.trip-status-badge.status-selling {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.trip-status-badge.status-departed {
+  background: #E2E8F0;
+  color: #334155;
+}
+
+.trip-status-badge.status-reopen {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+.trip-status-badge.status-reopen_closed {
+  background: #E0E7FF;
+  color: #4338CA;
+}
+
+.trip-status-badge.status-manifest_closed {
+  background: #1E293B;
+  color: #F1F5F9;
+}
+
+/* Nút "Thao tác" gộp toàn bộ nút vòng đời chuyến (Chỉ định xe/Khởi hành xe/Re-open...) vào 1 dropdown
+   ở zone2, chỉ còn nút Thu gọn đứng riêng bên cạnh. Nội dung dropdown vẫn do renderTripLifecycleUI()
+   đổ vào #tripLifecycleActions (id giữ nguyên) theo state, chỉ đổi vai trò từ hàng nút sang panel. */
+.z2-actions-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.z2-actions-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  background: linear-gradient(135deg, var(--red) 0%, #d81410 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity .12s;
+  box-sizing: border-box;
+}
+
+.z2-actions-btn:hover {
+  opacity: .9;
+}
+
+.z2-actions-btn svg {
+  width: 12px;
+  height: 12px;
+  stroke: white;
+  flex: 0 0 auto;
+}
+
+.z2-actions-btn .z2-actions-chevron {
+  transition: transform .15s;
+}
+
+.z2-actions-menu.open .z2-actions-btn .z2-actions-chevron {
+  transform: rotate(180deg);
+}
+
+.z2-actions-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  background: var(--white);
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .12);
+  z-index: 60;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.assign-btn.reopen-btn {
+  color: #B45309;
+  font-weight: 700;
+}
+
+.assign-btn.reopen-btn svg {
+  stroke: #B45309;
+}
+
+/* Dòng thông tin chỉ đọc trong các modal (Chuyến xe/Biển số/Tài xế/Nhân viên/Thời gian...), thay cho
+   inline style lặp lại nhiều chỗ. */
+.readonly-line {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  padding: 8px 0;
+}
+
+/* Modal tổng hợp/Xem phơi/Kết ca cần rộng hơn modal xác nhận đơn giản (520px mặc định) vì có bảng số
+   liệu bên trong. Giới hạn chiều cao theo viewport — khi nội dung dài hơn cho phép, chỉ phần
+   .manifest-modal-body ở giữa cuộn dọc, tiêu đề (h3) và hàng nút (.modal-actions) luôn cố định tại chỗ,
+   không bị cuộn mất khỏi tầm nhìn cùng nội dung. */
+.manifest-modal {
+  width: 620px;
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+  overflow: hidden;
+}
+
+.manifest-modal.manifest-modal-wide {
+  width: 760px;
+}
+
+/* Modal Khởi hành xe làm mốc kích thước cố định — nội dung vốn ngắn/cố định (không tích lũy dài dần
+   theo thời gian như modal Xem phơi có thể có thêm lịch sử Re-open/vi phạm), nên bỏ trần 85vh để modal
+   luôn cao vừa đủ hiển thị hết nội dung, không cần cuộn trong điều kiện dùng bình thường.
+   overflow-y:auto ở .manifest-modal-body vẫn giữ nguyên làm lưới an toàn cho trường hợp bất thường. */
+#departModal .manifest-modal {
+  max-height: none;
+}
+
+.manifest-modal h3 {
+  flex: 0 0 auto;
+}
+
+.manifest-modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Edge cũ/IE */
+}
+
+/* Ẩn thanh cuộn trên trình duyệt Chromium/Safari — vẫn cuộn được bình thường bằng chuột/cảm ứng, chỉ
+   ẩn phần thanh trượt hiển thị cho gọn giao diện modal. */
+.manifest-modal-body::-webkit-scrollbar {
+  display: none;
+}
+
+.manifest-modal .modal-actions {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+/* Khối tiêu đề 1 nhóm số liệu bên trong modal (VD "Phơi gốc", "Doanh thu theo trạm", "Đối soát"). */
+.manifest-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  margin: 10px 0 5px;
+}
+
+.manifest-section-title:first-child {
+  margin-top: 0;
+}
+
+/* Khối "Thông tin chuyến" trong modal Khởi hành xe/Xem phơi — header riêng (tuyến + biển số nổi bật)
+   và danh sách nhãn/giá trị xếp dọc bên dưới, thay cho 1 dòng chữ dài nối bằng dấu "•" trước đây. */
+.trip-meta-box {
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.trip-meta-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-gray);
+}
+
+.trip-meta-route {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.trip-meta-plate {
+  font-size: 12.5px;
+  font-weight: 700;
+  font-family: 'Roboto Mono', monospace;
+  color: var(--text-sub);
+  background: var(--white);
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-sm);
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+/* 2 cột: trái là kíp xe (Tài xế/Phụ xe), phải là mốc thời gian (Khởi hành/tạo phơi lúc) — tách vạch
+   giữa để phân biệt rõ 2 nhóm thông tin khác bản chất. */
+.trip-meta-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.trip-meta-col:first-child {
+  border-right: 1px solid var(--border-gray);
+}
+
+.trip-meta-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  font-size: 13.5px;
+}
+
+.trip-meta-item:not(:last-child) {
+  border-bottom: 1px solid var(--surface);
+}
+
+.trip-meta-item .tm-label {
+  color: var(--text-sub);
+  font-weight: 600;
+}
+
+.trip-meta-item .tm-value {
+  color: var(--text-main);
+  font-weight: 700;
+  text-align: right;
+}
+
+
+/* Modal "Xem phơi" gom rất nhiều khối (thông tin chuyến/tổng hiện tại/doanh thu theo trạm/diễn biến/
+   vi phạm...) nên các bảng dùng lại .pax-table ở đây cần thu nhỏ padding hơn bản gốc (vốn tối ưu cho
+   bảng chính toàn màn hình) để đỡ chiếm chiều cao modal. */
+.manifest-modal .pax-table thead th {
+  padding: 6px 10px;
+}
+
+.manifest-modal .pax-table tbody td {
+  padding: 6px 10px;
+  font-size: 12.5px;
+}
+
+/* Bảng chi tiết mệnh giá dạng lưới 2 dòng (Số lượng & Số tiền) có vạch kẻ mảnh chuẩn như phơi in */
+.denom-grid-table {
+  width: 100%;
+  border-collapse: collapse !important;
+}
+
+.denom-grid-table th,
+.denom-grid-table td {
+  border: 1px solid var(--border-gray) !important;
+  padding: 5px 6px !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+.denom-grid-table thead th {
+  background: var(--surface-2) !important;
+  color: var(--text-sub) !important;
+  font-weight: 700 !important;
+  font-size: 11.5px !important;
+  letter-spacing: 0.3px;
+}
+
+.denom-station-cell {
+  background: var(--surface-2) !important;
+  font-weight: 700 !important;
+  font-size: 12.5px !important;
+  color: var(--text-main) !important;
+}
+
+.denom-row-count td {
+  background: #FFFFFF;
+}
+
+.denom-row-amount td {
+  background: #FAFAFA;
+}
+
+/* 3 hàng tổng hợp Số vé/Tiền rước đường/Tổng tiền ở cuối bảng (gộp thay cho khối "Tổng hiện tại" riêng
+   trước đây) — nền xám nhạt giống header để tách rõ khỏi lưới trạm × mệnh giá phía trên. */
+.denom-summary-row td {
+  background: var(--surface-2) !important;
+}
+
+/* Kiểu đường kẻ ô dùng chung cho các bảng liệt kê thường (Doanh thu theo trạm, Lịch sử Re-open...) —
+   giống bảng "Chi tiết mệnh giá" bên cạnh nhưng giữ nguyên căn lề riêng từng cột (không ép center như
+   bảng mệnh giá vì đây là bảng liệt kê thường, không phải lưới số). */
+.lined-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.lined-table th,
+.lined-table td {
+  border: 1px solid var(--border-gray);
+}
+
+.lined-table thead th {
+  background: var(--surface-2);
+  color: var(--text-sub);
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: .3px;
+}
+
+
+
+/* Timeline "Phơi gốc → Re-open lần N → Tổng hiện tại" (mục 6 trong spec nghiệp vụ) — không ghi đè số
+   cũ, mỗi mốc hiện riêng 1 dòng, số phát sinh có dấu (+) để phân biệt với số liệu gốc. */
+.manifest-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 12px;
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  margin-bottom: 4px;
+}
+
+.manifest-history-item.is-total {
+  background: var(--red-light);
+  border-color: #FBD5D4;
+}
+
+.manifest-history-item .mh-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.manifest-history-item .mh-sub {
+  font-size: 10.5px;
+  color: var(--text-sub);
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+.manifest-history-item .mh-value {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--text-main);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.manifest-history-item.is-total .mh-value {
+  color: var(--red);
+  font-size: 14px;
+}
+
+/* Cảnh báo "PHÁT HIỆN KHÁCH KHÔNG CÓ TRÊN PHƠI" — nổi bật hơn hẳn .warn-box thường vì đây là tình huống
+   vi phạm cần chú ý ngay khi mở modal, không phải nhắc nhở thông thường. */
+.violation-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--red);
+  color: white;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  margin-bottom: 14px;
+}
+
+.violation-alert svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+/* Số chênh lệch trong modal ghi nhận khách ngoài phơi — 0 thì trung tính, khác 0 thì đỏ nổi bật để
+   nhân viên không bỏ sót. */
+.diff-highlight {
+  font-size: 18px !important;
+  font-weight: 800 !important;
+}
+
+.diff-highlight.has-diff {
+  color: var(--red) !important;
+}
+
+/* Khối đối soát kết ca — hệ thống vs thực tế, chênh lệch phải đập ngay vào mắt (mục 11), không cho
+   click lướt qua nút xác nhận mà không thấy. */
+.reconcile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--surface);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.reconcile-row .rc-value {
+  font-weight: 800;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.reconcile-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0 0;
+  margin-top: 4px;
+  border-top: 2px solid var(--border-gray);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.reconcile-diff-box {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.reconcile-diff-box.ok {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.reconcile-diff-box.warn {
+  background: var(--red-light);
+  color: var(--red);
+  border: 1.5px solid var(--red);
+}
+
+/* Mục "Kết ca" trong dropdown tài khoản (cạnh tên đăng nhập) — cùng layout với .user-logout-btn (đã có
+   sẵn ở shared/booking-ui.css) nhưng màu trung tính vì đây là điều hướng sang trang Kết ca, không phải
+   hành động nguy hiểm như đăng xuất. */
+.user-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.user-menu-item svg {
+  width: 15px;
+  height: 15px;
+  stroke: var(--text-sub);
+  flex: 0 0 auto;
+}
+
+.user-menu-item:hover {
+  background: var(--surface-2);
+}
+
+/* Trang Kết ca (thay cho modal cũ) — nằm cùng cấp #historyView/#pickupView, tự cuộn nội dung dài. */
+#shiftClosingView {
+  flex: 1;
+  width: 100%;
+  padding: 24px;
+  overflow-y: auto;
+  gap: 18px;
+}
+
+#shiftClosingView .modal-actions {
+  margin-top: 4px;
+}
+
+/* Khối số liệu tổng hợp dùng chung cho trang Kết ca VÀ các modal phơi (Xem phơi/Khởi hành xe/Re-open...)
+   — vài số chính nổi bật thành 1 hàng, số phụ gom vào danh sách/chip gọn bên dưới thay vì mỗi số 1 ô
+   vuông riêng như trước, đỡ tốn chiều cao. .compact dùng trong modal hẹp nên chữ/khoảng cách nhỏ hơn so
+   với trang Kết ca full-width. */
+.stat-hero-row {
+  display: flex;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin-bottom: 12px;
+}
+
+.stat-hero-item {
+  flex: 1;
+  text-align: center;
+}
+
+.stat-hero-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.stat-hero-item.accent .stat-hero-value {
+  color: var(--red);
+}
+
+.stat-hero-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: .2px;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+.stat-hero-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--border-gray);
+  flex: 0 0 auto;
+}
+
+.stat-detail-list {
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.stat-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.stat-detail-row:not(:last-child) {
+  border-bottom: 1px solid var(--surface);
+}
+
+.stat-detail-row span:last-child {
+  font-weight: 700;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.stat-detail-row.warn span:last-child {
+  color: var(--red);
+}
+
+/* Đường kẻ mảnh phân tách khối "Tổng hiện tại" khỏi khối "Chi tiết phơi" bên dưới */
+
+/* Đường kẻ mảnh phân tách khối "Tổng hiện tại" (tổng quan/thanh toán) khỏi khối "Chi tiết phơi" bên
+   dưới (mệnh giá/trạm/diễn biến...) trong modal Xem phơi/Khởi hành xe. */
+.pv-hr {
+  border: none;
+  border-top: 1px solid var(--border-gray);
+  margin: 4px 0 16px;
+}
+
+/* Tiêu đề từng khối trong "Chi tiết phơi" (mệnh giá/trạm/diễn biến/lịch sử/vi phạm) — chỉ chữ, không
+   khung bao quanh cả khối như .manifest-section-title kiểu cũ vẫn dùng ở các modal Re-open/Kết ca. */
+.pv-detail-title {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  margin: 16px 0 8px;
+}
+
+.pv-detail-title:first-child {
+  margin-top: 0;
+}
+
+/* Modal Xem phơi/Khởi hành xe giảm hẳn border thừa quanh bảng — giữ border trong bảng (cần cho dữ liệu
+   dạng lưới) nhưng bỏ khung bao ngoài .pax-table-wrap vốn tạo cảm giác "card lồng card". */
+.manifest-modal .pax-table-wrap {
+  border: none;
+  border-radius: 0;
+}
+
+/* Bảng "Chi tiết mệnh giá"/"Doanh thu theo trạm"/"Lịch sử Re-open" cần bo góc ngoài như .trip-meta-box/
+   .stat-detail-list bên cạnh — bo góc trên <table border-collapse> không ăn nên chuyển viền + bo góc ra
+   khung bọc ngoài, bỏ border riêng của .denom-grid-table/.lined-table (giữ lại vạch kẻ ô bên trong) để
+   tránh viền đôi. */
+.manifest-modal .grid-table-wrap {
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
 
 .seat-legend-dot.selected { background: #F27874; }
 .seat-legend-dot.blocked { background: #C7CBD1; }
