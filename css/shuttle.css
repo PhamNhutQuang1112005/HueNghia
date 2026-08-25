@@ -942,3 +942,88 @@ input[type="checkbox"]{width:16px;height:16px;accent-color:var(--red);cursor:poi
     padding: 0 !important;
   }
 }
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 1199px) {
+  .topbar {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    height: auto;
+    min-height: 54px;
+    row-gap: 8px;
+    padding: 10px 16px;
+  }
+  .side-search-wrap {
+    order: 3;
+    flex: 1 1 100%;
+    max-width: none;
+    min-width: 0;
+  }
+  .side-tabs {
+    order: 4;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+  .user-menu { order: 2; flex: 0 0 auto; }
+
+  .filter-toolbar { padding: 10px 16px; }
+  .filter-field { flex: 1 1 200px; }
+}
+
+@media (max-width: 767px) {
+  .topbar { padding: 10px 12px; }
+
+  .filter-toolbar { padding: 10px 12px; gap: 8px 10px; }
+  .filter-field { flex: 1 1 calc(50% - 5px); min-width: 0; }
+  .filter-field-date {
+    flex: 1 1 calc(50% - 5px) !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+  .filter-reset { flex: 1 1 100%; margin-left: 0; }
+  .filter-reset button { width: 100%; justify-content: center; }
+  .status-legend-inline { gap: 6px 12px; }
+
+  .grid-wrap { padding: 0 12px 118px; }
+
+  /* Action bar dùng position:fixed + min-width:420px + translate(-50%,...) canh giữa theo left:50% —
+     420px vượt quá bề ngang nhiều màn hình điện thoại phổ biến (360-412px), luôn tràn ngang. Đổi sang
+     neo 2 mép trái/phải bằng left/right cố định, bỏ hẳn phần dịch chuyển ngang trong transform. */
+  .action-bar {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    min-width: 0;
+    width: auto;
+    transform: translateY(100%);
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+  .action-bar.show { transform: translateY(0); }
+  .action-bar-btns { flex-wrap: wrap; width: 100%; }
+  .action-bar-btns .btn { flex: 1 1 auto; justify-content: center; }
+
+  .modal-overlay { padding: 12px; }
+
+  .btn { min-height: 40px; padding: 10px 16px; }
+  .filter-select,
+  .filter-field select { min-height: 40px; }
+  input[type="checkbox"] { width: 18px; height: 18px; }
+
+  .row-menu-btn { width: 36px; height: 36px; }
+  .row-menu-dropdown { max-width: calc(100vw - 24px); }
+}
+
+@media (max-width: 479px) {
+  .filter-field,
+  .filter-field-date {
+    flex: 1 1 100% !important;
+    max-width: none !important;
+  }
+  .brand-text span { display: none; }
+  .side-tabs { padding: 2px; }
+  .side-tab { padding: 0 12px; font-size: 11.5px; }
+}

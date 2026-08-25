@@ -541,6 +541,26 @@
   text-align: center;
 }
 
+/* Trang "Rước liền" — cùng kiểu bảng kẻ ô đầy đủ với bảng Hành khách/Trung chuyển/Ghế hủy/Lịch sử
+   (xem .pax-table--grid ở css/shared/booking-ui.css): mỗi ô đều có viền, header nền xám nhạt, thay cho
+   kiểu chỉ có viền dưới mỗi hàng mặc định của .shuttle-table. */
+.shuttle-table.shuttle-table--grid {
+  border-collapse: collapse;
+}
+
+.shuttle-table.shuttle-table--grid th,
+.shuttle-table.shuttle-table--grid td {
+  border: 1px solid var(--border-gray);
+}
+
+.shuttle-table.shuttle-table--grid thead th {
+  background: var(--surface-2);
+}
+
+.shuttle-table.shuttle-table--grid tbody tr:last-child td {
+  border-bottom: 1px solid var(--border-gray);
+}
+
 /* Chú giải trạng thái (giống trang shuttle) */
 .status-legend {
   flex: 0 0 auto;
@@ -1313,3 +1333,49 @@
 
 .seat-legend-dot.selected { background: #F27874; }
 .seat-legend-dot.blocked { background: #C7CBD1; }
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 1199px) {
+  .assign-panel { width: 92vw; }
+  #assignPickupModal .panel-body { grid-template-columns: 280px 1fr; }
+}
+
+@media (max-width: 767px) {
+  /* Modal "Chỉ định xe rước liền" có chiều cao cố định 650px + 2 cột (danh sách phơi 350px | sơ đồ
+     ghế) — trên mobile đổi sang cao tự nhiên theo nội dung (giới hạn theo viewport) và xếp chồng 1 cột,
+     danh sách phơi lên trên, sơ đồ ghế bên dưới. */
+  .assign-panel { width: 100%; height: auto; max-height: 92vh; }
+  #assignPickupModal .panel-body {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+    height: auto;
+  }
+  .assign-left-col,
+  .assign-right-col { height: auto; overflow: visible; }
+  .assign-left-col {
+    border-bottom: 1px solid var(--border-gray);
+    padding-bottom: 12px;
+    margin-bottom: 4px;
+  }
+  #assignPickupModal .van-frame { flex-direction: column; }
+
+  .trip-meta-cols { grid-template-columns: 1fr; }
+  .trip-meta-col:first-child {
+    border-right: none;
+    border-bottom: 1px solid var(--border-gray);
+  }
+
+  .manifest-modal,
+  .manifest-modal.manifest-modal-wide { width: 100%; }
+
+  .stat-hero-row { flex-wrap: wrap; gap: 10px; }
+  .stat-hero-divider { display: none; }
+  .stat-hero-item { flex: 1 1 40%; }
+
+  .filter-reset { flex: 1 1 100%; margin-left: 0; }
+  .filter-reset button { width: 100%; justify-content: center; }
+
+  .pk-trip-search-box { padding: 9px 14px; }
+  .assign-action-btn,
+  .status-tag { min-height: 30px; }
+}

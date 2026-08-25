@@ -409,7 +409,7 @@ function renderTransshipTables() {
   // Render Table 1: DANH SÁCH TRUNG CHUYỂN ĐÓN
   if (pickupBody) {
     if (pickupList.length === 0) {
-      pickupBody.innerHTML = '<tr><td colspan="9" class="ts-empty">Không có hành khách cần trung chuyển đón trong chuyến này</td></tr>';
+      pickupBody.innerHTML = '<tr><td colspan="10" class="ts-empty">Không có hành khách cần trung chuyển đón trong chuyến này</td></tr>';
     } else {
       pickupBody.innerHTML = pickupList.map((g, idx) => {
         const item = g.main;
@@ -439,10 +439,8 @@ function renderTransshipTables() {
             <td class="mono pax-col-stt">${idx + 1}</td>
             <td class="pax-col-driver">${driverCellHtml}</td>
             <td class="pax-col-address">${pickupLoc}</td>
-            <td class="pax-col-seat">
-              <div class="pax-seat-line"><span class="pax-seat-label">SL:</span> ${seatCount}</div>
-              <div class="pax-seat-line"><span class="pax-seat-label">VT:</span> ${seatCodes.join(', ')}</div>
-            </td>
+            <td class="pax-col-sl">${seatCount}</td>
+            <td class="pax-col-vt">${seatCodes.join(', ')}</td>
             <td class="pax-col-name">${customerNameSafe}</td>
             <td class="pax-col-phone">${phone}</td>
             <td class="pax-col-total">${totalPrice}</td>
@@ -457,7 +455,7 @@ function renderTransshipTables() {
   // Render Table 2: DANH SÁCH TRUNG CHUYỂN TRẢ
   if (dropoffBody) {
     if (dropoffList.length === 0) {
-      dropoffBody.innerHTML = '<tr><td colspan="8" class="ts-empty">Không có hành khách cần trung chuyển trả trong chuyến này</td></tr>';
+      dropoffBody.innerHTML = '<tr><td colspan="9" class="ts-empty">Không có hành khách cần trung chuyển trả trong chuyến này</td></tr>';
     } else {
       dropoffBody.innerHTML = dropoffList.map((g, idx) => {
         const item = g.main;
@@ -478,10 +476,8 @@ function renderTransshipTables() {
           <tr>
             <td class="mono pax-col-stt">${idx + 1}</td>
             <td class="pax-col-address">${dropoffLoc}</td>
-            <td class="pax-col-seat">
-              <div class="pax-seat-line"><span class="pax-seat-label">SL:</span> ${seatCount}</div>
-              <div class="pax-seat-line"><span class="pax-seat-label">VT:</span> ${seatCodes.join(', ')}</div>
-            </td>
+            <td class="pax-col-sl">${seatCount}</td>
+            <td class="pax-col-vt">${seatCodes.join(', ')}</td>
             <td class="pax-col-name">${customerNameSafe}</td>
             <td class="pax-col-phone">${phone}</td>
             <td class="pax-col-total">${totalPrice}</td>
@@ -540,7 +536,7 @@ function renderPassengerList() {
   const tbody = document.getElementById('paxTableBody');
   if (tbody) {
     if (groups.length === 0) {
-      tbody.innerHTML = '<tr class="pax-empty-row"><td colspan="9">Không có hành khách phù hợp bộ lọc</td></tr>';
+      tbody.innerHTML = '<tr class="pax-empty-row"><td colspan="10">Không có hành khách phù hợp bộ lọc</td></tr>';
     } else {
       tbody.innerHTML = groups.map((g, index) => {
         const s = g.main;
@@ -561,7 +557,7 @@ function renderPassengerList() {
         const conNoText = isFree ? 'Miễn phí' : (conNoAmount > 0 ? conNoAmount.toLocaleString('vi-VN') + 'đ' : '—');
 
         const luggageHtml = s.hasLuggage
-          ? `<span class="pax-luggage-mark yes" title="Có hành lý ký gửi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg></span>`
+          ? `<span class="pax-luggage-mark" title="Có hành lý ký gửi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg></span>`
           : `<span class="pax-luggage-empty">—</span>`;
 
         // Ghi chú do nhân viên nhập tay có thể chứa dấu ngoặc kép/&/< — phải escapeHtml() trước khi chèn,
@@ -589,10 +585,8 @@ function renderPassengerList() {
               </div>
             </div>
           </td>
-          <td class="pax-col-seat">
-            <div class="pax-seat-line"><span class="pax-seat-label">SL:</span> ${count}</div>
-            <div class="pax-seat-line"><span class="pax-seat-label">VT:</span> ${seatCodes.join(', ')}</div>
-          </td>
+          <td class="pax-col-sl">${count}</td>
+          <td class="pax-col-vt">${seatCodes.join(', ')}</td>
           <td class="pax-col-paid">${daThuText}</td>
           <td class="pax-col-debt">${conNoText}</td>
           <td class="pax-col-luggage">${luggageHtml}</td>

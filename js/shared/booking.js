@@ -187,7 +187,6 @@ function renderPassengerHistoryTable() {
 
 function renderPassengerHistoryRowHtml(r, idx) {
   const { firstStopHtml, lastStopHtml } = getHistoryStopsDisplay(r);
-  const formattedDate = formatHistoryDate(r.date);
   const plate = r.plate || '51F-123.45';
   const vehicleType = r.vehicleType || 'Limousine 24 Phòng';
   const driver = r.driver || 'Trần Văn Hùng';
@@ -196,11 +195,26 @@ function renderPassengerHistoryRowHtml(r, idx) {
   const sellStaffStr = r.sellStaff ? (getStaffCode(r.sellStaff) || r.sellStaff) : (r.paid ? 'NV05' : '—');
   const priceStr = r.price ? r.price.toLocaleString('vi-VN') + 'đ' : '—';
   const seatCount = r.seat ? r.seat.split(',').map(s => s.trim()).filter(Boolean).length : 0;
-  const actionTimeStr = formatActionTime(r.actionTime);
+  // Cột "Thời gian" gộp luôn phần ngày (không còn cột "Ngày" riêng vì trùng thông tin) — lấy cả ngày
+  // lẫn giờ từ cùng 1 mốc seat.actionTime thay vì ghép với r.date (ngày khởi hành chuyến, có thể khác
+  // ngày nhân viên thao tác).
+  const actionTimeStr = r.actionTime ? `${formatHistoryDate(r.actionTime)} ${formatActionTime(r.actionTime)}` : '—';
+  // Ghi chú của khách hàng — chỉ hiện chữ (không icon), line-clamp 2 dòng để không kéo dài chiều cao hàng.
+  const noteSafe = escapeHtml(r.note || '');
+  const noteHtml = r.note
+    ? `<span class="pax-note-clamp">${noteSafe}</span>`
+    : `<span class="pax-note-empty">—</span>`;
+  // Phân biệt nhân viên đặt/bán bằng màu tag thay vì chữ "Đặt:"/"Bán:" — đặt (giữ chỗ) tag nền vàng,
+  // bán (thu tiền, chốt vé) tag nền đỏ, theo đúng 2 tông màu trạng thái đã dùng xuyên suốt hệ thống
+  // (vàng = đang chờ/giữ chỗ, đỏ = thương hiệu/hoàn tất). Chưa có nhân viên bán (sellStaffStr === '—')
+  // thì hiện gạch ngang trung tính, không tô màu đỏ cho ô rỗng.
+  const staffTagsHtml = `<div class="staff-tag-stack">
+    <span class="staff-tag staff-tag-book">${bookStaffStr}</span>
+    ${sellStaffStr === '—' ? `<span class="staff-tag staff-tag-empty">—</span>` : `<span class="staff-tag staff-tag-sell">${sellStaffStr}</span>`}
+  </div>`;
 
   return `
     <tr>
-      <td class="mono ch-col-nowrap">${formattedDate}</td>
       <td>
         <span class="ch-trip-link" data-action="goToTripFromHistory" data-args='${JSON.stringify(["__event__", idx])}' title="Biển số xe: ${plate} • Loại xe: ${vehicleType} • Tài xế: ${driver} • Phụ xe: ${helper}">${r.route} — ${r.time}</span>
       </td>
@@ -219,11 +233,13 @@ function renderPassengerHistoryRowHtml(r, idx) {
           </div>
         </div>
       </td>
-      <td class="mono" title="${r.seat || '—'}">${seatCount || '—'}</td>
+      <td class="mono">${seatCount || '—'}</td>
+      <td class="mono">${r.seat || '—'}</td>
       <td style="text-align:right;">${priceStr}</td>
-      <td style="font-size:11.5px;color:var(--text-sub);">Đặt: <b>${bookStaffStr}</b><br>Bán: <b>${sellStaffStr}</b></td>
-      <td class="mono">${actionTimeStr}</td>
-      <td><button type="button" class="btn ph-rebook-btn" data-action="openRebookFromHistory" data-args='${JSON.stringify([idx])}'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Đặt lại</button></td>
+      <td title="${noteSafe}">${noteHtml}</td>
+      <td>${staffTagsHtml}</td>
+      <td class="mono" style="color:var(--text-sub);font-style:italic;font-weight:400;">${actionTimeStr}</td>
+      <td><button type="button" class="btn ph-rebook-btn" data-action="openRebookFromHistory" data-args='${JSON.stringify([idx])}' title="Đặt lại" aria-label="Đặt lại"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button></td>
     </tr>
   `;
 }
@@ -612,6 +628,7 @@ function groupHistoryResults(rawResults) {
       g.totalPrice += Number(item.price) || 0;
       if (!g.pickupAddress && item.pickupAddress) g.pickupAddress = item.pickupAddress;
       if (!g.dropoffAddress && item.dropoffAddress) g.dropoffAddress = item.dropoffAddress;
+      if (!g.note && item.note) g.note = item.note;
     }
   });
 
@@ -1284,6 +1301,7 @@ function scanTripSeatBankHistory(matchSeatFn) {
           transship: seat.transshipStation || seat.transship || '',
           pickupAddress: seat.pickupAddress || '',
           dropoffAddress: seat.dropoffAddress || '',
+          note: seatNoteWithReason(seat),
           ticketNo: seat.ticketNo,
           route: tripMeta.route,
           time: tripMeta.time,

@@ -1151,3 +1151,45 @@
   font-size: 13.5px;
   font-weight: 600;
 }
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 1199px) {
+  .phoi-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+}
+
+@media (max-width: 767px) {
+  /* Mỗi thẻ phơi xe chiếm trọn 1 hàng — biển số/giờ/trạng thái/tên phơi/nút Sửa-Bán vé đã tự xếp đúng
+     hàng/cột bên trong thẻ (flex column có sẵn), chỉ cần đưa lưới thẻ về 1 cột. */
+  .phoi-card-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .phoi-edit-btn,
+  .phoi-sell-btn { min-height: 38px; }
+
+  .modal-row { flex-direction: column; gap: 10px; }
+  #singleModal .modal-row { gap: 8px; }
+  .modal-body { max-height: calc(100vh - 160px); }
+  #singleModal .modal-body { max-height: calc(100vh - 90px); }
+
+  .weekday-checkboxes { flex-wrap: wrap; }
+  .chk-label { flex: 1 1 40px; }
+
+  .bulk-template-bar-fields { flex-wrap: wrap; }
+  .bulk-template-date-field { flex: 1 1 140px; }
+
+  .filter-field-date { flex: 1 1 100%; max-width: none; min-width: 0; }
+
+  /* callcenter.html bọc riêng zone1/right-col trong #bookingView.main-view-container (display:flex hàng
+     ngang mặc định, khác ticketstaff.html có zone1/right-col nằm thẳng trong .main) — override
+     .main{flex-direction:column} ở booking-ui.css không chạm tới container này, phải xếp chồng riêng ở
+     đây, đồng thời bỏ overflow:hidden để nội dung xếp chồng không bị cắt mất mà cuộn qua .main bên ngoài. */
+  #bookingView.main-view-container {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+}
