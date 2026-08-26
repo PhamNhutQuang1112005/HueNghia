@@ -172,17 +172,35 @@ function addShiftClosing(record) {
 // ticketstaff.js, hàm applyFormToSeat/confirmSellPayment/confirmRebookAndSell), nên tổng hợp luôn tính
 // lại từ dữ liệu vé thật (nguồn duy nhất) thay vì cộng dồn thủ công — tránh sai số/không khớp.
 
-// Gom vé của CHUYẾN ĐANG MỞ (currentTripId/seatPlanDown/Up qua getAllBookedSeats()) theo 1 điều kiện lọc
-// tuỳ ý — dùng chung cho cả "tổng hợp lúc khởi hành" lẫn "tổng hợp 1 lần Re-open".
-function tsAggregateTickets(predicateFn) {
-  const seats = getAllBookedSeats().filter(predicateFn);
-  const groups = groupSeatsByTicket(seats);
+// Ghế đã đặt/bán của 1 "bank" (seatPlan) bất kỳ — cùng điều kiện trạng thái với getAllBookedSeats() ở
+// ticketstaff.js nhưng nhận thẳng bank làm tham số thay vì đọc biến toàn cục seatPlanDown/Up, để gom lại
+// được vé của 1 CHUYẾN KHÁC currentTripId đang xem (VD lúc vá dữ liệu phơi cũ ở tsGetManifestCurrentTotals).
+function tsGetBankBookedSeats(bank) {
+  if (!bank) return [];
+  return [...(bank.down || []), ...(bank.up || []), ...(bank.extraSeats || [])]
+    .filter(s => ['sold', 'hold', 'free', 'cargo'].includes(s.state));
+}
+
+// Gom 1 danh sách ghế đã đặt/bán theo 1 điều kiện lọc tuỳ ý — dùng chung cho cả "tổng hợp lúc khởi hành"
+// (chuyến đang mở, qua tsAggregateTickets) lẫn "vá dữ liệu phơi cũ" (chuyến khác, qua tsGetBankBookedSeats).
+function tsAggregateTicketsFromSeats(seats, predicateFn) {
+  const groups = groupSeatsByTicket(seats.filter(predicateFn));
   const result = {
     ticketCount: groups.length,
     passengerCount: 0,
     totalAmount: 0,
     cashAmount: 0,
     transferAmount: 0,
+    // Đã thu = tổng tiền vé ĐÃ BÁN (state 'sold'). Chưa thu = tổng tiền vé CHƯA BÁN (giữ chỗ 'hold', vé
+    // miễn phí 'free', hàng hoá 'cargo') — tách theo trạng thái ghế, không theo cờ "paid"/tiền cọc.
+    paidAmount: 0,
+    unpaidAmount: 0,
+    // "Vé trạm" = vé của khách mua tại trạm hoặc đi trung chuyển tới trạm (guestType Khách trạm/Trung
+    // chuyển), đếm theo VÉ. "Khách rước đường" tách riêng, đếm theo HÀNH KHÁCH (guestType Rước đường) vì
+    // 1 vé rước đường có thể gộp nhiều ghế/khách cùng lúc — kèm danh sách chi tiết để hiện bảng riêng.
+    stationTicketCount: 0,
+    roadsidePassengerCount: 0,
+    roadsideList: [],
     stationBreakdown: {}
   };
   // Luôn có đủ các trạm đang cấu hình trong "Doanh thu theo trạm" (kể cả chưa phát sinh vé), khớp với
@@ -200,13 +218,43 @@ function tsAggregateTickets(predicateFn) {
     const method = s.paymentMethod || 'Tiền mặt';
     if (method === 'Chuyển khoản') result.transferAmount += amount;
     else result.cashAmount += amount;
+
+    if (s.state === 'sold') result.paidAmount += amount;
+    else result.unpaidAmount += amount;
+
     const station = s.sellingStation || getCurrentStation() || 'Chưa xác định';
     if (!result.stationBreakdown[station]) result.stationBreakdown[station] = { tickets: 0, passengers: 0, amount: 0 };
     result.stationBreakdown[station].tickets += 1;
     result.stationBreakdown[station].passengers += count;
     result.stationBreakdown[station].amount += amount;
+
+    const guestType = s.guestType || 'Khách trạm';
+    if (guestType === 'Rước đường') {
+      result.roadsidePassengerCount += count;
+      // Điểm rước — cùng thứ tự ưu tiên field đang dùng ở getHistoryStopsDisplay() (shared/booking.js)
+      // để hiện đúng 1 địa chỉ như các nơi khác trong app.
+      const pickupLoc = s.transshipStation || s.transship || s.pickupAddress || s.fromTransfer || '';
+      result.roadsideList.push({
+        name: s.customerName || '',
+        phone: s.phone || '',
+        firstStop: s.firstStop || '',
+        lastStop: s.lastStop || '',
+        pickupLoc,
+        seatCount: count,
+        seatCodes: g.members.map(m => m.code),
+        amount
+      });
+    } else {
+      result.stationTicketCount += 1;
+    }
   });
   return result;
+}
+
+// Gom vé của CHUYẾN ĐANG MỞ (currentTripId/seatPlanDown/Up qua getAllBookedSeats()) — wrapper giữ đúng
+// tên/chữ ký cũ cho các chỗ đang gọi (tsAggregateOriginalTickets/tsAggregateReopenEventTickets...).
+function tsAggregateTickets(predicateFn) {
+  return tsAggregateTicketsFromSeats(getAllBookedSeats(), predicateFn);
 }
 
 // Toàn bộ vé đã bán TRƯỚC khi khởi hành (chưa có seat.soldPhase === 'POST_DEPART' nào vì lúc này chuyến
@@ -286,6 +334,11 @@ function tsCloseActiveReopen(tripId) {
   event.amountAdded = diff.totalAmount;
   event.cashAdded = diff.cashAmount;
   event.transferAdded = diff.transferAmount;
+  event.paidAdded = diff.paidAmount;
+  event.unpaidAdded = diff.unpaidAmount;
+  event.stationTicketAdded = diff.stationTicketCount;
+  event.roadsidePassengerAdded = diff.roadsidePassengerCount;
+  event.roadsideListAdded = diff.roadsideList;
   event.stationBreakdown = diff.stationBreakdown;
 
   const events = getReopenEventsForTrip(tripId).map(e => e.id === event.id ? event : e);
@@ -301,6 +354,23 @@ function tsCloseActiveReopen(tripId) {
 function tsGetManifestCurrentTotals(tripId) {
   const manifest = getManifest(tripId);
   if (!manifest) return null;
+
+  // Phơi tạo trước khi có Đã thu/Chưa thu/Vé trạm/Khách rước đường (roadsideList undefined — khác "[]"
+  // là đã tính nhưng không ai Rước đường) chưa từng tính các trường này nên đóng băng thiếu, không phải
+  // do dữ liệu vé thật sự bằng 0 — vá lại 1 lần bằng cách tính lại đúng công thức gốc từ tripSeatBank
+  // (vẫn còn đủ trong bộ nhớ vì tripSeatBank lưu chung cho MỌI chuyến, không riêng chuyến đang mở) rồi
+  // lưu lại để không phải vá lại mỗi lần xem.
+  if (manifest.original.roadsideList === undefined && typeof tripSeatBank !== 'undefined' && tripSeatBank[tripId]) {
+    const seats = tsGetBankBookedSeats(tripSeatBank[tripId]);
+    const backfilled = tsAggregateTicketsFromSeats(seats, s => s.soldPhase !== 'POST_DEPART');
+    manifest.original.paidAmount = backfilled.paidAmount;
+    manifest.original.unpaidAmount = backfilled.unpaidAmount;
+    manifest.original.stationTicketCount = backfilled.stationTicketCount;
+    manifest.original.roadsidePassengerCount = backfilled.roadsidePassengerCount;
+    manifest.original.roadsideList = backfilled.roadsideList;
+    saveManifest(tripId, manifest);
+  }
+
   const events = getReopenEventsForTrip(tripId).filter(e => e.status === 'CLOSED');
 
   const totals = {
@@ -309,6 +379,13 @@ function tsGetManifestCurrentTotals(tripId) {
     totalAmount: manifest.original.totalAmount,
     cashAmount: manifest.original.cashAmount,
     transferAmount: manifest.original.transferAmount,
+    // "|| 0"/"|| []" cho phơi cũ hơn nữa (tạo trước cả tripSeatBank[tripId] còn tồn tại để vá) — không
+    // suy ngược lại được nữa, coi như 0/rỗng thay vì NaN/crash.
+    paidAmount: manifest.original.paidAmount || 0,
+    unpaidAmount: manifest.original.unpaidAmount || 0,
+    stationTicketCount: manifest.original.stationTicketCount || 0,
+    roadsidePassengerCount: manifest.original.roadsidePassengerCount || 0,
+    roadsideList: (manifest.original.roadsideList || []).slice(),
     stationBreakdown: {}
   };
   Object.keys(manifest.original.stationBreakdown).forEach(st => {
@@ -321,6 +398,11 @@ function tsGetManifestCurrentTotals(tripId) {
     totals.totalAmount += ev.amountAdded || 0;
     totals.cashAmount += ev.cashAdded || 0;
     totals.transferAmount += ev.transferAdded || 0;
+    totals.paidAmount += ev.paidAdded || 0;
+    totals.unpaidAmount += ev.unpaidAdded || 0;
+    totals.stationTicketCount += ev.stationTicketAdded || 0;
+    totals.roadsidePassengerCount += ev.roadsidePassengerAdded || 0;
+    if (Array.isArray(ev.roadsideListAdded)) totals.roadsideList = totals.roadsideList.concat(ev.roadsideListAdded);
     Object.entries(ev.stationBreakdown || {}).forEach(([st, v]) => {
       if (!totals.stationBreakdown[st]) totals.stationBreakdown[st] = { tickets: 0, passengers: 0, amount: 0 };
       totals.stationBreakdown[st].tickets += v.tickets;

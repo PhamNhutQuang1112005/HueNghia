@@ -468,7 +468,7 @@
 /* .filter-field-date/.filter-select/.filter-date-chev chuyển sang css/shared/booking-ui.css (dùng chung)
    vì #rbFilterDateBtn trong modal "Đặt lại vé" (js/shared/booking.js) cần kiểu này trên CẢ callcenter.html
    lẫn ticketstaff.html, không riêng gì #pkFilterDateBtn ở đây. */
-.filter-reset { flex: 0 0 auto; display: flex; align-items: flex-end; margin-left: auto; }
+.filter-reset { flex: 0 0 auto; display: flex; align-items: flex-end; gap: 8px; margin-left: auto; }
 .filter-reset button { height: 35px; padding: 0 12px; font-size: 12px; font-weight: 600; }
 
 /* .panel-footer dùng chung (css/shared/booking-ui.css) mặc định justify-content:flex-end — dồn hết các
@@ -505,7 +505,7 @@
   top: 0;
   background: var(--white);
   z-index: 5;
-  text-align: left;
+  text-align: center;
   font-size: 12px;
   font-weight: 700;
   color: var(--text-sub);
@@ -531,7 +531,11 @@
 }
 
 .shuttle-table th.col-stt, .shuttle-table td.col-stt {
-  width: 36px;
+  width: 28px;
+  /* Đè lại padding ngang mặc định (12px) của .shuttle-table th/td — cột này chỉ có 1-2 chữ số nên
+     padding mặc định làm cột rộng hơn cần thiết nhiều, cản việc thu gọn để dồn chỗ cho "Tên phơi xe". */
+  padding-left: 6px;
+  padding-right: 6px;
   text-align: center;
   vertical-align: middle;
   font-weight: 600;
@@ -539,6 +543,13 @@
 
 .shuttle-table td.center {
   text-align: center;
+}
+
+/* Cột "Thao tác" thu hẹp còn 70px (dồn chỗ cho "Tên phơi xe") — cùng lý do như .col-stt, đè lại padding
+   ngang mặc định (12px) xuống nhỏ hơn để nút "Chỉ định"/"Đổi chỉ định" có đủ chỗ không bị bó/tràn viền. */
+.shuttle-table th.col-action, .shuttle-table td.col-action {
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 /* Trang "Rước liền" — cùng kiểu bảng kẻ ô đầy đủ với bảng Hành khách/Trung chuyển/Ghế hủy/Lịch sử
@@ -597,21 +608,12 @@
   flex: 0 0 auto;
 }
 
-/* Ô "Khách hàng" / "Trạm đi-đến" trong bảng rước liền */
+/* Ô "Khách hàng" trong bảng rước liền (cột "Hành trình" giờ dùng chung .pax-route/.pax-route-row của
+   css/shared/booking-ui.css — giống cột "Hành trình" bảng Lịch sử hành khách — không còn .route-tags/
+   .route-tag riêng của bảng này nữa). */
 .pax-info { display: flex; flex-direction: column; gap: 3px; }
 .pax-name { font-weight: 700; color: var(--text-main); white-space: nowrap; font-size: 13.5px; }
 .pax-phone { color: var(--text-sub); white-space: nowrap; font-size: 13.5px; }
-.route-tags { display: flex; flex-direction: column; gap: 3px; }
-.route-tag { display: block; font-size: 13.5px; white-space: nowrap; }
-.route-tag.route-from { color: var(--text-main); font-weight: 600; }
-.route-tag.route-to { color: var(--text-sub); font-weight: 500; }
-
-.luggage-mark {
-  display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px;
-  border-radius: 4px; background: #fff; border: 1px solid var(--border-gray); color: #fff;
-}
-.luggage-mark svg { width: 12px; height: 12px; stroke-width: 3; }
-.luggage-mark.yes { background: #9AA0A6; border-color: #9AA0A6; }
 
 .status-tag { font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-block; white-space: nowrap; }
 .status-tag.pending { background: #FFF7E0; color: #B45309; }
@@ -622,7 +624,7 @@
 
 .assign-action-btn {
   background: linear-gradient(135deg, var(--red) 0%, #d81410 100%);
-  color: white; border: 1px solid transparent; border-radius: 6px; padding: 4px 10px;
+  color: white; border: 1px solid transparent; border-radius: 6px; padding: 4px 6px;
   font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
   gap: 4px; white-space: nowrap; box-shadow: 0 1.5px 5px rgba(194, 13, 8, 0.22);
   transition: all .15s ease; line-height: 1.2; cursor: pointer;
@@ -631,6 +633,56 @@
 .assign-action-btn svg { width: 12px; height: 12px; stroke: currentColor; flex: 0 0 auto; }
 .assign-action-btn.reassign { background: white; color: var(--text-main); border: 1px solid var(--border-gray); box-shadow: none; }
 .assign-action-btn.reassign:hover { border-color: var(--red); color: var(--red); background: var(--red-light); }
+
+/* Cột "Trạng thái" (trang Rước liền) — tên tài xế trung chuyển đã gán ở trang shuttle.html, hoặc trống
+   nếu chưa gán; luôn bấm được (dù có tên/ghi chú hay trống) để mở modal ghi chú trạng thái đón khách
+   (#pkStatusNoteModal, xem pkOpenStatusNoteModal()). Hiện thẳng NỘI DUNG ghi chú trong ô (không chỉ chấm
+   báo hiệu + tooltip) nên xếp dọc thay vì 1 hàng ngang, để tên tài xế và ghi chú không đè lên nhau. */
+.pk-status-cell {
+  width: 100%;
+  min-height: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px dashed var(--border-gray);
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  text-align: center;
+  transition: background .12s ease, border-color .12s ease;
+}
+.pk-status-cell:hover { background: var(--surface-2); border-color: var(--text-sub); }
+.pk-status-cell.has-note { border-style: solid; border-color: var(--red); background: var(--red-light); }
+.pk-driver-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.pk-note-text { font-size: 11.5px; font-weight: 500; color: var(--red); white-space: normal; line-height: 1.3; }
+
+/* Tag "Trạng thái" (2 bảng Trung chuyển đón/trả) — bấm để ghi/sửa ghi chú (tsRenderTransshipStatusBadge,
+   ticketstaff.js). KHÔNG hiện thẳng nội dung ghi chú trên tag như .pk-status-cell — chỉ đổi viền khi có
+   ghi chú (.has-note), rê chuột vào mới thấy qua title="...". */
+.ts-status-badge {
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter .12s ease, border-color .12s ease;
+}
+.ts-status-badge:hover { filter: brightness(0.96); }
+.ts-status-badge.has-note { border-color: var(--red); }
+.ts-status-badge.pending { background: #FFF7E0; color: #B45309; }
+.ts-status-badge.ongoing { background: #EAFBF1; color: var(--green); }
+.ts-status-badge.blue { background: #EAF2FE; color: #2563eb; }
+.ts-status-badge.done { background: var(--surface-2); color: var(--text-sub); }
 
 /* Modal "Chỉ định xe rước liền" (#assignPickupModal) — .panel-head/.panel-body/.panel-footer/.icon-close
    đã dùng chung ở css/shared/booking-ui.css; chỉ ghi đè riêng layout 2 cột + kích thước cho modal này. */
@@ -830,6 +882,12 @@
   padding: 8px 0;
 }
 
+/* Modal "Đóng Re-open" — dùng .modal cơ bản (520px mặc định) nhưng #closeReopenSummaryBox bên trong có
+   bảng "Doanh thu theo trạm" (tsRenderStationTableHtml), hơi chật ở 520px — nới rộng thêm 1 chút. */
+#closeReopenModal .modal {
+  width: 620px;
+}
+
 /* Modal tổng hợp/Xem phơi/Kết ca cần rộng hơn modal xác nhận đơn giản (520px mặc định) vì có bảng số
    liệu bên trong. Giới hạn chiều cao theo viewport — khi nội dung dài hơn cho phép, chỉ phần
    .manifest-modal-body ở giữa cuộn dọc, tiêu đề (h3) và hàng nút (.modal-actions) luôn cố định tại chỗ,
@@ -842,16 +900,12 @@
   overflow: hidden;
 }
 
+/* Rộng hơn nữa (760px cũ không đủ) vì bảng "Danh sách rước đường" có 9 cột (STT/Họ và tên/SDT/Trạm đi/
+   Trạm đến/Điểm rước/Số vé/Số ghế/Thành tiền) — 760px khiến tiêu đề cột như "Họ và tên"/"Thành tiền" bị
+   xuống dòng. .pax-table-wrap vẫn có overflow-x:auto làm lưới an toàn nếu màn hình hẹp hơn max-width. */
 .manifest-modal.manifest-modal-wide {
-  width: 760px;
-}
-
-/* Modal Khởi hành xe làm mốc kích thước cố định — nội dung vốn ngắn/cố định (không tích lũy dài dần
-   theo thời gian như modal Xem phơi có thể có thêm lịch sử Re-open/vi phạm), nên bỏ trần 85vh để modal
-   luôn cao vừa đủ hiển thị hết nội dung, không cần cuộn trong điều kiện dùng bình thường.
-   overflow-y:auto ở .manifest-modal-body vẫn giữ nguyên làm lưới an toàn cho trường hợp bất thường. */
-#departModal .manifest-modal {
-  max-height: none;
+  width: 1030px;
+  max-width: 92vw;
 }
 
 .manifest-modal h3 {
@@ -1013,10 +1067,48 @@
   background: #FAFAFA;
 }
 
-/* 3 hàng tổng hợp Số vé/Tiền rước đường/Tổng tiền ở cuối bảng (gộp thay cho khối "Tổng hiện tại" riêng
-   trước đây) — nền xám nhạt giống header để tách rõ khỏi lưới trạm × mệnh giá phía trên. */
-.denom-summary-row td {
-  background: var(--surface-2) !important;
+/* Khối tóm tắt (Số vé/Vé trạm/Khách rước đường/Đã thu/Chưa thu/Tiền rước đường dự kiến/Tổng tiền) — bảng
+   riêng ngay dưới bảng lưới trạm × mệnh giá, khung viền/nền giống .denom-grid-table nhưng có 4 cột cố
+   định (khai qua <colgroup> ở JS) để luôn đúng tỉ lệ 2 cột nhãn/giá trị đều nhau, không phụ thuộc số cột
+   mệnh giá của bảng lưới phía trên. "Tổng tiền" chiếm trọn hàng cuối, nổi bật hơn các mục còn lại. */
+.denom-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.denom-summary-table td {
+  border: 1px solid var(--border-gray);
+  padding: 7px 10px;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.denom-summary-table td.ds-label {
+  background: var(--surface-2);
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.denom-summary-table td.ds-value {
+  text-align: right;
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.denom-summary-total-row td {
+  background: var(--surface-2);
+}
+
+.denom-summary-total-row .ds-label {
+  font-size: 14px;
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.denom-summary-total-row .ds-value {
+  font-size: 16px;
+  font-weight: 800;
 }
 
 /* Kiểu đường kẻ ô dùng chung cho các bảng liệt kê thường (Doanh thu theo trạm, Lịch sử Re-open...) —
@@ -1038,6 +1130,48 @@
   font-weight: 700;
   font-size: 11.5px;
   letter-spacing: .3px;
+  white-space: nowrap;
+}
+
+/* Bảng "Danh sách rước đường" (modal Khởi hành xe/Xem phơi, tsRenderRoadsideListTableHtml) — khai rõ
+   width % cho ĐỦ cả 9 cột (trước đây chỉ STT/Điểm rước có width, còn lại để trình duyệt tự chia đều —
+   .pax-table dùng table-layout:fixed nên phải khai rõ mới chỉnh chính xác được từng cột). Tổng = 100%.
+   overflow:hidden + ellipsis trên STT làm lưới an toàn phòng tràn chữ đè lên cột kế bên (đã gặp lỗi này ở
+   cột SĐT bảng Lịch sử, xem css/shared/booking-ui.css). */
+.ts-rlist-stt {
+  width: 5%;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ts-rlist-name {
+  width: 12.75%;
+}
+
+.ts-rlist-phone {
+  width: 11%;
+}
+
+.ts-rlist-stop {
+  width: 12.75%;
+}
+
+.ts-rlist-pickup {
+  width: 21.75%;
+}
+
+.ts-rlist-count {
+  width: 5%;
+}
+
+.ts-rlist-seats {
+  width: 9%;
+}
+
+.ts-rlist-amount {
+  width: 10%;
 }
 
 
@@ -1378,4 +1512,471 @@
   .pk-trip-search-box { padding: 9px 14px; }
   .assign-action-btn,
   .status-tag { min-height: 30px; }
+}
+
+/* ===================== PHƠI XE MANAGEMENT (chuyển từ css/callcenter.css qua) =====================
+   .modal-overlay/.sticky-actions/.filter-toolbar/.filter-field/.grid-wrap/.grid-empty/.main-view-container
+   đã dùng chung ở css/shared/booking-ui.css — chỉ chuyển các class riêng của tính năng Phơi xe (modal
+   Tạo/Sửa phơi, modal Lộ trình, thẻ phơi dạng card, badge trạng thái, thanh chọn phơi mẫu) chưa tồn tại
+   ở bản ticketstaff trước đây. */
+
+.modal-card label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+.modal-card input[type="text"],
+.modal-card input[type="date"],
+.modal-card input[type="time"],
+.modal-card input[type="number"],
+.modal-card select {
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-gray);
+  background: var(--white);
+  color: var(--text-main);
+  outline: none;
+  width: 100%;
+  transition: border-color .15s;
+}
+
+.modal-card input[type="text"]:focus,
+.modal-card input[type="date"]:focus,
+.modal-card input[type="time"]:focus,
+.modal-card input[type="number"]:focus,
+.modal-card select:focus {
+  border-color: var(--red);
+}
+
+.modal-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalPop .2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1.5px solid var(--border-gray);
+}
+
+.modal-header h2 {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-sub);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.close-btn:hover {
+  background: var(--surface-2);
+  color: var(--text-main);
+}
+
+.close-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Header modal "Tạo/Chỉnh sửa phơi xe" thu gọn hơn mặc định — chỉ áp dụng riêng #singleModal, không
+   đổi các modal khác dùng chung .modal-header/.close-btn. */
+#singleModal .modal-header { padding: 13px 20px; }
+#singleModal .modal-header h2 { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.3; letter-spacing: .1px; }
+#singleModal .close-btn { width: 26px; height: 26px; }
+#singleModal .close-btn svg { width: 16px; height: 16px; }
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
+
+.modal-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.flex-1 {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+.required {
+  color: var(--red);
+  margin-left: 2px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* Nút "Hủy phơi xe" trong modal Chỉnh sửa — tách biệt rõ với "Đóng"/"Lưu" bằng viền đỏ. */
+.btn-danger-outline {
+  background: var(--white);
+  color: var(--red);
+  border: 1.5px solid var(--red);
+}
+
+.btn-danger-outline:hover {
+  background: var(--red);
+  color: var(--white);
+}
+
+/* "Trạm có thể nhận thêm khách" (modal Tạo phơi xe) — chip checkbox nằm ngang. */
+.station-pick-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding-top: 2px;
+}
+
+.station-pick-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--border-gray);
+  border-radius: 999px;
+  background: var(--white);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: border-color .15s, background .15s, color .15s;
+}
+
+.station-pick-pill input {
+  width: 13px;
+  height: 13px;
+  accent-color: var(--red);
+  cursor: pointer;
+}
+
+.station-pick-pill.checked {
+  border-color: var(--red);
+  background: var(--red-light);
+  color: var(--red);
+}
+
+.station-pick-empty {
+  font-size: 13px;
+  color: var(--text-sub);
+  font-style: italic;
+}
+
+#singleModal .modal-card { max-width: 720px; }
+
+#singleModal .modal-body {
+  padding: 14px 20px 36px;
+  max-height: calc(100vh - 100px);
+}
+
+#singleModal .modal-row { gap: 12px; margin-bottom: 10px; }
+#singleModal .modal-card label { display: block; font-size: 12px; margin-bottom: 4px; }
+
+#singleModal .modal-card input[type="text"],
+#singleModal .modal-card input[type="date"],
+#singleModal .modal-card input[type="time"],
+#singleModal .modal-card input[type="number"],
+#singleModal .modal-card select {
+  padding: 8px 12px;
+  font-size: 13.5px;
+}
+
+#singleModal .station-pick-group { min-height: 28px; gap: 6px; padding-top: 2px; }
+#singleModal .station-pick-pill { padding: 5px 11px; font-size: 12px; }
+#singleModal .modal-footer { margin-top: 8px; }
+
+/* Nút "Hủy phơi xe"/"Đóng"/"Lưu" — bo góc nhẹ như .seat-footbtn thay vì bo tròn hết cỡ (border-radius:
+   999px) của .btn dùng chung toàn trang, cùng kiểu với .phoi-edit-btn/.phoi-sell-btn ở thẻ phơi. */
+#singleModal .modal-footer .btn {
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-badge .status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.status-badge.chua-chi-dinh { background: #F3F4F6; color: #4B5563; }
+.status-badge.chua-chi-dinh .status-dot { background: #9CA3AF; }
+
+.status-badge.da-chi-dinh { background: #EFF4FF; color: #1D4ED8; }
+.status-badge.da-chi-dinh .status-dot { background: #2563EB; }
+
+.status-badge.dang-ban { background: #F0FDF4; color: #15803D; }
+.status-badge.dang-ban .status-dot { background: #16A34A; }
+
+.status-badge.da-khoi-hanh { background: #EEF2FF; color: #4338CA; }
+.status-badge.da-khoi-hanh .status-dot { background: #6366F1; }
+
+.status-badge.da-huy { background: #FEF0EF; color: #DC2626; }
+.status-badge.da-huy .status-dot { background: #DC2626; }
+
+/* Danh sách phơi xe dạng thẻ — mỗi thẻ có vệt màu trái theo trạng thái và nút "Bán vé" dẫn thẳng sang
+   tab Quản lý vé cho đúng phơi đó. */
+.phoi-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 14px;
+  padding: 2px 2px 4px;
+}
+
+.phoi-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-gray);
+  border-left: 4px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  overflow: hidden;
+  transition: box-shadow .15s ease, border-color .15s ease;
+  cursor: pointer;
+}
+
+.phoi-card:hover { box-shadow: 0 2px 10px rgba(0, 0, 0, .07); }
+
+.phoi-card.status-chua-chi-dinh { border-left-color: #9CA3AF; }
+.phoi-card.status-da-chi-dinh { border-left-color: #2563EB; }
+.phoi-card.status-dang-ban { border-left-color: #16A34A; }
+.phoi-card.status-da-khoi-hanh { border-left-color: #6366F1; }
+.phoi-card.status-da-huy { border-left-color: #DC2626; opacity: .7; }
+
+.phoi-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 8px 0 12px;
+}
+
+.phoi-card-schedule {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.phoi-card-time-row { display: flex; align-items: center; gap: 6px; }
+.phoi-card-time { font-size: 16px; font-weight: 800; color: var(--text-main); line-height: 1.2; }
+.phoi-card-date { font-size: 11.5px; color: var(--text-sub); font-weight: 500; }
+.phoi-card-top .status-badge { flex: 0 0 auto; }
+
+.phoi-card-name {
+  padding: 10px 12px 0;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--text-main);
+  line-height: 1.35;
+}
+
+.phoi-card-meta {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  border-top: 1px solid var(--surface);
+}
+
+.phoi-card-meta-item { display: flex; flex-direction: column; gap: 2px; flex: 1 1 0; min-width: 0; }
+.phoi-card-meta-item label { font-size: 10px; text-transform: uppercase; letter-spacing: .3px; color: var(--text-sub); font-weight: 700; }
+.phoi-card-meta-item span { font-size: 13px; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.phoi-card-footer { margin-top: auto; display: flex; gap: 8px; padding: 0 12px 12px; }
+
+.phoi-edit-btn,
+.phoi-sell-btn {
+  flex: 1 1 0;
+  justify-content: center;
+  gap: 5px;
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 12.5px;
+}
+
+.phoi-sell-btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+.phoi-route-btn {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  border: none;
+  background: none;
+  color: var(--text-sub);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color .12s;
+}
+
+.phoi-route-btn svg { width: 21px; height: 21px; }
+.phoi-route-btn:hover { color: var(--red); }
+
+/* ===== MODAL: LỘ TRÌNH — timeline dọc điểm xuất phát/đón khách/điểm đến ===== */
+.trip-route-modal-card { max-width: 460px; }
+
+.trip-route-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+
+.trip-route-summary #tripRouteName { font-size: 13.5px; font-weight: 700; color: var(--text-main); }
+
+.trip-route-timeline { display: flex; flex-direction: column; }
+
+.trip-route-step { position: relative; display: flex; gap: 14px; padding-bottom: 26px; }
+.trip-route-step:last-child { padding-bottom: 0; }
+.trip-route-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 32px;
+  bottom: 0;
+  width: 2px;
+  background: var(--border-gray);
+}
+
+.trip-route-step-marker {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--text-sub);
+  border: 2px solid var(--white);
+  box-shadow: 0 0 0 1.5px var(--border-gray);
+}
+
+.trip-route-step-marker svg { width: 16px; height: 16px; }
+
+.trip-route-step.start .trip-route-step-marker { background: #16A34A; color: white; box-shadow: 0 0 0 1.5px #16A34A; }
+.trip-route-step.stop .trip-route-step-marker { background: var(--red-light); color: var(--red); box-shadow: 0 0 0 1.5px #FBD5D4; }
+.trip-route-step.end .trip-route-step-marker { background: var(--red); color: white; box-shadow: 0 0 0 1.5px var(--red); }
+
+.trip-route-step-body { flex: 1 1 auto; min-width: 0; padding-top: 4px; }
+.trip-route-step-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-sub); }
+.trip-route-step-name { font-size: 14px; font-weight: 700; color: var(--text-main); margin-top: 2px; }
+.trip-route-empty { margin: 0; font-size: 13.5px; color: var(--text-sub); text-align: center; padding: 20px 0; }
+
+/* ===== "Tạo phơi xe hàng loạt" — chọn phơi mẫu ngay trong danh sách ===== */
+#btnBulkCreate.active-bulk { background: var(--red); color: white; border-color: var(--red); }
+#btnBulkCreate.active-bulk svg { stroke: white; }
+
+.phoi-card-selectable { position: relative; padding-bottom: 12px; }
+.phoi-card-selectable:hover { border-color: var(--red); }
+.phoi-card-selectable .phoi-card-top { padding-right: 32px; }
+.phoi-card-selectable.selected { border-color: var(--red); background: var(--red-light); }
+
+.phoi-card-select-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-gray);
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.phoi-card-selectable.selected .phoi-card-select-check { border-color: var(--red); background: var(--red); }
+.phoi-card-select-check svg { width: 12px; height: 12px; }
+
+.bulk-template-bar-fields { display: flex; align-items: flex-end; gap: 10px; }
+.bulk-template-date-field { display: flex; flex-direction: column; gap: 4px; }
+.bulk-template-date-field label { font-size: 10.5px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: .3px; }
+.bulk-template-date-field input[type="date"] {
+  height: 35px;
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+@media (max-width: 1199px) {
+  .phoi-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+}
+
+@media (max-width: 767px) {
+  .phoi-card-grid { grid-template-columns: 1fr; gap: 10px; }
+  .phoi-edit-btn,
+  .phoi-sell-btn { min-height: 38px; }
+
+  .modal-row { flex-direction: column; gap: 10px; }
+  #singleModal .modal-row { gap: 8px; }
+  .modal-body { max-height: calc(100vh - 160px); }
+  #singleModal .modal-body { max-height: calc(100vh - 90px); }
+
+  .bulk-template-bar-fields { flex-wrap: wrap; }
+  .bulk-template-date-field { flex: 1 1 140px; }
 }

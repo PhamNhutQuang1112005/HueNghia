@@ -208,8 +208,8 @@ function tsOpenManifestModalWithBody(html) {
 // Phần lõi dùng CHUNG cho cả modal "Xem phơi" (sau khi đã tạo) LẪN modal "Khởi hành xe" (xem trước lúc
 // chưa tạo) — 2 giao diện phải y hệt nhau nên chỉ có 1 hàm render duy nhất, khác nhau ở dữ liệu đầu vào
 // (tripInfo/totals/denomBreakdown truyền vào từ manifest đã lưu, hoặc tính "sống" trước khi tạo).
-// Thứ tự: Thông tin chuyến → Chi tiết mệnh giá — đã bỏ hẳn khối "Tổng hiện tại" riêng, Số vé/Tiền rước
-// đường/Tổng tiền giờ là 3 hàng tổng hợp ở CUỐI bảng Chi tiết mệnh giá (xem tsRenderDenominationTableHtml).
+// Thứ tự: Thông tin chuyến → Chi tiết mệnh giá (kèm Đã thu/Chưa thu/Vé trạm/Khách rước đường ở cuối bảng,
+// xem tsRenderDenominationTableHtml) → Danh sách rước đường (chi tiết từng khách Rước đường).
 function tsRenderManifestCoreSectionsHtml(tripInfo, totals, templateKey, denomBreakdown) {
   return `
     <div class="manifest-section-title">Thông tin chuyến</div>
@@ -217,7 +217,50 @@ function tsRenderManifestCoreSectionsHtml(tripInfo, totals, templateKey, denomBr
 
     <div class="pv-detail-title">Chi tiết mệnh giá</div>
     ${tsRenderDenominationTableHtml(denomBreakdown, templateKey, totals, tripInfo.advanceAmount)}
+
+    <div class="pv-detail-title">Danh sách rước đường</div>
+    ${tsRenderRoadsideListTableHtml(totals ? totals.roadsideList : null)}
   `;
+}
+
+// Danh sách chi tiết khách "Rước đường" (đón dọc đường, không tính vào lưới trạm × mệnh giá ở trên) —
+// dùng chung 1 nguồn roadsideList đã gom sẵn ở tsAggregateTickets (phơi gốc + các lần Re-open đã đóng,
+// xem tsGetManifestCurrentTotals) nên luôn khớp đúng số "Khách rước đường" ở bảng Chi tiết mệnh giá.
+function tsRenderRoadsideListTableHtml(list) {
+  if (!Array.isArray(list) || !list.length) {
+    return '<p style="color:var(--text-sub);font-size:13px;">Chưa có khách rước đường.</p>';
+  }
+  const rows = list.map((r, index) => `
+    <tr>
+      <td class="mono ts-rlist-stt">${index + 1}</td>
+      <td class="ts-rlist-name">${tsEsc(r.name || '—')}</td>
+      <td class="mono ts-rlist-phone">${tsEsc(r.phone || '—')}</td>
+      <td class="ts-rlist-stop">${tsEsc(r.firstStop || '—')}</td>
+      <td class="ts-rlist-stop">${tsEsc(r.lastStop || '—')}</td>
+      <td class="ts-rlist-pickup">${tsEsc(r.pickupLoc || '—')}</td>
+      <td class="mono ts-rlist-count" style="text-align:center;">1</td>
+      <td class="mono ts-rlist-seats" style="text-align:center;">${tsEsc((r.seatCodes || []).join(', ')) || '—'}</td>
+      <td class="ts-rlist-amount" style="text-align:right;">${tsFormatMoney(r.amount || 0)}</td>
+    </tr>`).join('');
+  return `
+    <div class="pax-table-wrap grid-table-wrap" style="margin-bottom:8px;">
+      <table class="pax-table lined-table">
+        <thead>
+          <tr>
+            <th class="ts-rlist-stt">STT</th>
+            <th class="ts-rlist-name">Họ và tên</th>
+            <th class="ts-rlist-phone">SDT</th>
+            <th class="ts-rlist-stop">Trạm đi</th>
+            <th class="ts-rlist-stop">Trạm đến</th>
+            <th class="ts-rlist-pickup">Điểm rước</th>
+            <th class="ts-rlist-count" style="text-align:center;">SL</th>
+            <th class="ts-rlist-seats" style="text-align:center;">Số ghế</th>
+            <th class="ts-rlist-amount" style="text-align:right;">Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 // "Thông tin chuyến" — 1 khối bo viền có header riêng (tuyến + biển số nổi bật), bên dưới chia 2 cột:
@@ -324,23 +367,31 @@ function tsRenderDepartPreviewHtml(tripId) {
 // CSS riêng cho cửa sổ in — khổ A4, có border rõ ràng, không bóng/không nền dashboard, lặp lại header
 // bảng khi sang trang (mục 10 spec nghiệp vụ). Tách khỏi ticketstaff.css vì đây là tài liệu HTML độc lập
 // mở ở cửa sổ mới (đúng quy ước in vé lẻ có sẵn — xem buildMultiTicketPrintHtml ở ticketstaff.js).
+// Font: ưu tiên 'Noto Serif' (bộ Unicode đầy đủ dấu tiếng Việt, kể cả dấu chồng ít gặp như ẫ/ỡ) — nếu
+// máy in không cài thì tự rớt xuống 'Times New Roman' (đã hỗ trợ tốt tiếng Việt sẵn trên Windows) rồi
+// Georgia/serif, không phụ thuộc tải font ngoài (cửa sổ in có thể mở ở máy không có mạng tại bến xe).
 const TS_MANIFEST_PRINT_STYLE = `
   * { box-sizing: border-box; }
   body {
-    font-family: 'Times New Roman', Georgia, 'Segoe UI', serif;
-    margin: 0; padding: 22px; color: #111;
+    font-family: 'Noto Serif', 'Times New Roman', Georgia, serif;
+    margin: 0; padding: 26px; color: #111; line-height: 1.5;
   }
-  .pm-page { max-width: 760px; margin: 0 auto; }
+  .pm-page { max-width: 820px; margin: 0 auto; }
   .pm-company { text-align: center; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #444; }
   .pm-title {
-    text-align: center; font-size: 22px; font-weight: 700; letter-spacing: 1.5px;
-    margin: 6px 0 18px; padding-bottom: 10px;
+    text-align: center; font-size: 23px; font-weight: 700; letter-spacing: 1.5px;
+    margin: 6px 0 20px; padding-bottom: 12px;
     border-bottom: 3px double #000;
   }
+  .pm-section-title {
+    font-size: 13.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    color: #444; margin: 22px 0 8px;
+  }
+  .pm-section-title:first-of-type { margin-top: 0; }
   .pm-meta-box {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 7px 28px;
     border: 1px solid #000; border-radius: 4px;
-    padding: 10px 16px; margin-bottom: 18px;
+    padding: 12px 18px; margin-bottom: 4px;
     font-size: 14px;
   }
   .pm-meta-box .pm-meta-item { display: flex; justify-content: space-between; gap: 10px; }
@@ -354,18 +405,36 @@ const TS_MANIFEST_PRINT_STYLE = `
   .pm-station-cell { font-weight: 700; background: #f4f4f4; font-size: 13.5px; }
   .pm-row-amount td { color: #444; font-style: italic; font-size: 11.5px; }
   .pm-station-group:nth-of-type(odd) .pm-station-cell { background: #ececec; }
-  .pm-totals {
-    margin-top: 20px; border: 1px solid #000; border-radius: 4px;
-    padding: 12px 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px;
+  .pm-summary-box {
+    border: 1px solid #000; border-radius: 4px; overflow: hidden; font-size: 14px;
   }
-  .pm-totals .pm-total-row { display: flex; justify-content: space-between; }
-  .pm-totals b { font-weight: 700; }
-  .pm-totals .pm-grand-total { font-size: 17px; border-top: 1px solid #999; padding-top: 8px; margin-top: 2px; }
+  .pm-summary-grid { display: grid; grid-template-columns: 1fr 1fr; }
+  .pm-summary-item {
+    display: flex; justify-content: space-between; gap: 10px;
+    padding: 8px 16px; border-bottom: 1px solid #ddd;
+  }
+  .pm-summary-item:nth-child(odd) { border-right: 1px solid #ddd; }
+  .pm-summary-item .pm-meta-label { color: #444; }
+  .pm-summary-item b { font-weight: 700; }
+  .pm-summary-grand {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px; background: #f4f4f4;
+  }
+  .pm-summary-grand span { font-weight: 700; font-size: 15px; }
+  .pm-summary-grand b { font-weight: 800; font-size: 18px; }
+  .pm-roadside-table th:nth-child(1), .pm-roadside-table td:nth-child(1) { width: 6%; }
+  .pm-roadside-table th:nth-child(6), .pm-roadside-table td:nth-child(6) { width: 18%; }
+  .pm-roadside-table td:nth-child(2), .pm-roadside-table td:nth-child(4),
+  .pm-roadside-table td:nth-child(5), .pm-roadside-table td:nth-child(6) { text-align: left; }
+  .pm-roadside-table td:nth-child(9) { text-align: right; }
+  .pm-empty-note { font-size: 13px; color: #666; font-style: italic; margin: 0; }
   @page { size: A4 portrait; margin: 16mm 14mm; }
   @media print { body { padding: 0; } }
 `;
 
-// Xây HTML bản in — CHỈ đọc số liệu qua các hàm tổng hợp đã có (không hard-code, không tính tay).
+// Xây HTML bản in — CHỈ đọc số liệu qua các hàm tổng hợp đã có (không hard-code, không tính tay). Có đủ
+// từng mục y hệt modal "Xem phơi"/"Khởi hành xe" trên web (Thông tin chuyến → Chi tiết mệnh giá → Tóm
+// tắt → Danh sách rước đường) — không phải bản rút gọn riêng như trước.
 // templateKey hiện chỉ có "saigon" — tsGetPrintTemplateKey() là điểm mở rộng khi có mẫu khu vực khác.
 function buildManifestPrintHtml(tripId) {
   const manifest = getManifest(tripId);
@@ -398,8 +467,50 @@ function buildManifestPrintHtml(tripId) {
       </tbody>`;
   }).join('');
 
-  const driverHelper = [manifest.driver, manifest.helper].filter(Boolean).join(' - ') || '—';
-  const timeDisplay = manifest.time ? tsEsc(manifest.time).replace(':', 'H') : '—';
+  const timeDisplay = manifest.time ? tsEsc(manifest.time).replace(':', 'H') : 'Chưa rõ';
+  const createdAtDisplay = manifest.createdAt
+    ? `${formatHistoryDate(manifest.createdAt)} ${formatActionTime(manifest.createdAt)}`.trim()
+    : 'Chưa rõ';
+
+  // Tóm tắt — cùng bộ mục với bảng "Chi tiết mệnh giá" trên web (tsRenderDenominationTableHtml), trình
+  // bày lại thành ô lưới 2 cột cho bản giấy, không nối "số vé — số tiền" bằng gạch ngang như bản cũ.
+  const summaryItem = (label, value) => `
+    <div class="pm-summary-item"><span class="pm-meta-label">${label}</span><b>${value}</b></div>`;
+  const summaryItems = [
+    summaryItem('Số vé', totals.ticketCount),
+    summaryItem('Chưa thu', tsFormatMoney(totals.unpaidAmount || 0)),
+    summaryItem('Khách rước đường', totals.roadsidePassengerCount || 0),
+    summaryItem('Đã thu', tsFormatMoney(totals.paidAmount || 0)),
+    summaryItem('Vé trạm', totals.stationTicketCount || 0),
+    // Bản in chỉ dựng được khi manifest đã tồn tại thật (phơi đã tạo ở modal Khởi hành xe, luôn có
+    // advanceAmount là số — kể cả 0 nếu nhân viên để trống), nên luôn hiện dòng này, không kiểm tra
+    // truthy như trước (0đ vẫn bị coi là falsy nên từng bị ẩn mất) — khớp đúng cách web
+    // (tsRenderDenominationTableHtml) kiểm tra "advanceAmount !== undefined" chứ không phải giá trị > 0.
+    summaryItem('Tiền rước đường dự kiến', tsFormatMoney(manifest.advanceAmount || 0))
+  ];
+
+  // Danh sách rước đường — cùng nguồn totals.roadsideList với bảng web (tsRenderRoadsideListTableHtml).
+  const roadsideList = totals.roadsideList || [];
+  const roadsideHtml = roadsideList.length
+    ? `<table class="pm-table pm-roadside-table">
+        <thead><tr>
+          <th>STT</th><th>Họ và tên</th><th>SDT</th><th>Trạm đi</th><th>Trạm đến</th><th>Điểm rước</th>
+          <th>SL</th><th>Số ghế</th><th>Thành tiền</th>
+        </tr></thead>
+        <tbody>${roadsideList.map((r, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${tsEsc(r.name || 'Chưa rõ')}</td>
+            <td>${tsEsc(r.phone || 'Chưa rõ')}</td>
+            <td>${tsEsc(r.firstStop || 'Chưa rõ')}</td>
+            <td>${tsEsc(r.lastStop || 'Chưa rõ')}</td>
+            <td>${tsEsc(r.pickupLoc || 'Chưa rõ')}</td>
+            <td>1</td>
+            <td>${tsEsc((r.seatCodes || []).join(', ')) || 'Chưa rõ'}</td>
+            <td>${tsFormatMoney(r.amount || 0)}</td>
+          </tr>`).join('')}</tbody>
+      </table>`
+    : `<p class="pm-empty-note">Chưa có khách rước đường.</p>`;
 
   return `<!doctype html>
 <html lang="vi">
@@ -413,24 +524,30 @@ function buildManifestPrintHtml(tripId) {
     <div class="pm-company">Trạm điều hành Huệ Nghĩa</div>
     <div class="pm-title">PHƠI XE GIAO THEO CHUYẾN</div>
 
+    <div class="pm-section-title">Thông tin chuyến</div>
     <div class="pm-meta-box">
       <div class="pm-meta-item"><span class="pm-meta-label">Ngày</span><b>${formatHistoryDate(manifest.date)}</b></div>
+      <div class="pm-meta-item"><span class="pm-meta-label">Tài xế</span><b>${tsEsc(manifest.driver || 'Chưa rõ')}</b></div>
       <div class="pm-meta-item"><span class="pm-meta-label">Giờ xuất bến</span><b>${timeDisplay}</b></div>
-      <div class="pm-meta-item"><span class="pm-meta-label">Xe số</span><b>${tsEsc(manifest.plate || '—')}</b></div>
-      <div class="pm-meta-item"><span class="pm-meta-label">Tài / Lơ</span><b>${tsEsc(driverHelper)}</b></div>
+      <div class="pm-meta-item"><span class="pm-meta-label">Phụ xe</span><b>${tsEsc(manifest.helper || 'Chưa rõ')}</b></div>
+      <div class="pm-meta-item"><span class="pm-meta-label">Xe số</span><b>${tsEsc(manifest.plate || 'Chưa rõ')}</b></div>
+      <div class="pm-meta-item"><span class="pm-meta-label">Tạo phơi lúc</span><b>${tsEsc(createdAtDisplay)}</b></div>
     </div>
 
+    <div class="pm-section-title">Chi tiết mệnh giá</div>
     <table class="pm-table">
       <thead><tr>${headCols.map(h => `<th>${tsEsc(h)}</th>`).join('')}</tr></thead>
       ${stationGroups}
     </table>
 
-    <div class="pm-totals">
-      <div class="pm-total-row"><span>Giao xe</span><b>${breakdown.totals.giaoXeCount} vé — ${tsFormatMoneyShort(breakdown.totals.giaoXeAmount)}</b></div>
-      <div class="pm-total-row"><span>Khách đường</span><b>${breakdown.totals.khachDuongCount} vé — ${tsFormatMoneyShort(breakdown.totals.khachDuongAmount)}</b></div>
-      <div class="pm-total-row"><span>Tổng vé</span><b>${totals.ticketCount}</b></div>
-      <div class="pm-total-row pm-grand-total"><span>Tổng tiền</span><b>${tsFormatMoneyShort(totals.totalAmount)}</b></div>
+    <div class="pm-section-title">Tóm tắt</div>
+    <div class="pm-summary-box">
+      <div class="pm-summary-grid">${summaryItems.join('')}</div>
+      <div class="pm-summary-grand"><span>Tổng tiền</span><b>${tsFormatMoney(totals.totalAmount)}</b></div>
     </div>
+
+    <div class="pm-section-title">Danh sách rước đường</div>
+    ${roadsideHtml}
   </div>
   <script>
     window.onload = function () { setTimeout(function () { window.print(); }, 400); };
@@ -685,9 +802,9 @@ function tsRenderStationTableHtml(stationBreakdown) {
 // Bảng "Chi tiết mệnh giá" trên WEB — cùng dữ liệu (tsGetManifestCurrentDenominationBreakdown) với bản
 // in phơi giấy (xem buildManifestPrintHtml), chỉ khác cách trình bày: mỗi ô show số vé nổi bật + số
 // tiền nhỏ bên dưới thay vì 2 dòng riêng "Số vé"/"Thành tiền" như tờ giấy, cho gọn và hiện đại hơn.
-// totals/advanceAmount là 2 tham số TÙY CHỌN — chỉ modal Khởi hành xe/Xem phơi truyền vào để thêm 3 hàng
-// tổng hợp Số vé/Tiền rước đường/Tổng tiền ở CUỐI bảng (gộp thay cho khối "Tổng hiện tại" riêng trước
-// đây); các chỗ khác gọi hàm này (nếu có) không truyền thì bảng chỉ có phần lưới trạm × mệnh giá như cũ.
+// totals/advanceAmount là 2 tham số TÙY CHỌN — chỉ modal Khởi hành xe/Xem phơi truyền vào để thêm khối
+// tóm tắt (Số vé/Vé trạm/Khách rước đường/Đã thu/Chưa thu/Tiền rước đường dự kiến/Tổng tiền) ngay dưới
+// bảng lưới trạm × mệnh giá; các chỗ khác gọi hàm này (nếu có) không truyền thì chỉ có phần lưới.
 function tsRenderDenominationTableHtml(breakdown, templateKey, totals, advanceAmount) {
   if (!breakdown || !breakdown.stationOrder.length) {
     return '<p style="color:var(--text-sub);font-size:13px;">Chưa có dữ liệu mệnh giá.</p>';
@@ -718,20 +835,51 @@ function tsRenderDenominationTableHtml(breakdown, templateKey, totals, advanceAm
       </tbody>`;
   }).join('');
 
-  let summaryRowsHtml = '';
+  // Khối tóm tắt tách thành 1 bảng riêng ngay dưới bảng lưới trạm × mệnh giá — bảng riêng có 4 cột cố
+  // định (nhãn/giá trị × 2 cặp) khai qua <colgroup> nên luôn đúng tỉ lệ 2 cột đều nhau, không phụ thuộc
+  // bảng lưới mệnh giá phía trên có bao nhiêu cột (khác bản chất: 1 bên là số liệu theo cột mệnh giá cụ
+  // thể, 1 bên là các mục tổng hợp không theo cột nào). "Tổng tiền" chiếm trọn hàng cuối, nổi bật hơn.
+  let summaryTableHtml = '';
   if (totals) {
-    const labelColspan = headCols.length - 1;
-    const summaryRow = (label, valueHtml) => `
+    const pairRow = (label1, value1, label2, value2) => `
       <tr class="denom-summary-row">
-        <td colspan="${labelColspan}" style="font-weight:700;">${label}</td>
-        <td class="mono" style="font-weight:700;">${valueHtml}</td>
+        <td class="ds-label">${label1 || ''}</td>
+        <td class="mono ds-value">${value1 !== undefined ? value1 : ''}</td>
+        <td class="ds-label">${label2 || ''}</td>
+        <td class="mono ds-value">${value2 !== undefined ? value2 : ''}</td>
       </tr>`;
-    summaryRowsHtml += summaryRow('Số vé', totals.ticketCount);
+
+    const items = [
+      ['Số vé', totals.ticketCount],
+      ['Chưa thu', tsFormatMoney(totals.unpaidAmount || 0)],
+      ['Khách rước đường', totals.roadsidePassengerCount || 0],
+      ['Đã thu', tsFormatMoney(totals.paidAmount || 0)],
+      ['Vé trạm', totals.stationTicketCount || 0]
+    ];
     if (advanceAmount !== undefined) {
-      summaryRowsHtml += summaryRow('Tiền rước đường', tsFormatMoney(advanceAmount));
+      items.push(['Tiền rước đường dự kiến', tsFormatMoney(advanceAmount)]);
     }
-    summaryRowsHtml += summaryRow('Tổng tiền', `<span style="color:var(--red);">${tsFormatMoney(totals.totalAmount)}</span>`);
-    summaryRowsHtml = `<tbody>${summaryRowsHtml}</tbody>`;
+    let rowsHtml = '';
+    for (let i = 0; i < items.length; i += 2) {
+      const [l1, v1] = items[i];
+      const pair2 = items[i + 1];
+      rowsHtml += pairRow(l1, v1, pair2 ? pair2[0] : '', pair2 ? pair2[1] : '');
+    }
+    rowsHtml += `
+      <tr class="denom-summary-row denom-summary-total-row">
+        <td class="ds-label" colspan="3">Tổng tiền</td>
+        <td class="mono ds-value"><span style="color:var(--red);">${tsFormatMoney(totals.totalAmount)}</span></td>
+      </tr>`;
+
+    summaryTableHtml = `
+      <div class="pax-table-wrap grid-table-wrap" style="margin-top:18px; margin-bottom:8px;">
+        <table class="pax-table denom-summary-table">
+          <colgroup>
+            <col style="width:27%"><col style="width:23%"><col style="width:27%"><col style="width:23%">
+          </colgroup>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>`;
   }
 
   return `
@@ -739,9 +887,9 @@ function tsRenderDenominationTableHtml(breakdown, templateKey, totals, advanceAm
       <table class="pax-table denom-grid-table">
         <thead>${theadHtml}</thead>
         ${stationGroups}
-        ${summaryRowsHtml}
       </table>
-    </div>`;
+    </div>
+    ${summaryTableHtml}`;
 }
 
 function tsRenderStaffTableHtml(staffBreakdown) {

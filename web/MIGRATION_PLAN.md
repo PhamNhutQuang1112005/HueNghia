@@ -45,7 +45,7 @@ thông suốt trước khi làm các trang lớn.
 
 ## Giai đoạn 5 — Trang Shuttle (trung chuyển)
 
-Nhỏ nhất trong 3 trang nghiệp vụ (1566 dòng, không load booking.js/seat-bank.js/ui.js ở bản cũ) —
+Nhỏ nhất trong 2 trang nghiệp vụ (1566 dòng, không load booking.js/seat-bank.js/ui.js ở bản cũ) —
 làm "vertical slice" đầu tiên để kiểm chứng toàn luồng UI + API + DB hoạt động tốt.
 
 - [ ] `js/shuttle.js` → `src/app/(dashboard)/shuttle/page.tsx` + `src/components/shuttle/`
@@ -53,28 +53,23 @@ làm "vertical slice" đầu tiên để kiểm chứng toàn luồng UI + API +
 - [ ] `css/shuttle.css` → CSS module riêng cho trang shuttle
 - [ ] Đối chiếu chức năng với bản cũ
 
-## Giai đoạn 6 — Trang Callcenter
+## Giai đoạn 6 — Trang Ticketstaff
 
-2943 dòng, dùng lại `booking.ts` + `seat-bank.ts` + `components/ui/` đã xong ở giai đoạn 2-3.
-
-- [ ] `js/callcenter.js` → `src/app/(dashboard)/callcenter/page.tsx`
-- [ ] `src/app/api/trips/route.ts`, `src/app/api/passengers/route.ts`
-- [ ] `css/callcenter.css` → CSS module riêng cho trang callcenter
-- [ ] Đối chiếu chức năng với bản cũ
-
-## Giai đoạn 7 — Trang Ticketstaff
-
-Phức tạp và dài nhất (~4726 dòng gộp 3 file) — để cuối vì tận dụng toàn bộ pattern/component đã
-ổn định từ callcenter.
+Trang chính duy nhất còn lại (callcenter.html/js/css đã bị xóa khỏi bản cũ — toàn bộ nghiệp vụ Đặt
+vé/Lịch sử/Phơi xe/Rước liền của tổng đài đã gộp hẳn vào ticketstaff.html/js, xem lịch sử commit —
+nên giai đoạn "Trang Callcenter" trước đây không còn cần nữa). Dài nhất (~5929 dòng gộp 3 file JS),
+dùng lại `booking.ts` + `seat-bank.ts` + `components/ui/` đã xong ở giai đoạn 2-3.
 
 - [ ] `js/ticketstaff.js` → `src/app/(dashboard)/ticketstaff/page.tsx`
 - [ ] `js/ticketstaff-manifest-core.js` → `src/lib/` (logic manifest chuyến)
 - [ ] `js/ticketstaff-manifest-ui.js` → `src/components/` (UI manifest chuyến)
+- [ ] `src/app/api/trips/route.ts` (quản lý chuyến/phơi xe, thay `HN_TRIPS_KEY`)
+- [ ] `src/app/api/passengers/route.ts` (khách rước liền, thay `HN_PICKUP_PAX_KEY`)
 - [ ] `src/app/api/seats/route.ts`
 - [ ] `css/ticketstaff.css` → CSS module riêng cho trang ticketstaff
 - [ ] Đối chiếu chức năng với bản cũ
 
-## Giai đoạn 8 — Kiểm thử & Deploy
+## Giai đoạn 7 — Kiểm thử & Deploy
 
 - [ ] Chạy song song bản cũ và bản mới, đối chiếu từng nghiệp vụ (đặt vé, xếp ghế, trung chuyển...)
 - [ ] Import dữ liệu thật (nếu có) từ localStorage/bản cũ sang Supabase

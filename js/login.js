@@ -26,10 +26,10 @@ const accounts = [
     password: "123456",
     role: "call_center",
     roleLabel: "Nhân viên tổng đài",
-    // Đây là tài khoản DUY NHẤT trong hệ thống demo được cấp quyền
-    // truy cập trang Tổng đài (callcenter.html) — nơi xử lý đặt vé,
-    // xếp ghế và chăm sóc khách hàng qua điện thoại.
-    redirect: "callcenter.html",
+    // Trang Tổng đài (callcenter.html) đã gộp vào trang Nhân viên vé
+    // (ticketstaff.html) — xử lý đặt vé, xếp ghế, Phơi xe, Rước liền
+    // và chăm sóc khách hàng đều thực hiện chung tại đây.
+    redirect: "ticketstaff.html",
     color: "var(--red)"
   },
   {
@@ -84,7 +84,7 @@ const accounts = [
 // Nếu tài khoản đăng nhập có "redirect" không nằm trong danh sách này,
 // hệ thống sẽ báo cho người dùng biết trang đó đang được xây dựng,
 // thay vì điều hướng tới một liên kết không tồn tại.
-const existingPages = ["callcenter.html", "shuttle.html"];
+const existingPages = ["ticketstaff.html", "shuttle.html"];
 
 const loginForm      = document.getElementById("loginForm");
 const usernameInput  = document.getElementById("username");

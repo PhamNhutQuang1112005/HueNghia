@@ -12,8 +12,7 @@ web/
 ├── src/
 │   ├── app/                        Next.js App Router — routing theo cây thư mục
 │   │   ├── (auth)/login/           trang đăng nhập
-│   │   ├── (dashboard)/            layout chung + 3 trang nghiệp vụ
-│   │   │   ├── callcenter/
+│   │   ├── (dashboard)/            layout chung + 2 trang nghiệp vụ
 │   │   │   ├── ticketstaff/
 │   │   │   └── shuttle/
 │   │   └── api/                    API routes (Route Handlers) gọi Supabase
@@ -43,8 +42,7 @@ web/
 | Code cũ | Code mới |
 |---|---|
 | `html/index.html` + `js/login.js` | `src/app/(auth)/login/page.tsx` |
-| `html/callcenter.html` + `js/callcenter.js` | `src/app/(dashboard)/callcenter/page.tsx` |
-| `html/ticketstaff.html` + `js/ticketstaff*.js` | `src/app/(dashboard)/ticketstaff/page.tsx` |
+| `html/ticketstaff.html` + `js/ticketstaff*.js` | `src/app/(dashboard)/ticketstaff/page.tsx` (gộp cả nghiệp vụ Đặt vé/Lịch sử/Phơi xe của Callcenter cũ — trang Callcenter đã bị xóa) |
 | `html/shuttle.html` + `js/shuttle.js` | `src/app/(dashboard)/shuttle/page.tsx` |
 | `js/shared/booking.js` | `src/lib/booking.ts` + `src/components/booking/` |
 | `js/shared/seat-bank.js` | `src/lib/seat-bank.ts` + `src/hooks/useSeatBank.ts` |
@@ -55,7 +53,7 @@ web/
 | `css/shared/variables.css` | `src/styles/variables.css` |
 | `css/shared/base.css` | `src/styles/base.css` |
 | `css/shared/booking-ui.css` (1 file 4673 dòng) | `src/styles/booking-ui/*.css` (tách theo Zone/Modal/History...) |
-| `css/login.css`, `css/callcenter.css`, `css/ticketstaff.css`, `css/shuttle.css` | CSS module riêng theo từng page/component tương ứng |
+| `css/login.css`, `css/ticketstaff.css`, `css/shuttle.css` | CSS module riêng theo từng page/component tương ứng |
 
 ## Khi bắt đầu migrate thật
 

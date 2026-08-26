@@ -77,7 +77,6 @@ function openBookingPanel(seats, options = {}) {
   const noteEl = document.getElementById('f_note');
   const typeEl = document.getElementById('f_type');
   const transshipEl = document.getElementById('f_transship');
-  const transshipSelectEl = document.getElementById('f_transship_select');
   const destinationEl = document.getElementById('f_destination');
   const arrivalTransferEl = document.getElementById('f_arrival_transfer');
   const luggageEl = document.getElementById('f_luggage');
@@ -90,17 +89,10 @@ function openBookingPanel(seats, options = {}) {
     noteEl.value = seat.note || '';
     typeEl.value = seat.guestType || 'Khách trạm';
     destinationEl.value = seat.lastStop || '';
-    if (transshipEl) transshipEl.value = (seat.guestType === 'Trung chuyển' || seat.guestType === 'Rước liền') ? seat.transshipStation || '' : '';
-    // Dùng setSelectOptionValue() thay vì gán thẳng .value: địa chỉ trong seat.transshipStation có thể
-    // không khớp đúng 1 trong các <option> cố định của dropdown (dữ liệu mẫu sinh địa chỉ tự do) — gán
-    // thẳng sẽ bị bỏ chọn âm thầm, khiến "Lưu"/"Bán vé" luôn báo thiếu "địa điểm rước" dù đã có dữ liệu.
-    if (transshipSelectEl) {
-      if (seat.guestType === 'Rước đường' && seat.transshipStation) {
-        setSelectOptionValue('f_transship_select', seat.transshipStation);
-      } else {
-        transshipSelectEl.value = '';
-      }
-    }
+    // "Địa điểm rước"/"Trung chuyển đi" giờ dùng chung 1 ô combobox (input + datalist, xem f_transship ở
+    // ticketstaff.html) cho cả 3 loại khách cần điểm đón — không còn dropdown cố định riêng cho "Rước
+    // đường" nữa nên gán thẳng .value là đủ, không lo bị bỏ chọn âm thầm như <select> trước đây.
+    if (transshipEl) transshipEl.value = (seat.guestType === 'Trung chuyển' || seat.guestType === 'Rước liền' || seat.guestType === 'Rước đường') ? seat.transshipStation || '' : '';
     if (arrivalTransferEl) arrivalTransferEl.value = seat.arrivalTransfer || '';
     if (luggageEl) luggageEl.checked = !!seat.hasLuggage;
     if (luggageNoteEl) luggageNoteEl.value = seat.hasLuggage ? (seat.luggageNote || '') : '';
@@ -199,10 +191,12 @@ function getStationValue() {
   return document.getElementById('f_station_select').value;
 }
 
+// #f_station_select giờ là 1 ô combobox (input tự do + datalist gợi ý, xem initDatalistCombobox() ở
+// shared/booking.js), không còn là <select> chỉ nhận đúng 1 trong các option cố định nữa — gán thẳng
+// .value luôn được, không cần kiểm tra "hasOption" như trước (kiểm tra đó từng khiến setStationValue()
+// im lặng bỏ qua nếu seat.firstStop không khớp đúng 1 option, làm mất giá trị thật đã lưu).
 function setStationValue(val) {
-  const selectEl = document.getElementById('f_station_select');
-  const hasOption = Array.from(selectEl.options).some(o => o.value === val);
-  if (hasOption) selectEl.value = val;
+  document.getElementById('f_station_select').value = val || '';
 }
 
 function setSelectOptionValue(selectId, val) {

@@ -102,6 +102,43 @@ function openPassengerHistoryView() {
   rebuildPhFilterOptions();
   phRenderCalendar();
   phUpdateCalTrigger();
+  // Luôn quay về bảng lịch sử mặc định khi vào lại trang này — tránh giữ trạng thái "đang xem Ghế hủy"
+  // từ lần trước, gây hiểu nhầm là trang chưa tải xong dữ liệu lịch sử mới.
+  if (phCancelledViewActive) {
+    phCancelledViewActive = false;
+    const btn = document.getElementById('phCancelledBtn');
+    const cancelledWrap = document.getElementById('phCancelledTableWrap');
+    const cancelledEmpty = document.getElementById('phCancelledEmpty');
+    if (btn) btn.classList.remove('active');
+    if (cancelledWrap) cancelledWrap.style.display = 'none';
+    if (cancelledEmpty) cancelledEmpty.style.display = 'none';
+    const historyWrap = document.getElementById('phHistoryTableWrap');
+    if (historyWrap) historyWrap.style.display = '';
+  }
+  renderPassengerHistoryTable();
+}
+
+// Tuyến đường phụ thuộc vào hướng đi đã chọn (Chiều đi = xuất phát từ Sài Gòn, Chiều về = ngược lại) —
+// cùng quy ước routeStr.startsWith('Sài Gòn') đang dùng ở bộ lọc "Phơi xe" (xem onFilterDirectionChange
+// trong callcenter.js/ticketstaff.js) để nhất quán trong toàn hệ thống.
+function rebuildPhRouteOptions() {
+  const routeEl = document.getElementById('phFilterRoute');
+  if (!routeEl) return;
+  const dirVal = document.getElementById('phFilterDirection')?.value || '';
+  const prevVal = routeEl.value;
+  const pool = _allPassengerHistoryRaw.filter(r => {
+    if (!dirVal) return true;
+    const isDi = (r.route || '').startsWith('Sài Gòn');
+    return dirVal === 'chieu-di' ? isDi : !isDi;
+  });
+  const routes = Array.from(new Set(pool.map(r => r.route).filter(Boolean))).sort();
+  routeEl.innerHTML = `<option value="all">Tất cả tuyến</option>` +
+    routes.map(r => `<option value="${r}">${r}</option>`).join('');
+  routeEl.value = routes.includes(prevVal) ? prevVal : 'all';
+}
+
+function phOnFilterDirectionChange() {
+  rebuildPhRouteOptions();
   renderPassengerHistoryTable();
 }
 
@@ -109,9 +146,7 @@ function rebuildPhFilterOptions() {
   const routeEl = document.getElementById('phFilterRoute');
   const staffEl = document.getElementById('phFilterStaff');
   if (!routeEl) return;
-  const routes = Array.from(new Set(_allPassengerHistoryRaw.map(r => r.route).filter(Boolean))).sort();
-  routeEl.innerHTML = `<option value="all">Tất cả tuyến</option>` +
-    routes.map(r => `<option value="${r}">${r}</option>`).join('');
+  rebuildPhRouteOptions();
   if (staffEl) {
     // Nhân viên "Đặt" và "Bán" có thể khác nhau trên cùng 1 vé (bookStaff/sellStaff) — gộp chung 1 danh
     // sách lựa chọn, lọc thì khớp với 1 trong 2 vai trò (xem renderPassengerHistoryTable()).
@@ -130,9 +165,9 @@ function resetPhFilters() {
   phCalDate = new Date();
   phUpdateCalTrigger();
   phRenderCalendar();
-  setVal('phFilterRoute', 'all');
+  setVal('phFilterDirection', '');
+  rebuildPhRouteOptions();
   setVal('phFilterTime', 'all');
-  setVal('phFilterStatus', 'all');
   setVal('phFilterStaff', 'all');
   renderPassengerHistoryTable();
 }
@@ -145,9 +180,9 @@ function phOnSearchInput(val) {
 
 function renderPassengerHistoryTable() {
   const searchVal = (document.getElementById('phSearchInput')?.value || '').trim().toLowerCase();
+  const dirVal = document.getElementById('phFilterDirection')?.value || '';
   const routeVal = document.getElementById('phFilterRoute')?.value || 'all';
   const timeVal = document.getElementById('phFilterTime')?.value || 'all';
-  const statusVal = document.getElementById('phFilterStatus')?.value || 'all';
   const staffVal = document.getElementById('phFilterStaff')?.value || 'all';
 
   const filtered = (_allPassengerHistoryRaw || []).filter(r => {
@@ -157,18 +192,17 @@ function renderPassengerHistoryTable() {
       if (!matchName && !matchPhone) return false;
     }
     if (phSelectedDateStr && r.date !== phSelectedDateStr) return false;
+    if (dirVal) {
+      const isDi = (r.route || '').startsWith('Sài Gòn');
+      if (dirVal === 'chieu-di' && !isDi) return false;
+      if (dirVal === 'chieu-ve' && isDi) return false;
+    }
     if (routeVal !== 'all' && r.route !== routeVal) return false;
     if (timeVal !== 'all') {
       const hh = parseInt((r.time || '00:00').split(':')[0], 10);
       if (timeVal === 'morning' && (hh < 0 || hh >= 12)) return false;
       if (timeVal === 'afternoon' && (hh < 12 || hh >= 18)) return false;
       if (timeVal === 'evening' && (hh < 18 || hh > 24)) return false;
-    }
-    if (statusVal !== 'all') {
-      if (statusVal === 'today' && !r.isToday) return false;
-      if (statusVal === 'past' && r.isToday) return false;
-      if (statusVal === 'sold' && r.state !== 'sold') return false;
-      if (statusVal === 'hold' && r.state !== 'hold') return false;
     }
     if (staffVal !== 'all' && r.bookStaff !== staffVal && r.sellStaff !== staffVal) return false;
     return true;
@@ -215,6 +249,7 @@ function renderPassengerHistoryRowHtml(r, idx) {
 
   return `
     <tr>
+      <td style="text-align:center; font-weight:600; color:#6b7280;">${idx + 1}</td>
       <td>
         <span class="ch-trip-link" data-action="goToTripFromHistory" data-args='${JSON.stringify(["__event__", idx])}' title="Biển số xe: ${plate} • Loại xe: ${vehicleType} • Tài xế: ${driver} • Phụ xe: ${helper}">${r.route} — ${r.time}</span>
       </td>
@@ -242,6 +277,120 @@ function renderPassengerHistoryRowHtml(r, idx) {
       <td><button type="button" class="btn ph-rebook-btn" data-action="openRebookFromHistory" data-args='${JSON.stringify([idx])}' title="Đặt lại" aria-label="Đặt lại"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button></td>
     </tr>
   `;
+}
+
+// ===== Nút "Ghế hủy" trên trang "Lịch sử hành khách" — khác tab "Ghế hủy" trong màn đặt vé (chỉ xem
+// được ghế hủy của 1 chuyến đang chọn), nút này gộp ghế hủy của TẤT CẢ phơi xe (mọi tripSeatBank) lại
+// thành 1 danh sách duy nhất, kèm nguyên nhân hủy, để tra cứu nhanh không cần mở từng chuyến. =====
+let phCancelledViewActive = false;
+
+// Nhân viên đang đăng nhập thực hiện thao tác hủy ghế — đọc từ phiên đăng nhập (giống
+// getCurrentStaffLabel() ở ticketstaff-manifest-core.js), đặt ở đây (file dùng chung booking.js) vì
+// trước đây callcenter.html không nạp ticketstaff-manifest-core.js (nay callcenter.html đã gộp vào
+// ticketstaff.html, chỗ khai báo vẫn giữ ở đây vì booking.js là code lõi đặt vé dùng chung).
+function getCurrentActionStaffCode() {
+  try {
+    const raw = sessionStorage.getItem(HN_CURRENT_USER_KEY);
+    if (raw) {
+      const user = JSON.parse(raw);
+      if (user && user.username) return getStaffCode(user.username) || user.username;
+    }
+  } catch (e) { /* ignore */ }
+  const nameEl = document.getElementById('userName');
+  return (nameEl && nameEl.textContent.trim()) || 'NV trực';
+}
+
+function loadAllCancelledSeats() {
+  const results = [];
+  Object.keys(tripSeatBank || {}).forEach(tripId => {
+    const bank = tripSeatBank[tripId];
+    if (!bank || !Array.isArray(bank.cancelledSeats) || bank.cancelledSeats.length === 0) return;
+    const tripMeta = (allTripsMeta || []).find(t => t.id === tripId);
+    bank.cancelledSeats.forEach(item => {
+      results.push({
+        ...item,
+        route: (tripMeta && tripMeta.route) || '—',
+        time: (tripMeta && tripMeta.time) || ''
+      });
+    });
+  });
+  return results.sort((a, b) => (b.cancelTime || '').localeCompare(a.cancelTime || ''));
+}
+
+function renderPhCancelledTable() {
+  const all = loadAllCancelledSeats();
+  const tbody = document.getElementById('phCancelledTableBody');
+  const emptyEl = document.getElementById('phCancelledEmpty');
+  if (!tbody) return;
+
+  if (!all.length) {
+    tbody.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  tbody.innerHTML = all.map((item, idx) => {
+    // Hành trình trình bày giống hệt cột "Hành trình" bảng Lịch sử hành khách (chấm đỏ = điểm đi, ghim
+    // xám = điểm đến, nối bằng 1 đường kẻ ngắn) — getHistoryStopsDisplay() chỉ cần firstStop/lastStop,
+    // cancelledRecord không có guestType nên tự bỏ qua phần đón/trả trung chuyển, chỉ hiện đúng 2 trạm.
+    const { firstStopHtml, lastStopHtml } = getHistoryStopsDisplay(item);
+    const priceStr = item.price ? item.price.toLocaleString('vi-VN') + 'đ' : '—';
+    const reasonText = item.reason || 'Không có lý do';
+    const timeText = item.cancelTime || '—';
+    const tripLabel = item.time ? `${item.route} — ${item.time}` : (item.route || '—');
+    const staffStr = getStaffCode(item.cancelStaff) || item.cancelStaff || '—';
+
+    return `
+      <tr>
+        <td style="text-align:center; font-weight:600; color:#6b7280;">${idx + 1}</td>
+        <td>${tripLabel}</td>
+        <td><b>${item.customerName || '—'}</b></td>
+        <td>${item.phone || '—'}</td>
+        <td>
+          <div class="pax-route">
+            <div class="pax-route-row pax-route-from">
+              <svg class="pax-route-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
+              <div class="pax-route-text">${firstStopHtml}</div>
+            </div>
+            <div class="pax-route-connector"></div>
+            <div class="pax-route-row pax-route-to">
+              <svg class="pax-route-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+              <div class="pax-route-text">${lastStopHtml}</div>
+            </div>
+          </div>
+        </td>
+        <td class="mono" style="text-align:center;">1</td>
+        <td class="mono" style="text-align:center;"><b style="color:var(--red,#C20D08);">${item.code}</b></td>
+        <td style="font-weight:600;">${priceStr}</td>
+        <td style="color:#dc2626; font-weight:600;">${reasonText}</td>
+        <td>${staffStr}</td>
+        <td style="color:#6b7280; font-size:13px;">${timeText}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function phToggleCancelledView() {
+  phCancelledViewActive = !phCancelledViewActive;
+  const btn = document.getElementById('phCancelledBtn');
+  const historyWrap = document.getElementById('phHistoryTableWrap');
+  const cancelledWrap = document.getElementById('phCancelledTableWrap');
+  const historyEmpty = document.getElementById('phHistoryEmpty');
+  const cancelledEmpty = document.getElementById('phCancelledEmpty');
+  if (btn) btn.classList.toggle('active', phCancelledViewActive);
+
+  if (phCancelledViewActive) {
+    if (historyWrap) historyWrap.style.display = 'none';
+    if (historyEmpty) historyEmpty.style.display = 'none';
+    if (cancelledWrap) cancelledWrap.style.display = '';
+    renderPhCancelledTable();
+  } else {
+    if (cancelledWrap) cancelledWrap.style.display = 'none';
+    if (cancelledEmpty) cancelledEmpty.style.display = 'none';
+    if (historyWrap) historyWrap.style.display = '';
+    renderPassengerHistoryTable();
+  }
 }
 
 function cancelTransferSelection() {
@@ -424,7 +573,10 @@ function getHistoryStopsDisplay(r) {
 // vào giá trị này để biết có nên tiếp tục mở panel sửa ghế hay không (tránh sửa nhầm ghế của phơi khác
 // nếu chuyển phơi thất bại). Các nơi gọi hàm này từ trước (link tên phơi) không đọc giá trị trả về, không
 // ảnh hưởng hành vi cũ.
-function goToTripFromHistory(e, idx, pushHistory = true) {
+// highlightSeat=false khi gọi từ goToTransshipFromHistory (tag "Trung chuyển") — nơi đó tự chuyển sang
+// tab "Trung chuyển" và highlight đúng hàng của khách trong bảng đó, sơ đồ ghế không hiện nên không cần
+// (và không nên) bật thêm tab "Sơ đồ ghế" chồng lên.
+function goToTripFromHistory(e, idx, pushHistory = true, highlightSeat = true) {
   if (e) e.stopPropagation();
   const list = window._historyResults || _historyResults || [];
   const r = list[idx];
@@ -479,9 +631,63 @@ function goToTripFromHistory(e, idx, pushHistory = true) {
       selectTrip(dummy, tripMeta.time, tripMeta.route);
     }
   }
+
+  // Chuyển thẳng sang tab "Sơ đồ ghế" rồi cuộn tới + highlight tạm đúng thẻ ghế của khách đó (r.seat) —
+  // bấm tên phơi từ lịch sử mà vẫn phải tự dò lại ghế nào giữa 24-45 ghế thì mất tác dụng "nhảy nhanh".
+  if (highlightSeat && r.seat) {
+    if (typeof switchTab === 'function') {
+      switchTab('seatmap', document.getElementById('tabSeatmapItem'));
+    }
+    requestAnimationFrame(() => {
+      const seatEl = document.querySelector(`.seat-card[data-code="${r.seat}"]`);
+      if (!seatEl) return;
+      seatEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      seatEl.classList.add('seat-card-flash-highlight');
+      setTimeout(() => seatEl.classList.remove('seat-card-flash-highlight'), 2200);
+    });
+  }
+
   showToast(`Đã chuyển sang phơi chuyến: ${r.route} (${r.time})`);
   return true;
 }
+
+// Bấm tag "Trung chuyển" trên thẻ lịch sử khách hàng (renderHistorySeatCardHtml) — nhảy tới đúng phơi
+// (dùng lại goToTripFromHistory), mở thẳng tab "Trung chuyển" (switchTab, ticketstaff.js) rồi cuộn tới +
+// highlight tạm đúng hàng của khách đó (khớp theo ticketNo) để không phải tự dò lại trong danh sách.
+function goToTransshipFromHistory(e, idx) {
+  if (e) e.stopPropagation();
+  const list = window._historyResults || _historyResults || [];
+  const r = list[idx];
+  if (!r) return;
+
+  const switched = goToTripFromHistory(null, idx, false, false);
+  if (!switched) return;
+
+  if (typeof switchTab === 'function') {
+    switchTab('transship', document.getElementById('tabTransshipItem'));
+  }
+
+  // renderTransshipTables() (gọi bên trong switchTab) render lại toàn bộ tbody đồng bộ ngay trong cùng
+  // lượt gọi ở trên — không cần chờ thêm, nhưng vẫn để trong rAF để chắc chắn trình duyệt đã áp layout
+  // mới trước khi scrollIntoView (tránh cuộn hụt do bảng vừa được gắn vào DOM/đổi display ngay trước đó).
+  requestAnimationFrame(() => {
+    if (!r.ticketNo) return;
+    const row = document.querySelector(`#transshipPickupBody tr[data-ticket="${r.ticketNo}"], #transshipDropoffBody tr[data-ticket="${r.ticketNo}"]`);
+    if (!row) return;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.classList.add('ts-row-highlight');
+    setTimeout(() => row.classList.remove('ts-row-highlight'), 2200);
+  });
+}
+
+// Nhãn màu riêng cho từng loại khách (khớp đúng 4 giá trị guestType có trong hệ thống, xem
+// f_type/onGuestTypeChange) — dùng cho tag "Loại khách" trên thẻ lịch sử (renderHistorySeatCardHtml).
+const CH_GUEST_TAG_CLASS = {
+  'Khách trạm': 'ch-guest-tag--station',
+  'Trung chuyển': 'ch-guest-tag--transship',
+  'Rước đường': 'ch-guest-tag--roadside',
+  'Rước liền': 'ch-guest-tag--roadside'
+};
 
 function renderHistorySeatCardHtml(r, custName, custPhone) {
   const { firstStopHtml, lastStopHtml } = getHistoryStopsDisplay(r);
@@ -494,12 +700,21 @@ function renderHistorySeatCardHtml(r, custName, custPhone) {
   const footLabel = 'KDV - CHÂU ĐỐC';
   const footHoverLabel = r.state === 'sold' ? 'THÔNG TIN' : 'CHỈNH SỬA';
 
+  // Tag "Loại khách" thay cho tag "Hôm nay" cũ (isToday luôn true nên tag cũ không mang thông tin gì hữu
+  // ích). Riêng "Trung chuyển" bấm được — nhảy tới đúng phơi rồi mở thẳng tab "Trung chuyển", cuộn tới +
+  // highlight đúng hàng của khách đó (goToTransshipFromHistory, khớp theo ticketNo).
+  const guestType = r.guestType || 'Khách trạm';
+  const guestTagClass = CH_GUEST_TAG_CLASS[guestType] || 'ch-guest-tag--station';
+  const guestTagHtml = guestType === 'Trung chuyển'
+    ? `<span class="ch-history-badge ${guestTagClass} ch-guest-tag--clickable" data-action="goToTransshipFromHistory" data-stop-propagation="1" data-args='${JSON.stringify(["__event__", r.origIdx])}' title="Xem trong Danh sách trung chuyển">${guestType}</span>`
+    : `<span class="ch-history-badge ${guestTagClass}">${guestType}</span>`;
+
   return `
     <div class="seat-card ${stateClass} ch-seat-card-item" data-code="${r.seat}">
       <div class="seat-top">
         <div>
           <div class="seat-code" style="display:inline-block; vertical-align:middle; font-size:16px; font-weight:800;">${r.seat}</div>
-          ${r.isToday ? '<span class="ch-history-badge" style="margin-left:6px;">Hôm nay</span>' : ''}
+          <span style="margin-left:6px;">${guestTagHtml}</span>
         </div>
         <div class="seat-top-right">
           <div class="seat-price-tag">${r.price ? r.price.toLocaleString('vi-VN') + 'đ' : '—'}</div>
@@ -664,36 +879,188 @@ function nextSubSeatCode() {
 function onGuestTypeChange() {
   const type = document.getElementById('f_type').value;
   const stationLabel = document.getElementById('f_station_label');
-  const selectEl = document.getElementById('f_station_select');
-  const inputEl = document.getElementById('f_station_input');
   const transshipWrap = document.getElementById('f_transship_wrap');
   const transshipLabel = document.getElementById('f_transship_label');
-  const transshipSelect = document.getElementById('f_transship_select');
   const transshipInput = document.getElementById('f_transship');
   const stationRow = document.getElementById('f_station_row');
 
+  stationLabel.textContent = 'Trạm đi';
+
+  // "Địa điểm rước" (Rước đường) và "Trung chuyển đi" (Trung chuyển) dùng chung 1 ô combobox (input +
+  // datalist stopPointList) — vừa gõ tự do vừa chọn gợi ý, khác nhau ở nhãn/placeholder hiển thị.
   const isTransshipLike = (type === 'Trung chuyển');
-  if (type === 'Rước đường') {
-    stationLabel.textContent = 'Trạm đi';
-    selectEl.style.display = 'block';
-    inputEl.style.display = 'none';
-    transshipLabel.textContent = 'Địa điểm rước';
-    transshipSelect.style.display = 'block';
-    transshipInput.style.display = 'none';
-    transshipWrap.style.display = 'flex';
-  } else {
-    stationLabel.textContent = 'Trạm đi';
-    selectEl.style.display = 'block';
-    inputEl.style.display = 'none';
-    transshipSelect.style.display = 'none';
-    transshipInput.style.display = isTransshipLike ? 'block' : 'none';
-    transshipLabel.textContent = isTransshipLike ? 'Trung chuyển đi' : 'Địa điểm rước';
-    transshipInput.placeholder = isTransshipLike ? 'Nơi trung chuyển...' : 'Nhập địa điểm rước...';
-    transshipWrap.style.display = isTransshipLike ? 'flex' : 'none';
-  }
-  stationRow.style.setProperty('--cols', transshipWrap.style.display === 'none' ? 1 : 2);
+  const needsTransship = (type === 'Trung chuyển' || type === 'Rước đường');
+  transshipInput.style.display = needsTransship ? 'block' : 'none';
+  transshipLabel.textContent = isTransshipLike ? 'Trung chuyển đi' : 'Địa điểm rước';
+  transshipInput.placeholder = isTransshipLike ? 'Nơi trung chuyển...' : 'Nhập địa điểm rước...';
+  transshipWrap.style.display = needsTransship ? 'flex' : 'none';
+
+  stationRow.style.setProperty('--cols', needsTransship ? 2 : 1);
   refreshTicket();
 }
+
+/* ===================== "Trạm đi"/"Trạm đến"/"Địa điểm rước" — Searchable Combobox ===================== */
+// Cả 3 ô này trước đây mỗi ô 1 kiểu khác nhau (select cố định, hoặc input list="..." datalist) — mở/đóng
+// không nhất quán giữa trình duyệt, không tự bôi đen text, không lọc real-time đáng tin cậy, không có
+// trạng thái "không tìm thấy", không điều khiển được bằng bàn phím. initDatalistCombobox() dựng 1 kiểu
+// dropdown chung cho cả 3, gắn thẳng vào <body> với position:fixed (tính lại toạ độ theo input mỗi lần
+// mở/cuộn/resize) để không bao giờ bị .panel-body (overflow-y:auto) cắt mất dù các ô này đều nằm trong
+// đó. Danh sách gợi ý đọc từ đúng <datalist> có sẵn của từng ô (không thêm/đổi dữ liệu).
+function initDatalistCombobox(inputId, datalistId, emptyMessage) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+
+  input.setAttribute('autocomplete', 'off');
+
+  let dropdownEl = null;
+  let currentOptions = [];
+  let highlightedIndex = -1;
+  // Bấm chọn 1 option xong, focus vẫn còn nguyên trên input (xem mousedown bên dưới) — không được coi
+  // đây là 1 lượt "focus mới" nữa vì handler 'focus' sẽ tự bôi đen + mở lại toàn bộ danh sách, trái với
+  // yêu cầu "không trigger lại việc select toàn bộ text ngay sau khi option được chọn".
+  let justSelected = false;
+
+  function getOptionValues() {
+    return Array.from(document.querySelectorAll(`#${datalistId} option`))
+      .map(o => o.value)
+      .filter(Boolean);
+  }
+
+  function ensureDropdown() {
+    if (dropdownEl) return dropdownEl;
+    dropdownEl = document.createElement('div');
+    dropdownEl.className = 'datalist-combo-dropdown';
+    document.body.appendChild(dropdownEl);
+    return dropdownEl;
+  }
+
+  function isOpen() {
+    return !!dropdownEl && dropdownEl.classList.contains('open');
+  }
+
+  function positionDropdown() {
+    if (!dropdownEl) return;
+    const rect = input.getBoundingClientRect();
+    dropdownEl.style.left = rect.left + 'px';
+    dropdownEl.style.top = (rect.bottom + 4) + 'px';
+    dropdownEl.style.width = rect.width + 'px';
+  }
+
+  function renderOptions(list) {
+    const dd = ensureDropdown();
+    currentOptions = list;
+    highlightedIndex = -1;
+    dd.innerHTML = list.length
+      ? list.map((opt, i) => `<div class="datalist-combo-option" data-index="${i}">${escapeHtml(opt)}</div>`).join('')
+      : `<div class="datalist-combo-empty">${escapeHtml(emptyMessage)}</div>`;
+  }
+
+  function openDropdown(filterText) {
+    const all = getOptionValues();
+    const query = (filterText || '').trim().toLowerCase();
+    renderOptions(query ? all.filter(o => o.toLowerCase().includes(query)) : all);
+    positionDropdown();
+    ensureDropdown().classList.add('open');
+  }
+
+  function closeDropdown() {
+    if (dropdownEl) dropdownEl.classList.remove('open');
+    highlightedIndex = -1;
+  }
+
+  function updateHighlight() {
+    if (!dropdownEl) return;
+    dropdownEl.querySelectorAll('.datalist-combo-option').forEach((el, i) => {
+      const active = i === highlightedIndex;
+      el.classList.toggle('highlighted', active);
+      if (active) el.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  function selectValue(value) {
+    input.value = value;
+    closeDropdown();
+    justSelected = true;
+    // events.js chỉ nghe event 'input' thật để chạy data-input-action="refreshTicket" — gán .value bằng
+    // JS không tự bắn event, phải tự dispatch để phần xem trước vé cập nhật ngay theo giá trị vừa chọn.
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  input.addEventListener('focus', () => {
+    if (justSelected) { justSelected = false; return; }
+    input.select();
+    openDropdown('');
+  });
+
+  // Input đã đang focus sẵn thì 'focus' không bắn lại — vẫn cần 'click' để bấm lại lần nữa sau khi đã
+  // chọn 1 giá trị (bôi đen + mở lại toàn bộ danh sách) vẫn hoạt động đúng.
+  input.addEventListener('click', () => {
+    input.select();
+    openDropdown('');
+  });
+
+  input.addEventListener('input', () => {
+    openDropdown(input.value);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isOpen()) { openDropdown(input.value); return; }
+      if (currentOptions.length) {
+        highlightedIndex = (highlightedIndex + 1) % currentOptions.length;
+        updateHighlight();
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!isOpen()) { openDropdown(input.value); return; }
+      if (currentOptions.length) {
+        highlightedIndex = (highlightedIndex - 1 + currentOptions.length) % currentOptions.length;
+        updateHighlight();
+      }
+    } else if (e.key === 'Enter') {
+      if (isOpen() && highlightedIndex >= 0 && currentOptions[highlightedIndex] !== undefined) {
+        e.preventDefault();
+        selectValue(currentOptions[highlightedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      if (isOpen()) {
+        e.preventDefault();
+        closeDropdown();
+      }
+    }
+    // Backspace/Delete/Tab: không can thiệp, giữ nguyên hành vi mặc định của trình duyệt.
+  });
+
+  // Bắt buộc dùng 'mousedown' + preventDefault() (không phải 'click') trên option — 'click' bắn SAU
+  // 'blur', nên nếu chỉ nghe 'click' thì input đã blur/đóng dropdown trước khi lựa chọn được xử lý, làm
+  // mất lượt bấm (lỗi kinh điển "chọn option bị mất do input blur trước"). preventDefault() ở mousedown
+  // chặn luôn việc input mất focus, nên không có 'blur' nào xảy ra ở giữa cả.
+  document.addEventListener('mousedown', (e) => {
+    const optionEl = e.target.closest('.datalist-combo-option');
+    if (optionEl && dropdownEl && dropdownEl.contains(optionEl)) {
+      e.preventDefault();
+      const idx = parseInt(optionEl.getAttribute('data-index'), 10);
+      if (currentOptions[idx] !== undefined) selectValue(currentOptions[idx]);
+      return;
+    }
+    if (e.target === input) return;
+    if (isOpen() && dropdownEl && !dropdownEl.contains(e.target)) closeDropdown();
+  });
+
+  input.addEventListener('blur', () => {
+    // Rời input bằng Tab/click ra ngoài không qua option (bấm option đã được giữ focus nhờ
+    // preventDefault() ở mousedown nên không rơi vào đây) — đóng dropdown lại cho gọn.
+    closeDropdown();
+  });
+
+  window.addEventListener('scroll', () => { if (isOpen()) positionDropdown(); }, true);
+  window.addEventListener('resize', () => { if (isOpen()) positionDropdown(); });
+}
+
+initDatalistCombobox('f_transship', 'stopPointList', 'Không tìm thấy địa điểm');
+initDatalistCombobox('f_station_select', 'departureStationList', 'Không tìm thấy trạm');
+initDatalistCombobox('f_destination', 'destinationStationList', 'Không tìm thấy trạm');
 
 function onRebookGuestTypeChange() {
   const type = document.getElementById('rbGuestType')?.value || 'Khách trạm';
@@ -1222,51 +1589,101 @@ function renderDirectionOptions(filterText) {
   `).join('') : `<div class="dropdown-empty">Không tìm thấy hướng phù hợp</div>`;
 }
 
-// Combobox tìm-để-chọn cho "Hướng đi"/"Tuyến" ở Zone 1 — gõ để lọc realtime trong danh sách lựa chọn,
-// để trống ô thì hiện lại toàn bộ. Dùng addEventListener trực tiếp (không qua data-action) vì cần bắt
-// sự kiện focus/blur — dispatcher dùng chung chỉ hỗ trợ click/change/input/blur/submit qua data-*-action,
-// còn ở đây phải tự quản lý theo từng ô nên gắn thẳng cho gọn, giống cách #searchInput đã làm.
-(function initZone1ComboBoxes() {
-  const directionInput = document.getElementById('directionTrigger');
-  const directionPanel = document.getElementById('directionDropdown');
-  if (directionInput && directionPanel) {
-    directionInput.addEventListener('focus', function () {
-      renderDirectionOptions('');
-      directionPanel.classList.add('open');
-    });
-    directionInput.addEventListener('input', function () {
-      renderDirectionOptions(this.value);
-      directionPanel.classList.add('open');
-    });
-    directionInput.addEventListener('blur', function () {
-      // Trễ 150ms: nếu blur là do bấm 1 mục trong danh sách, click đó chạy trước và đã cập nhật
-      // selectedDirection/giá trị ô — lúc đó gán lại canonical value chỉ là no-op, không đè mất lựa chọn.
-      setTimeout(function () {
-        directionPanel.classList.remove('open');
-        directionInput.value = directionLabels[selectedDirection] || '';
-      }, 150);
+// Combobox tìm-để-chọn cho "Hướng đi"/"Tuyến" ở Zone 1 — gõ để lọc realtime trong danh sách lựa chọn
+// (renderDirectionOptions/renderRouteOptions có sẵn, giữ nguyên), để trống ô thì hiện lại toàn bộ. Dùng
+// addEventListener trực tiếp (không qua data-action) vì cần bắt focus/blur/keydown — dispatcher dùng
+// chung chỉ hỗ trợ click/change/input/blur/submit qua data-*-action, còn ở đây phải tự quản lý theo từng
+// ô nên gắn thẳng cho gọn, giống cách #searchInput đã làm.
+//
+// wireZone1Combobox() dùng chung cho cả 2 ô — cùng hành vi searchable combobox với #f_transship (bôi đen
+// + mở toàn bộ danh sách khi click/focus, điều hướng bằng bàn phím, không mất lượt chọn do input blur
+// trước khi click option kịp xử lý): trước đây đóng dropdown bằng setTimeout 150ms sau blur — 1 hack dựa
+// vào thời gian, có thể trật nếu máy chậm/DOM nặng. Đổi hẳn sang mousedown+preventDefault() trên item để
+// input KHÔNG BAO GIỜ blur khi bấm chọn (loại bỏ hẳn race condition thay vì chỉ né bằng độ trễ).
+function wireZone1Combobox(inputId, panelId, renderFn, getCanonicalValueFn) {
+  const input = document.getElementById(inputId);
+  const panel = document.getElementById(panelId);
+  if (!input || !panel) return;
+  let highlightedIndex = -1;
+
+  function items() {
+    return Array.from(panel.querySelectorAll('.dropdown-item'));
+  }
+
+  function updateHighlight() {
+    items().forEach((el, i) => {
+      const active = i === highlightedIndex;
+      el.classList.toggle('kbd-highlight', active);
+      if (active) el.scrollIntoView({ block: 'nearest' });
     });
   }
 
-  const routeInput = document.getElementById('routeTrigger');
-  const routePanel = document.getElementById('routeDropdown');
-  if (routeInput && routePanel) {
-    routeInput.addEventListener('focus', function () {
-      renderRouteOptions('');
-      routePanel.classList.add('open');
-    });
-    routeInput.addEventListener('input', function () {
-      renderRouteOptions(this.value);
-      routePanel.classList.add('open');
-    });
-    routeInput.addEventListener('blur', function () {
-      setTimeout(function () {
-        routePanel.classList.remove('open');
-        const item = routeOptions[selectedDirection].find(r => r.id === selectedRoute);
-        routeInput.value = item ? item.label : '';
-      }, 150);
-    });
+  function open(filterText) {
+    renderFn(filterText || '');
+    highlightedIndex = -1;
+    panel.classList.add('open');
   }
+
+  function close() {
+    panel.classList.remove('open');
+    highlightedIndex = -1;
+    input.value = getCanonicalValueFn();
+  }
+
+  input.addEventListener('focus', () => {
+    input.select();
+    open('');
+  });
+  // Input đã đang focus sẵn thì 'focus' không bắn lại — vẫn cần 'click' để bấm lại lần nữa sau khi đã
+  // chọn 1 giá trị (bôi đen + mở lại toàn bộ danh sách từ đầu) hoạt động đúng.
+  input.addEventListener('click', () => {
+    input.select();
+    open('');
+  });
+  input.addEventListener('input', () => {
+    open(input.value);
+  });
+  input.addEventListener('blur', close);
+
+  input.addEventListener('keydown', (e) => {
+    const list = items();
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!panel.classList.contains('open')) { open(input.value); return; }
+      if (list.length) { highlightedIndex = (highlightedIndex + 1) % list.length; updateHighlight(); }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!panel.classList.contains('open')) { open(input.value); return; }
+      if (list.length) { highlightedIndex = (highlightedIndex - 1 + list.length) % list.length; updateHighlight(); }
+    } else if (e.key === 'Enter') {
+      if (panel.classList.contains('open') && highlightedIndex >= 0 && list[highlightedIndex]) {
+        e.preventDefault();
+        list[highlightedIndex].click(); // đi qua đúng data-action="toggleDirection"/"selectRoute" có sẵn
+      }
+    } else if (e.key === 'Escape') {
+      if (panel.classList.contains('open')) {
+        e.preventDefault();
+        close();
+      }
+    }
+    // Backspace/Delete/Tab: không can thiệp, giữ nguyên hành vi mặc định của trình duyệt.
+  });
+
+  // preventDefault() ở mousedown (không phải click) trên item — chặn input mất focus TRƯỚC khi
+  // toggleDirection()/selectRoute() (gọi qua data-action lúc 'click' bắn sau đó) kịp chạy, nên không còn
+  // phải né bằng setTimeout nữa.
+  panel.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.dropdown-item')) e.preventDefault();
+  });
+}
+
+(function initZone1ComboBoxes() {
+  wireZone1Combobox('directionTrigger', 'directionDropdown', renderDirectionOptions,
+    () => directionLabels[selectedDirection] || '');
+  wireZone1Combobox('routeTrigger', 'routeDropdown', renderRouteOptions, () => {
+    const item = routeOptions[selectedDirection].find(r => r.id === selectedRoute);
+    return item ? item.label : '';
+  });
 })();
 
 function renderSubSeats() {
@@ -1423,8 +1840,9 @@ function syncRuocLienToPickupList(seats) {
   const luggage = !!targetSeat.hasLuggage;
 
   const existingIdx = paxList.findIndex(p => p.phone === phone && p.name === name);
+  const existingPax = existingIdx > -1 ? paxList[existingIdx] : null;
   const paxObj = {
-    id: existingIdx > -1 ? paxList[existingIdx].id : Date.now(),
+    id: existingPax ? existingPax.id : Date.now(),
     name,
     phone,
     ticketCount: count,
@@ -1436,7 +1854,14 @@ function syncRuocLienToPickupList(seats) {
     luggage: luggage,
     assigned: { tripId: currentTripId, seat: seatsArray.map(s => s.code).join(', ') },
     guestType: 'Rước liền',
-    isRuocLien: true
+    isRuocLien: true,
+    // "Thời gian" (trang Rước liền) — mốc lần đầu nhập thông tin, giữ nguyên qua các lần sửa vé sau đó
+    // thay vì cập nhật lại mỗi lần lưu form. statusNote/printedAt (cột "Trạng thái"/"In lúc") cũng phải
+    // giữ nguyên tương tự — nếu không, sửa vé "Rước liền" (VD đổi ghi chú, đổi ghế) sẽ vô tình xoá mất
+    // ghi chú trạng thái đón khách đã nhập trước đó ở trang Rước liền vì paxObj này ghi đè toàn bộ record cũ.
+    createdAt: (existingPax && existingPax.createdAt) || new Date().toISOString(),
+    statusNote: existingPax ? existingPax.statusNote : undefined,
+    printedAt: existingPax ? existingPax.printedAt : undefined
   };
 
   if (existingIdx > -1) {

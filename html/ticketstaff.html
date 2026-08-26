@@ -9,8 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../css/shared/variables.css?v=1">
 <link rel="stylesheet" href="../css/shared/base.css?v=1">
-<link rel="stylesheet" href="../css/shared/booking-ui.css?v=103">
-<link rel="stylesheet" href="../css/ticketstaff.css?v=91">
+<link rel="stylesheet" href="../css/shared/booking-ui.css?v=108">
+<link rel="stylesheet" href="../css/ticketstaff.css?v=100">
 </head>
 <body>
 
@@ -52,6 +52,9 @@
         </button>
         <button id="tabHistory" class="pill-btn" type="button" data-action="switchView" data-args='["history"]'>
           Lịch sử
+        </button>
+        <button id="tabPhoi" class="pill-btn" type="button" data-action="switchView" data-args='["phoi"]'>
+          Phơi xe
         </button>
       </div>
     </div>
@@ -347,9 +350,9 @@
 
       <!-- TABS -->
       <nav class="tabs">
-        <span class="tab-item active" data-action="switchTab" data-args='["seatmap", "__this__"]'>Sơ đồ ghế</span>
+        <span class="tab-item active" id="tabSeatmapItem" data-action="switchTab" data-args='["seatmap", "__this__"]'>Sơ đồ ghế</span>
         <span class="tab-item" data-action="switchTab" data-args='["passengers", "__this__"]'>Hành khách <span class="cnt" id="passengerTabCnt">(24)</span></span>
-        <span class="tab-item" data-action="switchTab" data-args='["transship", "__this__"]'>Trung chuyển <span class="cnt" id="transshipTabCnt">(0 | 0)</span></span>
+        <span class="tab-item" id="tabTransshipItem" data-action="switchTab" data-args='["transship", "__this__"]'>Trung chuyển <span class="cnt" id="transshipTabCnt">(0 | 0)</span></span>
         <span class="tab-item" data-action="switchTab" data-args='["cancelled", "__this__"]'>Ghế hủy <span class="cnt" id="cancelledTabCnt">(0)</span></span>
         <span class="tab-item">Thống kê</span>
       </nav>
@@ -613,6 +616,14 @@
           </div>
         </div>
         <div class="filter-field">
+          <label for="phFilterDirection">Hướng đi</label>
+          <select id="phFilterDirection" data-change-action="phOnFilterDirectionChange">
+            <option value="">Tất cả hướng</option>
+            <option value="chieu-di">Chiều đi</option>
+            <option value="chieu-ve">Chiều về</option>
+          </select>
+        </div>
+        <div class="filter-field">
           <label for="phFilterRoute">Tuyến đường</label>
           <select id="phFilterRoute" data-change-action="renderPassengerHistoryTable">
             <option value="all">Tất cả tuyến</option>
@@ -628,16 +639,6 @@
           </select>
         </div>
         <div class="filter-field">
-          <label for="phFilterStatus">Trạng thái</label>
-          <select id="phFilterStatus" data-change-action="renderPassengerHistoryTable">
-            <option value="all">Tất cả trạng thái</option>
-            <option value="today">Hôm nay</option>
-            <option value="past">Lịch sử quá khứ</option>
-            <option value="sold">Đã bán</option>
-            <option value="hold">Đã đặt</option>
-          </select>
-        </div>
-        <div class="filter-field">
           <label for="phFilterStaff">Nhân viên</label>
           <select id="phFilterStaff" data-change-action="renderPassengerHistoryTable">
             <option value="all">Tất cả nhân viên</option>
@@ -646,13 +647,18 @@
         <button type="button" class="btn btn-secondary" data-action="resetPhFilters" style="height: 35px; border-radius: var(--radius-md); padding: 0 12px; font-size: 12px;">
           Đặt lại bộ lọc
         </button>
+        <button type="button" class="btn btn-secondary btn-action-red" id="phCancelledBtn" data-action="phToggleCancelledView" style="height: 35px; border-radius: var(--radius-md); padding: 0 12px; font-size: 12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          Ghế hủy
+        </button>
       </div>
 
-      <div class="grid-wrap" style="flex: 1; overflow: auto; padding: 0 20px 20px;">
-        <div class="pax-table-wrap pax-table-wrap--history">
+      <div class="grid-wrap" style="flex: 1; overflow: auto; padding: 0 0 20px;">
+        <div class="pax-table-wrap pax-table-wrap--history" id="phHistoryTableWrap">
           <table class="pax-table pax-table--history pax-table--grid">
             <thead>
               <tr>
+                <th>STT</th>
                 <th>Tên phơi</th>
                 <th>Hành khách</th>
                 <th>Số điện thoại</th>
@@ -675,6 +681,129 @@
             <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
           </svg>
           <p>Không có lịch sử phù hợp với bộ lọc hiện tại.</p>
+        </div>
+
+        <div class="pax-table-wrap" id="phCancelledTableWrap" style="display:none;">
+          <table class="pax-table pax-table--cancelled-all pax-table--grid">
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>Tên phơi</th>
+                <th>Họ và tên</th>
+                <th>SĐT</th>
+                <th>Hành trình</th>
+                <th>SL</th>
+                <th>Vị trí</th>
+                <th>Số tiền</th>
+                <th>Nguyên nhân</th>
+                <th>Nhân viên</th>
+                <th>Thời gian</th>
+              </tr>
+            </thead>
+            <tbody id="phCancelledTableBody"></tbody>
+          </table>
+        </div>
+        <div class="grid-empty" id="phCancelledEmpty" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
+          </svg>
+          <p>Chưa có ghế nào bị hủy ở toàn bộ phơi xe.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TRANG PHƠI XE (chuyển từ callcenter.html qua) ===== -->
+    <div id="phoiView" class="main-view-container"
+      style="display: none; flex-direction: column; flex: 1; overflow: hidden; background: var(--white);">
+      <div class="filter-toolbar">
+        <div class="filter-field">
+          <label for="filterName">Tên phơi</label>
+          <input type="text" id="filterName" placeholder="Nhập tên phơi...">
+        </div>
+        <div class="filter-field filter-field-date">
+          <label for="filterDate">Ngày khởi hành</label>
+          <input type="date" id="filterDate">
+        </div>
+        <div class="filter-field">
+          <label for="filterDirection">Hướng đi</label>
+          <select id="filterDirection" data-change-action="onFilterDirectionChange">
+            <option value="">Tất cả</option>
+            <option value="chieu-di">Chiều đi</option>
+            <option value="chieu-ve">Chiều về</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label for="filterRoute">Tuyến đi</label>
+          <select id="filterRoute" data-change-action="applyFilters">
+            <option value="">Tất cả tuyến</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label for="filterStatus">Trạng thái</label>
+          <select id="filterStatus" data-change-action="applyFilters">
+            <option value="">Tất cả trạng thái</option>
+            <option value="Chưa chỉ định xe">Chưa chỉ định xe</option>
+            <option value="Đã chỉ định xe">Đã chỉ định xe</option>
+            <option value="Đang bán">Đang bán</option>
+            <option value="Đã khởi hành">Đã khởi hành</option>
+            <option value="Đã hủy">Đã hủy</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btnSearch" data-action="applyFilters" style="height: 35px; border-radius: var(--radius-md); padding: 0 14px; font-size: 12.5px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 14px; height: 14px;">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          Tìm kiếm
+        </button>
+        <button class="btn btn-secondary" data-action="resetPhoiFilters" style="height: 35px; border-radius: var(--radius-md); padding: 0 12px; font-size: 12px;">
+          Đặt lại
+        </button>
+        <div style="flex-grow: 1;"></div>
+        <button class="btn btn-secondary" id="btnBulkCreate" data-action="toggleBulkTemplateMode" style="height: 35px; border-radius: var(--radius-md); padding: 0 14px; font-size: 12.5px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
+          </svg>
+          <span id="btnBulkCreateLabel">Tạo phơi xe hàng loạt</span>
+        </button>
+        <button class="btn btn-primary" id="btnSingleCreate" data-action="openSingleModal" style="height: 35px; border-radius: var(--radius-md); padding: 0 14px; font-size: 12.5px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" style="width: 14px; height: 14px;">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Tạo phơi xe
+        </button>
+      </div>
+
+      <div class="grid-wrap" style="flex: 1; overflow: auto; padding: 16px 20px 20px;">
+        <div class="phoi-card-grid" id="tripsCardGrid">
+          <!-- Rendered dynamically -->
+        </div>
+        <div class="grid-empty" id="emptyState" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
+          </svg>
+          <p>Không tìm thấy phơi xe phù hợp với bộ lọc.</p>
+        </div>
+      </div>
+
+      <!-- Thanh chọn "phơi mẫu" để tạo hàng loạt — bấm "Tạo phơi xe hàng loạt" ở trên để bật/tắt, chọn
+           thẻ phơi giống chọn ghế ở sơ đồ ghế, cùng kiểu thanh dính đáy .sticky-actions (Zone 4). -->
+      <div class="sticky-actions" id="bulkTemplateBar" style="display:none;">
+        <span class="hint" id="bulkTemplateHint">Chọn các phơi mẫu bên trên để tạo hàng loạt theo khoảng ngày</span>
+        <div class="bulk-template-bar-fields">
+          <div class="bulk-template-date-field">
+            <label for="bulkTplFromDate">Từ ngày</label>
+            <input type="date" id="bulkTplFromDate">
+          </div>
+          <div class="bulk-template-date-field">
+            <label for="bulkTplToDate">Đến ngày</label>
+            <input type="date" id="bulkTplToDate">
+          </div>
+          <button class="btn btn-secondary" type="button" data-action="toggleBulkTemplateMode">Hủy</button>
+          <button class="btn btn-primary" id="bulkTemplateCreateBtn" type="button" data-action="confirmBulkFromTemplates" disabled>Tạo hàng loạt</button>
         </div>
       </div>
     </div>
@@ -759,6 +888,7 @@
 
         <div class="filter-reset">
           <button type="button" class="btn btn-secondary" data-action="pkResetFilters">Đặt lại bộ lọc</button>
+          <button type="button" class="btn btn-primary" data-action="openPickupModal">Rước liền</button>
         </div>
       </div>
 
@@ -768,20 +898,20 @@
         <div class="legend-row"><span class="status-dot" style="background:var(--green);"></span>Đã chỉ định xe</div>
       </div>
 
-      <div class="grid-wrap" style="padding: 0 20px 24px;">
+      <div class="grid-wrap" style="padding: 0 0 24px;">
         <table class="shuttle-table shuttle-table--grid">
           <thead>
             <tr>
               <th class="col-stt">STT</th>
-              <th style="width: 170px;">Khách hàng</th>
-              <th style="width: 190px;">Trạm đi / Trạm đến</th>
-              <th style="width: 70px; text-align: center;">SL vé</th>
-              <th style="width: 180px;">Trung chuyển đi</th>
-              <th style="width: 180px;">Trung chuyển đến</th>
+              <th style="width: 165px;">Khách hàng</th>
+              <th style="width: 255px;">Hành trình</th>
+              <th style="width: 40px;">SL</th>
               <th style="width: 160px;">Ghi chú</th>
-              <th style="width: 65px; text-align: center;">Baga</th>
-              <th class="col-status" style="width: 150px; text-align: center;">Trạng thái</th>
-              <th style="width: 110px; text-align: center;">Thao tác</th>
+              <th style="width: 100px;">Thời gian</th>
+              <th style="width: 90px;">In lúc</th>
+              <th class="col-status" style="width: 160px;">Trạng thái</th>
+              <th style="width: 244px;">Tên phơi xe</th>
+              <th class="col-action" style="width: 70px;">Thao tác</th>
             </tr>
           </thead>
           <tbody id="pkPaxTableBody"></tbody>
@@ -813,6 +943,123 @@
       <div class="modal-actions">
         <button class="btn btn-primary" data-action="confirmShiftClosing" id="btnConfirmShiftClosing">Xác nhận kết ca</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: THÔNG TIN KHÁCH RƯỚC ===== -->
+<div class="overlay" id="pickupModal">
+  <div class="slidepanel">
+    <div class="panel-head">
+      <div>
+        <h2>Thông tin khách rước</h2>
+        <div class="sub">Nhập thông tin khách rước để lưu vào hệ thống</div>
+      </div>
+      <button class="icon-close" data-action="closeModal" data-args='["pickupModal"]'><svg viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.4">
+          <path d="M18 6 6 18" />
+          <path d="m6 6 12 12" />
+        </svg></button>
+    </div>
+
+    <div class="panel-body">
+      <div class="panel-form">
+        <div class="form-row" style="--cols:2;">
+          <div class="form-field">
+            <label>Họ và tên <span style="color:var(--red);">*</span></label>
+            <input type="text" id="pickupCustomerName" placeholder="Nguyễn Văn A" data-input-action="refreshPickupPreview">
+          </div>
+          <div class="form-field">
+            <label>Số điện thoại <span style="color:var(--red);">*</span></label>
+            <div class="phone-input-row">
+              <input type="tel" id="pickupPhone" placeholder="09xxxxxxxx" data-input-action="refreshPickupPreview">
+              <button type="button" class="phone-add-btn" data-action="addExtraPhoneField" data-args='["pickup_phone_extra","refreshPickupPreview"]' title="Thêm số điện thoại khác">+</button>
+            </div>
+            <div class="phone-extra-list" id="pickup_phone_extra"></div>
+          </div>
+        </div>
+
+        <div class="form-row" style="--cols:2;">
+          <div class="form-field">
+            <label>Trạm đi</label>
+            <select id="pickupStation" data-change-action="refreshPickupPreviewAndPrice">
+              <option value="">Chọn trạm đi</option>
+              <option>Trạm Kinh Dương Vương</option>
+              <option>Trạm An Sương</option>
+              <option>Trạm Q.5</option>
+              <option>Văn phòng trung tâm</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Trung chuyển đi</label>
+            <input type="text" id="pickupAddress" placeholder="Nhập trung chuyển đi"
+              data-input-action="refreshPickupPreviewAndPrice">
+          </div>
+        </div>
+
+        <div class="form-row" style="--cols:2;">
+          <div class="form-field">
+            <label>Trạm đến</label>
+            <select id="pickupDestination" data-change-action="refreshPickupPreviewAndPrice">
+              <option value="">Chọn trạm đến</option>
+              <option>Trạm Châu Đốc</option>
+              <option>Trạm Tân Châu</option>
+              <option>Bến xe Châu Đốc</option>
+              <option>Trạm Long Xuyên</option>
+              <option>Trạm Cần Thơ</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Trung chuyển đến</label>
+            <input type="text" id="pickupTrip" placeholder="Nhập trung chuyển đến"
+              data-input-action="refreshPickupPreviewAndPrice">
+          </div>
+        </div>
+
+        <div class="form-row" style="--cols:2;">
+          <div class="form-field">
+            <label>Số lượng vé <span style="color:var(--red);">*</span></label>
+            <input type="number" id="pickupTicketCount" min="1" max="10" value="1"
+              data-input-action="refreshPickupPreviewAndPrice">
+          </div>
+          <div class="form-field">
+            <label>Ghi chú</label>
+            <input type="text" id="pickupNote" placeholder="Ghi chú thêm..." data-input-action="refreshPickupPreview">
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-ticket-wrap">
+        <div class="ticket">
+          <div class="route">Khách rước</div>
+          <div class="datetime">Thông tin điểm đón</div>
+          <div class="ticket-dash"></div>
+          <div class="kv"><span>Khách</span><span id="pickupPreviewName">—</span></div>
+          <div class="kv"><span>SĐT</span><span id="pickupPreviewPhone">—</span></div>
+          <div class="kv"><span>Số lượng vé</span><span id="pickupPreviewCount">1 vé</span></div>
+          <div class="kv"><span>Trạm đi</span><span id="pickupPreviewStation">—</span></div>
+          <div class="kv"><span>Trung chuyển đi</span><span id="pickupPreviewAddress">—</span></div>
+          <div class="kv"><span>Trạm đến</span><span id="pickupPreviewDestination">—</span></div>
+          <div class="kv"><span>Trung chuyển đến</span><span id="pickupPreviewTrip">—</span></div>
+          <div class="kv"><span>Ghi chú</span><span id="pickupPreviewNote">—</span></div>
+          <div class="ticket-dash"></div>
+          <div class="price-row" id="pickupPriceRow" style="display:none;">
+            <span style="font-size:11.5px;color:var(--text-sub);font-weight:600;">Giá vé</span>
+            <div class="price-row" style="gap:6px;">
+              <span class="price" id="pickupPriceValue">—</span>
+              <svg class="edit-price" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-footer">
+      <button class="btn btn-secondary" data-action="closeModal" data-args='["pickupModal"]'>Đóng</button>
+      <button class="btn btn-primary" data-action="savePickupInfo">Lưu thông tin</button>
     </div>
   </div>
 </div>
@@ -927,13 +1174,13 @@
         <div class="form-row" id="f_station_row" style="--cols:2;">
           <div class="form-field">
             <label id="f_station_label">Trạm đi</label>
-            <select id="f_station_select" data-change-action="refreshTicket">
-              <option>Trạm Kinh Dương Vương</option>
-              <option>Trạm An Sương</option>
-              <option>Trạm Q.5</option>
-              <option>Văn phòng trung tâm</option>
-            </select>
-            <input type="text" id="f_station_input" list="stopPointList" placeholder="Nhập điểm đón..." data-input-action="refreshTicket" style="display:none;">
+            <input type="text" id="f_station_select" placeholder="Chọn trạm đi..." data-input-action="refreshTicket" autocomplete="off">
+            <datalist id="departureStationList">
+              <option value="Trạm Kinh Dương Vương">
+              <option value="Trạm An Sương">
+              <option value="Trạm Q.5">
+              <option value="Văn phòng trung tâm">
+            </datalist>
             <datalist id="stopPointList">
               <option value="Ngã tư Bình Phước">
               <option value="Cầu vượt Sóng Thần">
@@ -945,30 +1192,21 @@
           </div>
           <div class="form-field" id="f_transship_wrap" style="display:none;">
             <label id="f_transship_label">Trung chuyển đi <span style="color:var(--red);">*</span></label>
-            <select id="f_transship_select" style="display:none;" data-change-action="refreshTicket">
-              <option value="">Chọn điểm rước</option>
-              <option>Ngã tư Bình Phước</option>
-              <option>Cầu vượt Sóng Thần</option>
-              <option>Ngã ba An Sương</option>
-              <option>Bến xe An Sương</option>
-              <option>Vòng xoay Phú Lâm</option>
-              <option>Ngã tư Ga</option>
-            </select>
-            <input type="text" id="f_transship" placeholder="Nơi trung chuyển..." data-input-action="refreshTicket" style="display:none;">
+            <input type="text" id="f_transship" placeholder="Nơi trung chuyển..." data-input-action="refreshTicket" autocomplete="off" style="display:none;">
           </div>
         </div>
 
         <div class="form-row" style="--cols:2;">
           <div class="form-field">
             <label>Trạm đến</label>
-            <select id="f_destination" data-change-action="refreshTicket">
-              <option value="">Chọn trạm đến</option>
-              <option>Trạm Châu Đốc</option>
-              <option>Trạm Tân Châu</option>
-              <option>Bến xe Châu Đốc</option>
-              <option>Trạm Long Xuyên</option>
-              <option>Trạm Cần Thơ</option>
-            </select>
+            <input type="text" id="f_destination" placeholder="Chọn trạm đến..." data-input-action="refreshTicket" autocomplete="off">
+            <datalist id="destinationStationList">
+              <option value="Trạm Châu Đốc">
+              <option value="Trạm Tân Châu">
+              <option value="Bến xe Châu Đốc">
+              <option value="Trạm Long Xuyên">
+              <option value="Trạm Cần Thơ">
+            </datalist>
           </div>
           <div class="form-field">
             <label>Trung chuyển đến</label>
@@ -1555,6 +1793,163 @@
   </div>
 </div>
 
+<!-- ===== MODAL: GHI CHÚ TRẠNG THÁI KHÁCH RƯỚC LIỀN (cột "Trạng thái" trang Rước liền) ===== -->
+<div class="modal-overlay" id="pkStatusNoteModal">
+  <div class="modal" style="max-width:380px;">
+    <h3>Ghi chú trạng thái</h3>
+    <div class="form-field">
+      <label>Ghi chú</label>
+      <textarea id="pkStatusNoteInput" placeholder="Nhập ghi chú về trạng thái đón khách..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="closeModal" data-args='["pkStatusNoteModal"]'>Đóng</button>
+      <button class="btn btn-primary" data-action="pkSaveStatusNote">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: GHI CHÚ TRẠNG THÁI (cột "Trạng thái" 2 bảng Trung chuyển đón/trả) ===== -->
+<div class="modal-overlay" id="tsStatusNoteModal">
+  <div class="modal" style="max-width:380px;">
+    <h3>Ghi chú trạng thái</h3>
+    <div class="form-field">
+      <label>Ghi chú</label>
+      <textarea id="tsStatusNoteInput" placeholder="Nhập ghi chú về trạng thái đón/trả khách..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="closeModal" data-args='["tsStatusNoteModal"]'>Đóng</button>
+      <button class="btn btn-primary" data-action="saveTransshipStatusNote">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: LỘ TRÌNH PHƠI XE (chuyển từ callcenter.html qua) ===== -->
+<div class="modal-overlay" id="tripRouteModal">
+  <div class="modal-card trip-route-modal-card">
+    <div class="modal-header">
+      <div>
+        <h2>Lộ trình chuyến đi</h2>
+        <div class="trip-route-summary">
+          <span id="tripRouteName">—</span>
+          <span class="trip-route-meta" id="tripRouteMeta">—</span>
+        </div>
+      </div>
+      <button class="close-btn" data-action="closeModal" data-args='["tripRouteModal"]'>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="trip-route-timeline" id="tripRouteTimeline"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: TẠO / SỬA PHƠI XE ĐƠN LẺ (chuyển từ callcenter.html qua) ===== -->
+<div class="modal-overlay" id="singleModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2 id="singleModalTitle">Tạo phơi xe mới</h2>
+      <button class="close-btn" data-action="closeSingleModal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="singleForm" data-submit-action="saveSingleTrip" data-args='["__event__"]'>
+        <input type="hidden" id="editTripId">
+        <div class="modal-row">
+          <div class="form-group flex-1">
+            <label for="tripDirection">Hướng đi <span class="required">*</span></label>
+            <select id="tripDirection" required data-change-action="onTripDirectionChange">
+              <option value="">-- Chọn hướng tuyến --</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-row">
+          <div class="form-group flex-1">
+            <label for="tripFromStation">Trạm đi <span class="required">*</span></label>
+            <select id="tripFromStation" required data-change-action="updateSingleTripNameSuggestion">
+              <option value="">-- Chọn hướng đi trước --</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="tripToStation">Trạm đến <span class="required">*</span></label>
+            <select id="tripToStation" required data-change-action="updateSingleTripNameSuggestion">
+              <option value="">-- Chọn hướng đi trước --</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-row">
+          <div class="form-group flex-1">
+            <label for="tripDate">Ngày khởi hành <span class="required">*</span></label>
+            <input type="date" id="tripDate" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="tripTime">Giờ khởi hành <span class="required">*</span></label>
+            <input type="time" id="tripTime" required data-change-action="updateSingleTripNameSuggestion">
+          </div>
+        </div>
+        <div class="modal-row">
+          <div class="form-group flex-1">
+            <label>Trạm có thể nhận thêm khách</label>
+            <div class="station-pick-group" id="tripPickupStations"></div>
+          </div>
+        </div>
+        <div class="modal-row">
+          <div class="form-group flex-1">
+            <label for="tripPrice">Giá vé (đ) <span class="required">*</span></label>
+            <input type="number" id="tripPrice" required min="0" step="5000" placeholder="Lấy theo hướng đi">
+          </div>
+          <div class="form-group flex-1">
+            <label for="tripVehicleType">Loại xe <span class="required">*</span></label>
+            <select id="tripVehicleType" required>
+              <option value="Limousine 24 Phòng">Limousine 24 Phòng</option>
+              <option value="Giường nằm 34 chỗ">Giường nằm 34 chỗ</option>
+              <option value="Ghế ngồi 45 chỗ">Ghế ngồi 45 chỗ</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-row">
+          <div class="form-group flex-1">
+            <label for="tripNote">Ghi chú</label>
+            <input type="text" id="tripNote" placeholder="Thông tin nội bộ xe tăng cường...">
+          </div>
+        </div>
+        <div class="modal-row" id="editStatusRow" style="display: none;">
+          <div class="form-group flex-1">
+            <label for="tripStatus">Trạng thái phơi xe</label>
+            <select id="tripStatus">
+              <option value="Chưa chỉ định xe">Chưa chỉ định xe</option>
+              <option value="Đã chỉ định xe">Đã chỉ định xe</option>
+              <option value="Đang bán">Đang bán</option>
+              <option value="Đã khởi hành">Đã khởi hành</option>
+              <option value="Đã hủy">Đã hủy</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="tripPlate">Biển số xe chỉ định</label>
+            <input type="text" id="tripPlate" placeholder="VD: 51F-123.45">
+          </div>
+        </div>
+        <div class="modal-row">
+          <div class="form-group flex-1">
+            <label for="tripName">Tên phơi <span class="required">*</span></label>
+            <input type="text" id="tripName" placeholder="Tự cập nhật theo Trạm đi - Trạm đến">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger-outline" id="btnCancelTrip" style="display:none; margin-right:auto;" data-action="cancelTripFromModal">Hủy phơi xe</button>
+          <button type="button" class="btn btn-secondary" data-action="closeSingleModal">Đóng</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveSingle">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div class="seat-menu" id="seatMenu"></div>
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg><span id="toastText"></span></div>
 
@@ -1563,8 +1958,8 @@
 <script src="../js/shared/constants.js?v=3"></script>
 <script src="../js/shared/seat-bank.js?v=3"></script>
 <script src="../js/shared/ui.js?v=13"></script>
-<script src="../js/shared/booking.js?v=44"></script>
-<script src="../js/ticketstaff.js?v=105"></script>
+<script src="../js/shared/booking.js?v=47"></script>
+<script src="../js/ticketstaff.js?v=115"></script>
 <script src="../js/ticketstaff-manifest-core.js?v=5"></script>
 <script src="../js/ticketstaff-manifest-ui.js?v=38"></script>
 <script src="../js/shared/events.js?v=2"></script>

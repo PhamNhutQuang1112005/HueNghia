@@ -57,7 +57,8 @@ const OCCUPIED_STATES = ['sold', 'hold', 'cargo', 'free'];
 const todayStr__constants = new Date().toISOString().split("T")[0];
 
 // isTemplate:true đánh dấu đây là "phơi mẫu" cố định dùng cho chế độ chọn mẫu tạo hàng loạt (xem
-// toggleBulkTemplateMode() trong callcenter.js) — phơi tạo mới (đơn lẻ hay hàng loạt) KHÔNG có cờ này
+// toggleBulkTemplateMode() trong ticketstaff.js — tính năng Phơi xe trước đây ở callcenter.js, đã
+// chuyển hẳn sang ticketstaff.js) — phơi tạo mới (đơn lẻ hay hàng loạt) KHÔNG có cờ này
 // nên không lẫn vào danh sách mẫu, dù được thêm vào allTripsMeta chung với các phơi mẫu.
 const DEFAULT_SGCD_TRIPS = [
   { id: '1', name: 'Sài Gòn - Châu Đốc (07:00) - Xuất bến VP Q.5', time: '07:00', route: 'Sài Gòn - Châu Đốc', plate: '51F-123.45', vehicleType: 'Limousine 24 Phòng', date: todayStr__constants, price: 280000, status: 'Đang bán', note: 'Xuất bến VP Q.5 - Tải 24 phòng VIP', isTemplate: true },
@@ -76,7 +77,7 @@ const DEFAULT_CDSG_TRIPS = [
 ];
 
 // Thêm phơi mẫu cho các tuyến Long Xuyên/Cần Thơ — trạm đi/đến/trạm đón khớp đúng TRIP_DIRECTIONS_CFG
-// (sg-lx/lx-sg/sg-ct/ct-sg, xem callcenter.js) để nút "Bán vé"/lộ trình hoạt động đúng khi nhân bản.
+// (sg-lx/lx-sg/sg-ct/ct-sg, xem ticketstaff.js) để nút "Bán vé"/lộ trình hoạt động đúng khi nhân bản.
 const DEFAULT_EXTRA_TEMPLATE_TRIPS = [
   { id: '11', name: 'Sài Gòn - Long Xuyên (09:00) - Chuyến sáng cao tốc', time: '09:00', route: 'Sài Gòn - Long Xuyên', plate: '', vehicleType: 'Giường nằm 34 chỗ', date: todayStr__constants, price: 150000, status: 'Chưa chỉ định xe', note: 'Chuyến sáng cao tốc - Đón An Sương', fromStation: 'Văn phòng trung tâm', toStation: 'Bến xe Long Xuyên', pickupStations: ['Trạm An Sương'], isTemplate: true },
   { id: '12', name: 'Long Xuyên - Sài Gòn (13:00) - Chuyến trưa về SG', time: '13:00', route: 'Long Xuyên - Sài Gòn', plate: '51F-234.56', vehicleType: 'Limousine 24 Phòng', date: todayStr__constants, price: 150000, status: 'Đã chỉ định xe', note: 'Chuyến trưa về SG - Xuất bến Long Xuyên', fromStation: 'Bến xe Long Xuyên', toStation: 'Văn phòng trung tâm', pickupStations: [], isTemplate: true },
