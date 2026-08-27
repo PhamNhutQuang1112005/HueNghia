@@ -106,7 +106,6 @@ function openBookingPanel(seats, options = {}) {
     typeEl.value = 'Khách trạm';
     destinationEl.value = '';
     if (transshipEl) transshipEl.value = '';
-    if (transshipSelectEl) transshipSelectEl.value = '';
     if (arrivalTransferEl) arrivalTransferEl.value = '';
     if (luggageEl) luggageEl.checked = false;
     if (luggageNoteEl) luggageNoteEl.value = '';
