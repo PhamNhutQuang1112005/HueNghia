@@ -435,8 +435,14 @@ function saveTransshipStatusNote() {
   const input = document.getElementById('tsStatusNoteInput');
   const value = input ? input.value.trim() : '';
 
-  tsFindRealSeatsByTicket(ticketNo).forEach(s => { s[noteField] = value; });
+  const realSeats = tsFindRealSeatsByTicket(ticketNo);
+  const changed = realSeats.some(s => (s[noteField] || '') !== value);
+  realSeats.forEach(s => { s[noteField] = value; });
   saveSeatBank();
+
+  // Ghi chú cột "Phòng vé" của dòng khách trung chuyển vừa đổi -> đánh dấu để đẩy dòng đó lên đầu bảng
+  // gộp trang "Trung chuyển" (giống hành vi của khách rước liền khi sửa ghi chú).
+  if (changed && leg !== 'dropoff') pkMarkRowUpdated(pkTransshipRowKey(ticketNo));
 
   closeModal('tsStatusNoteModal');
   tsTransshipStatusNoteActive = null;
@@ -3723,6 +3729,9 @@ window.addEventListener('storage', (e) => {
 window.addEventListener('storage', (e) => {
   if (e.key === HN_SHUTTLE_DRIVER_KEY) {
     renderTransshipTables();
+    // So bản đồ tài xế mới/cũ -> đánh dấu cập nhật cho các dòng khách có SĐT vừa đổi (cột "Trung chuyển")
+    // rồi render lại để những dòng đó nổi lên đầu bảng gộp.
+    pkApplyShuttleDriverChange();
     if (currentView === 'pickup') pkRenderPaxTable();
   }
 });
@@ -4050,6 +4059,46 @@ function savePickupInfo() {
 
 // ===== Danh sách hành khách rước liền =====
 
+// "Đẩy lên đầu khi có cập nhật mới" — mỗi lần cột "Trung chuyển" (tài xế/ghi chú tài xế đổi bên
+// shuttle.html) hoặc cột "Phòng vé" (ghi chú trạng thái) của MỘT dòng thay đổi thì gọi pkMarkRowUpdated()
+// với khoá dòng đó; pkRenderPaxTable() sắp các dòng có mốc cập nhật lên trước (mới nhất trước), áp dụng
+// cho CẢ khách rước liền lẫn khách trung chuyển trong cùng bảng gộp. Mốc chỉ sống trong phiên làm việc.
+let pkUpdateSeq = 0;
+const pkRowUpdateStamp = new Map(); // rowKey -> seq (số càng lớn = cập nhật càng mới)
+function pkMarkRowUpdated(rowKey) {
+  if (!rowKey) return;
+  pkUpdateSeq += 1;
+  pkRowUpdateStamp.set(rowKey, pkUpdateSeq);
+}
+function pkPickupRowKey(p) { return 'pk:' + p.id; }
+function pkTransshipRowKey(ticketNoOrRow) {
+  if (ticketNoOrRow && ticketNoOrRow.main) return 'ts:' + (ticketNoOrRow.main.ticketNo || ticketNoOrRow.seatCodes.join(','));
+  return 'ts:' + (ticketNoOrRow || '');
+}
+
+// Bản đồ tài xế trung chuyển (HN_SHUTTLE_DRIVER_KEY) lần trước — để so ra ĐÚNG những SĐT vừa đổi khi có
+// sự kiện 'storage', rồi đánh dấu cập nhật cho các dòng khách tương ứng (cả rước liền lẫn trung chuyển).
+let pkPrevShuttleDriverMap = (() => {
+  try { return JSON.parse(localStorage.getItem(HN_SHUTTLE_DRIVER_KEY) || '{}') || {}; } catch (e) { return {}; }
+})();
+let pkPendingTransshipUpdatePhones = null; // Set<phone> — dòng trung chuyển cần đánh dấu ở lần render kế
+function pkApplyShuttleDriverChange() {
+  let newMap = {};
+  try { newMap = JSON.parse(localStorage.getItem(HN_SHUTTLE_DRIVER_KEY) || '{}') || {}; } catch (e) { newMap = {}; }
+  const changedPhones = new Set();
+  new Set([...Object.keys(newMap), ...Object.keys(pkPrevShuttleDriverMap)]).forEach(k => {
+    if (JSON.stringify(newMap[k] || null) !== JSON.stringify(pkPrevShuttleDriverMap[k] || null)) {
+      changedPhones.add(String(k).replace(/_(don|tra)$/, ''));
+    }
+  });
+  pkPrevShuttleDriverMap = newMap;
+  if (!changedPhones.size) return;
+  pickupPassengers.forEach(p => {
+    if (changedPhones.has(String(p.phone || '').replace(/\s+/g, ''))) pkMarkRowUpdated(pkPickupRowKey(p));
+  });
+  pkPendingTransshipUpdatePhones = changedPhones; // dòng trung chuyển gộp từ seat bank — đánh dấu ở pkRenderPaxTable
+}
+
 function pkRenderPaxTable() {
   const tbody = document.getElementById('pkPaxTableBody');
   const gridEmpty = document.getElementById('pkGridEmpty');
@@ -4100,7 +4149,7 @@ function pkRenderPaxTable() {
     if (rawDriverMap) shuttleDriverMap = JSON.parse(rawDriverMap);
   } catch (e) { }
 
-  const pickupRowsHtml = filtered.map((p, idx) => {
+  const pkRenderPickupRow = (p, idx, shuttleDriverMap) => {
     // Hành trình — gộp Trạm đi/Trạm đến (điểm chính) với Trung chuyển đi/đến (địa chỉ đón/trả cụ thể)
     // thành 1 cột duy nhất, cùng kiểu trình bày .pax-route/.pax-route-row/.pax-route-connector với cột
     // "Hành trình" bảng Lịch sử hành khách (chấm đỏ = điểm đi, ghim xám = điểm đến).
@@ -4183,7 +4232,7 @@ function pkRenderPaxTable() {
         <td class="center">${phongVeCell}</td>
         <td class="center col-action">${actionCell}</td>
       </tr>`;
-  }).join('');
+  };
 
   // ===== Hành khách trung chuyển — gộp từ MỌI phơi (trang này không chọn phơi cụ thể như tab
   // "Trung chuyển" bên Quản lý vé). Bỏ qua các vé vốn là khách rước liền ĐÃ được chỉ định ở bảng trên
@@ -4195,18 +4244,38 @@ function pkRenderPaxTable() {
     seats.forEach(code => pickupAssignedSeatKeys.add(`${p.assigned.tripId}|${code}`));
   });
   const transshipRows = pkGetTransshipRows(pkSelectedDateStr, pkFilterState, pickupAssignedSeatKeys);
-  const transshipRowsHtml = transshipRows
-    .map((r, i) => pkRenderTransshipRow(r, filtered.length + i, shuttleDriverMap))
-    .join('');
 
-  const combinedHtml = pickupRowsHtml + transshipRowsHtml;
-  if (!combinedHtml) {
+  // Có SĐT tài xế trung chuyển vừa đổi bên shuttle (từ pkApplyShuttleDriverChange) -> đánh dấu cập nhật
+  // cho đúng dòng khách trung chuyển tương ứng, để nó cũng được đẩy lên đầu như dòng rước liền.
+  if (pkPendingTransshipUpdatePhones && pkPendingTransshipUpdatePhones.size) {
+    transshipRows.forEach(r => {
+      if (pkPendingTransshipUpdatePhones.has(String(r.main.phone || '').replace(/\s+/g, ''))) {
+        pkMarkRowUpdated(pkTransshipRowKey(r));
+      }
+    });
+    pkPendingTransshipUpdatePhones = null;
+  }
+
+  // Gộp 2 loại dòng rồi sắp các dòng CÓ mốc cập nhật lên trước (mới nhất trước). Array.sort ổn định nên
+  // các dòng chưa từng cập nhật (mốc 0) giữ nguyên thứ tự: rước liền trước, trung chuyển sau.
+  const mergedRows = [
+    ...filtered.map(p => ({ kind: 'pk', data: p, key: pkPickupRowKey(p) })),
+    ...transshipRows.map(r => ({ kind: 'ts', data: r, key: pkTransshipRowKey(r) }))
+  ];
+  mergedRows.sort((a, b) => (pkRowUpdateStamp.get(b.key) || 0) - (pkRowUpdateStamp.get(a.key) || 0));
+
+  const rowsHtml = mergedRows.map((row, idx) => row.kind === 'pk'
+    ? pkRenderPickupRow(row.data, idx, shuttleDriverMap)
+    : pkRenderTransshipRow(row.data, idx, shuttleDriverMap)
+  ).join('');
+
+  if (!rowsHtml) {
     tbody.innerHTML = '';
     if (gridEmpty) gridEmpty.style.display = 'block';
     return;
   }
   if (gridEmpty) gridEmpty.style.display = 'none';
-  tbody.innerHTML = combinedHtml;
+  tbody.innerHTML = rowsHtml;
 }
 
 // Gom hành khách trung chuyển (có địa chỉ trung chuyển đón/trả, hoặc guestType 'Trung chuyển') từ seat
@@ -4410,10 +4479,12 @@ function pkSaveStatusNote() {
   pax.statusNote = value;
 
   // Chỉ đẩy lên đầu danh sách khi ghi chú VỪA được thêm mới hoặc đổi nội dung — bấm "Lưu" mà không đổi
-  // gì thì giữ nguyên vị trí, tránh xáo trộn danh sách không cần thiết.
+  // gì thì giữ nguyên vị trí, tránh xáo trộn danh sách không cần thiết. Đánh dấu mốc cập nhật để dòng
+  // này nổi lên đầu bảng gộp, đứng trên cả các dòng khách trung chuyển.
   if (changed) {
     pickupPassengers.splice(idx, 1);
     pickupPassengers.unshift(pax);
+    pkMarkRowUpdated(pkPickupRowKey(pax));
   }
 
   savePickupPassengers();
