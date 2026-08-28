@@ -658,7 +658,10 @@ function persistShuttleDriverAssignment(assignedCusts, driver, plate, vehicleTyp
         driverName: driver.driverName,
         driverPhone: driver.driverPhone,
         driverPlate: plate,
-        driverVehicleType: vehicleType
+        driverVehicleType: vehicleType,
+        // Ghi chú của khách/chuyến nhập ở trang shuttle (c.note) — ticketstaff đọc lại để hiện dưới tên
+        // tài xế ở cột "Trung chuyển" bảng Rước liền/Trung chuyển.
+        driverNote: c.note || ''
       };
     });
     const jsonStr = JSON.stringify(map);

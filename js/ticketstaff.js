@@ -377,8 +377,8 @@ function renderCancelledListTable() {
 }
 
 // Cột "Trạng thái" (2 bảng Trung chuyển đón/trả) — bấm để ghi/sửa ghi chú riêng (VD "đã gọi tài xế",
-// "khách xin đón trễ 10p"), KHÔNG hiện thẳng nội dung ghi chú trên tag (khác kiểu .pk-status-cell ở trang
-// Rước liền) — chỉ đổi viền/nền báo có ghi chú, rê chuột vào mới thấy qua title="...".
+// "khách xin đón trễ 10p"), KHÔNG hiện thẳng nội dung ghi chú trên tag (khác kiểu cột "Trung chuyển"
+// .pk-transship-cell ở trang Rước liền) — chỉ đổi viền/nền báo có ghi chú, rê chuột vào mới thấy qua title="...".
 // Chiều "đón": "Đang đón" chỉ đúng khi ĐÃ gán tài xế trung chuyển (hasAssignedDriver, xem cột "Tài xế"
 // cùng hàng) — trước đây dùng nhầm item.paid (trạng thái thu tiền vé, không liên quan gì đến việc đã có
 // tài xế đi đón hay chưa) nên hiện sai. Chiều "trả" chưa có cột gán tài xế hiển thị ở bảng này nên vẫn
@@ -398,8 +398,20 @@ function tsRenderTransshipStatusBadge(item, leg, hasAssignedDriver) {
 
 // Tìm lại đúng các ghế THẬT (không phải bản sao qua getAllBookedSeats()) theo ticketNo — cần sửa trực
 // tiếp lên seatPlanDown/Up/extraLeftoverSeats thì lưu mới có tác dụng, sửa lên bản sao không lưu được gì.
+// Trước tiên tìm ở phơi đang mở; không thấy thì quét toàn bộ tripSeatBank để bảng gộp trang "Trung
+// chuyển" (gộp khách trung chuyển từ MỌI phơi) cũng ghi/sửa ghi chú trạng thái được như bảng rước liền.
 function tsFindRealSeatsByTicket(ticketNo) {
-  return [...seatPlanDown, ...seatPlanUp, ...(extraLeftoverSeats || [])].filter(s => s.ticketNo === ticketNo);
+  const cur = [...seatPlanDown, ...seatPlanUp, ...(extraLeftoverSeats || [])].filter(s => s.ticketNo === ticketNo);
+  if (cur.length) return cur;
+  const out = [];
+  Object.keys(tripSeatBank || {}).forEach(tid => {
+    const b = tripSeatBank[tid];
+    if (!b) return;
+    [...(b.down || []), ...(b.up || []), ...(b.extraSeats || [])].forEach(s => {
+      if (s && s.ticketNo === ticketNo) out.push(s);
+    });
+  });
+  return out;
 }
 
 let tsTransshipStatusNoteActive = null; // { ticketNo, leg }
@@ -429,6 +441,7 @@ function saveTransshipStatusNote() {
   closeModal('tsStatusNoteModal');
   tsTransshipStatusNoteActive = null;
   renderTransshipTables();
+  if (currentView === 'pickup') pkRenderPaxTable();
 }
 
 function renderTransshipTables() {
@@ -2393,7 +2406,7 @@ function switchView(viewName) {
     if (rightCol) rightCol.style.display = 'none';
     if (pickupView) pickupView.style.display = 'flex';
     if (tabPickup) tabPickup.classList.add('active');
-    if (searchInput) searchInput.placeholder = 'Tìm tên, SĐT khách rước liền...';
+    if (searchInput) searchInput.placeholder = 'Tìm tên, SĐT khách trung chuyển...';
     pkRenderCalendar();
     pkRenderPaxTable();
   } else if (viewName === 'phoi') {
@@ -3708,7 +3721,10 @@ window.addEventListener('storage', (e) => {
 // Tài xế vừa được gán ở trang shuttle.html (tab khác) -> render lại ngay cột "Tài xế" nếu đang mở tab
 // Trung chuyển, không cần tải lại trang.
 window.addEventListener('storage', (e) => {
-  if (e.key === HN_SHUTTLE_DRIVER_KEY) renderTransshipTables();
+  if (e.key === HN_SHUTTLE_DRIVER_KEY) {
+    renderTransshipTables();
+    if (currentView === 'pickup') pkRenderPaxTable();
+  }
 });
 
 // ===================== RƯỚC LIỀN (gộp từ pickup-list.js) =====================
@@ -4074,23 +4090,17 @@ function pkRenderPaxTable() {
     return true;
   });
 
-  if (filtered.length === 0) {
-    tbody.innerHTML = '';
-    if (gridEmpty) gridEmpty.style.display = 'block';
-    return;
-  }
-  if (gridEmpty) gridEmpty.style.display = 'none';
-
   // Tài xế trung chuyển được gán ở trang shuttle.html, đọc lại qua HN_SHUTTLE_DRIVER_KEY (khoá theo
   // "sđt_don" — xem shuttleDriverLegKey() bên shuttle.js) — dùng cùng công thức khoá với cột "Tài xế"
-  // bảng "Trung chuyển đón" (renderTransshipTables) để hiện đúng tên tài xế đã gán cho khách rước liền.
+  // bảng "Trung chuyển đón" (renderTransshipTables). Dùng chung cho cả dòng khách rước liền lẫn dòng
+  // hành khách trung chuyển gộp bên dưới.
   let shuttleDriverMap = {};
   try {
     const rawDriverMap = localStorage.getItem(HN_SHUTTLE_DRIVER_KEY);
     if (rawDriverMap) shuttleDriverMap = JSON.parse(rawDriverMap);
   } catch (e) { }
 
-  tbody.innerHTML = filtered.map((p, idx) => {
+  const pickupRowsHtml = filtered.map((p, idx) => {
     // Hành trình — gộp Trạm đi/Trạm đến (điểm chính) với Trung chuyển đi/đến (địa chỉ đón/trả cụ thể)
     // thành 1 cột duy nhất, cùng kiểu trình bày .pax-route/.pax-route-row/.pax-route-connector với cột
     // "Hành trình" bảng Lịch sử hành khách (chấm đỏ = điểm đi, ghim xám = điểm đến).
@@ -4113,18 +4123,16 @@ function pkRenderPaxTable() {
         </div>
       </div>`;
 
-    // "Tên phơi xe" — trước đây gộp chung với nút "Chỉ định"/"Đổi chỉ định" dưới tên cột "Trạng thái",
-    // giờ tách khỏi cột "Trạng thái" mới (xem statusCell bên dưới) nên đổi tên đúng nội dung: tên phơi
-    // đã gán, hoặc thẻ "Chưa chỉ định" nếu chưa gán phơi nào.
-    let tripCell, actionCell;
+    // "Số ghế" — trước đây là cột "Tên phơi xe" (tên phơi + ghế). Giờ chỉ hiện SỐ GHẾ đã chỉ định; bấm
+    // vào số ghế thì nhảy thẳng sang phơi được chỉ định (sellTicketForTrip → switchView('booking') + chọn
+    // đúng thẻ phơi ở Zone 1). Chưa gán phơi nào thì hiện dấu "_".
+    let seatCell, actionCell;
     if (p.assigned) {
-      const trip = allTripsMeta.find(t => t.id === p.assigned.tripId);
-      const displayTripName = trip ? (trip.name || `${trip.route} (${trip.time})`) : 'Phơi xe';
       const seatStr = p.assigned.seat || (Array.isArray(p.assigned.seats) ? p.assigned.seats.join(', ') : 'Rước liền');
-      tripCell = `<div class="assigned-info"><b style="color:var(--text-main); font-size:13.5px;">${escapeHtml(displayTripName)}</b><span style="color:var(--text-sub); font-size:12.5px;">Ghế ${escapeHtml(seatStr)}</span></div>`;
+      seatCell = `<button type="button" class="pk-seat-link" data-action="sellTicketForTrip" data-args='${JSON.stringify([p.assigned.tripId])}' title="Bấm để mở phơi đã chỉ định">${escapeHtml(seatStr)}</button>`;
       actionCell = `<button class="assign-action-btn reassign" data-action="pkOpenAssignModal" data-args='[${p.id}]'>Đổi chỉ định</button>`;
     } else {
-      tripCell = `<span class="status-tag pending">Chưa chỉ định</span>`;
+      seatCell = `<span class="pk-seat-none">_</span>`;
       actionCell = `<button class="assign-action-btn" data-action="pkOpenAssignModal" data-args='[${p.id}]'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>Chỉ định</button>`;
     }
 
@@ -4138,17 +4146,27 @@ function pkRenderPaxTable() {
     // p.printedAt) — hiện "—" cho tới khi tính năng in đó được triển khai.
     const printedTimeStr = p.printedAt ? `${formatHistoryDate(p.printedAt)}<br>${formatActionTime(p.printedAt)}` : '—';
 
-    // "Trạng thái" — tên tài xế trung chuyển đã gán ở trang shuttle.html (hiện trống nếu chưa gán), cộng
-    // NỘI DUNG ghi chú trạng thái hiện thẳng trong ô (không chỉ chấm báo hiệu + tooltip khi rê chuột như
-    // trước) để nhìn danh sách là biết ngay, không cần bấm/rê từng dòng. Bấm vào ô này (dù có tên/ghi chú
-    // hay trống) để mở modal nhỏ ghi chú trạng thái đón khách (#pkStatusNoteModal). Ghi/đổi ghi chú xong
-    // thì đẩy khách này lên đầu danh sách (xem pkSaveStatusNote()).
+    // Cột "Trung chuyển" — CHỈ tên tài xế trung chuyển đã gán bên trang shuttle.html + ghi chú của tài xế
+    // đó (driverNote, cũng lấy từ shuttle). Để trống nếu chưa gán. KHÔNG hiện ghi chú của cột "Phòng vé"
+    // (p.statusNote) ở đây. Chỉ để HIỂN THỊ, không bấm được.
     const driverKey = `${(p.phone || '').replace(/\s+/g, '')}_don`;
     const assignedDriver = shuttleDriverMap[driverKey];
     const hasStatusNote = !!p.statusNote;
-    const statusCell = `<button type="button" class="pk-status-cell${hasStatusNote ? ' has-note' : ''}" data-action="pkOpenStatusNoteModal" data-args='[${p.id}]' title="Bấm để ghi/sửa ghi chú trạng thái">
-        ${assignedDriver ? `<span class="pk-driver-name">${escapeHtml(assignedDriver.driverName)}</span>` : ''}
-        ${hasStatusNote ? `<span class="pk-note-text">${escapeHtml(p.statusNote)}</span>` : ''}
+    const driverNote = (assignedDriver && assignedDriver.driverNote) || '';
+    const transshipCell = assignedDriver
+      ? `<div class="pk-transship-cell">
+          <span class="pk-driver-name">${escapeHtml(assignedDriver.driverName)}</span>
+          ${driverNote ? `<span class="pk-driver-sub">${escapeHtml(driverNote)}</span>` : ''}
+        </div>`
+      : '';
+
+    // Cột "Phòng vé" — ghi chú trạng thái đón do phòng vé nhập (p.statusNote), hiện thẳng NỘI DUNG trong ô
+    // giống cột "Trung chuyển". Luôn bấm được (dù có ghi chú hay trống) để mở modal ghi/sửa
+    // (#pkStatusNoteModal). Ghi/đổi ghi chú xong thì đẩy khách này lên đầu danh sách (xem pkSaveStatusNote()).
+    const phongVeCell = `<button type="button" class="pk-note-cell${hasStatusNote ? ' has-note' : ''}" data-action="pkOpenStatusNoteModal" data-args='[${p.id}]' title="Bấm để ghi/sửa ghi chú trạng thái">
+        ${hasStatusNote
+          ? `<span class="pk-note-text">${escapeHtml(p.statusNote)}</span>`
+          : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`}
       </button>`;
 
     return `
@@ -4157,17 +4175,217 @@ function pkRenderPaxTable() {
         <td><div class="pax-info"><div class="pax-name">KH: ${escapeHtml(p.name || '')}</div><div class="pax-phone">SĐT: ${escapeHtml(p.phone || '')}</div></div></td>
         <td>${routeHtml}</td>
         <td class="center" style="font-weight:700; font-size:13.5px; color:var(--text-main);">${p.ticketCount || p.count || 1}</td>
+        <td class="center">${seatCell}</td>
         <td class="note-cell">${p.note ? escapeHtml(p.note) : '—'}</td>
         <td class="center mono" style="font-size:12px; color:var(--text-sub);">${createdTimeStr}</td>
         <td class="center mono" style="font-size:12px; color:var(--text-sub);">${printedTimeStr}</td>
-        <td class="center">${statusCell}</td>
-        <td class="center">${tripCell}</td>
+        <td class="center">${transshipCell}</td>
+        <td class="center">${phongVeCell}</td>
         <td class="center col-action">${actionCell}</td>
       </tr>`;
   }).join('');
+
+  // ===== Hành khách trung chuyển — gộp từ MỌI phơi (trang này không chọn phơi cụ thể như tab
+  // "Trung chuyển" bên Quản lý vé). Bỏ qua các vé vốn là khách rước liền ĐÃ được chỉ định ở bảng trên
+  // để không hiện trùng 2 dòng. Chung tbody, nối tiếp ngay dưới danh sách rước liền. =====
+  const pickupAssignedSeatKeys = new Set();
+  pickupPassengers.forEach(p => {
+    if (!p.assigned) return;
+    const seats = p.assigned.seats || (p.assigned.seat ? String(p.assigned.seat).split(',').map(s => s.trim()).filter(Boolean) : []);
+    seats.forEach(code => pickupAssignedSeatKeys.add(`${p.assigned.tripId}|${code}`));
+  });
+  const transshipRows = pkGetTransshipRows(pkSelectedDateStr, pkFilterState, pickupAssignedSeatKeys);
+  const transshipRowsHtml = transshipRows
+    .map((r, i) => pkRenderTransshipRow(r, filtered.length + i, shuttleDriverMap))
+    .join('');
+
+  const combinedHtml = pickupRowsHtml + transshipRowsHtml;
+  if (!combinedHtml) {
+    tbody.innerHTML = '';
+    if (gridEmpty) gridEmpty.style.display = 'block';
+    return;
+  }
+  if (gridEmpty) gridEmpty.style.display = 'none';
+  tbody.innerHTML = combinedHtml;
 }
 
-// ===== Modal ghi chú trạng thái đón khách rước liền (#pkStatusNoteModal, cột "Trạng thái") =====
+// Gom hành khách trung chuyển (có địa chỉ trung chuyển đón/trả, hoặc guestType 'Trung chuyển') từ seat
+// bank của MỌI phơi — trả về mảng { tripId, trip, main, seatCodes, seatCount }. Lọc theo từ khoá tìm
+// kiếm (tên/SĐT/mã ghế), bộ lọc trạm đi/đến, khung giờ (theo giờ phơi) và trạng thái giống bảng rước
+// liền. KHÔNG lọc theo ngày: vé trung chuyển trong seat bank không mang ngày riêng cho từng khách nên
+// trang này gộp toàn bộ hành khách trung chuyển của mọi phơi. Bỏ các ghế đã nằm trong danh sách khách
+// rước liền đã chỉ định (tránh hiện trùng 2 dòng).
+function pkGetTransshipRows(selectedDateStr, filterState, skipSeatKeys) {
+  const kw = (filterState.search || '').toLowerCase();
+  const rows = [];
+  const seen = new Set();
+
+  Object.keys(tripSeatBank || {}).forEach(tripId => {
+    const bank = tripSeatBank[tripId];
+    if (!bank) return;
+    const trip = allTripsMeta.find(t => String(t.id) === String(tripId));
+
+    // Khung giờ theo giờ khởi hành của phơi (bỏ qua khi đang gõ tìm kiếm — lúc đó tìm trên toàn bộ).
+    if (!kw && filterState.timeSlot !== 'all' && trip && trip.time) {
+      const hh = parseInt(String(trip.time).split(':')[0], 10);
+      if (filterState.timeSlot === 'morning' && !(hh >= 0 && hh < 12)) return;
+      if (filterState.timeSlot === 'afternoon' && !(hh >= 12 && hh < 18)) return;
+      if (filterState.timeSlot === 'evening' && !(hh >= 18 && hh <= 24)) return;
+    }
+
+    const seats = [...(bank.down || []), ...(bank.up || []), ...(bank.extraSeats || [])]
+      .filter(s => s && ['sold', 'hold', 'free', 'cargo'].includes(s.state));
+
+    const byTicket = new Map();
+    seats.forEach(s => {
+      const key = tripId + '|' + (s.ticketNo || ('T-' + s.code));
+      if (!byTicket.has(key)) byTicket.set(key, []);
+      byTicket.get(key).push(s);
+    });
+
+    byTicket.forEach((members, key) => {
+      members.sort((a, b) => String(a.code).localeCompare(String(b.code)));
+      const main = members[0];
+      const isTransship = main.guestType === 'Trung chuyển'
+        || !!main.pickupAddress || !!main.transship || !!main.transshipStation
+        || !!main.dropoffAddress || !!main.arrivalTransfer;
+      if (!isTransship) return;
+      if (skipSeatKeys && members.some(s => skipSeatKeys.has(tripId + '|' + s.code))) return;
+      if (seen.has(key)) return;
+      seen.add(key);
+      rows.push({ tripId, trip, main, seatCodes: members.map(s => s.code), seatCount: members.length });
+    });
+  });
+
+  return rows.filter(r => {
+    const m = r.main;
+    // Trạng thái: dòng trung chuyển luôn đã có ghế -> coi như "đã chỉ định".
+    if (filterState.status === 'pending') return false;
+    if (!kw && filterState.fromStation !== 'all' && m.firstStop !== filterState.fromStation) return false;
+    if (!kw && filterState.toStation !== 'all' && m.lastStop !== filterState.toStation) return false;
+    if (!kw) return true;
+    return (m.customerName && m.customerName.toLowerCase().includes(kw))
+      || (m.phone && String(m.phone).toLowerCase().includes(kw))
+      || r.seatCodes.some(c => String(c).toLowerCase().includes(kw));
+  });
+}
+
+// Chỉ số ổn định (không đổi giữa các lần render) suy từ chuỗi khoá — dùng để gán dữ liệu mẫu tài xế/
+// giờ in cho khách trung chuyển sao cho mỗi khách luôn nhận cùng 1 giá trị, không nhấp nháy.
+function pkStableIndex(str, mod) {
+  let h = 0;
+  const s = String(str || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return mod ? h % mod : h;
+}
+
+// Dữ liệu mẫu tài xế trung chuyển (dùng khi seat bank chưa có tài xế thật gán từ trang shuttle.html) —
+// để cột "Trung chuyển" của khách trung chuyển không bị trống trong bản demo.
+const PK_TS_SAMPLE_DRIVERS = [
+  { name: 'Trần Văn Hùng', phone: '0908 111 222', note: 'Đã liên hệ khách, hẹn đón đúng giờ' },
+  { name: 'Nguyễn Văn Nam', phone: '0918 333 444', note: 'Khách chờ ở sảnh, xe 7 chỗ' },
+  { name: 'Phạm Quốc Bảo', phone: '0937 555 666', note: 'Đón thêm 1 khách cùng điểm' },
+  { name: 'Lê Hoàng Anh', phone: '0946 777 888', note: 'Xe đang trên đường, ETA 10 phút' },
+  { name: 'Võ Thành Long', phone: '0977 999 000', note: '' }
+];
+
+// Mốc thời gian mẫu — suy ổn định từ giờ khởi hành phơi (trước giờ chạy `minutesBefore` phút), trả về
+// chuỗi ISO để formatHistoryDate()/formatActionTime() hiển thị 2 dòng giống cột "Thời gian"/"In lúc"
+// bảng khách rước liền.
+function pkSampleStamp(trip, minutesBefore, seed) {
+  const base = (trip && trip.date) ? trip.date : '2026-07-18';
+  const t = (trip && trip.time) ? String(trip.time) : '07:00';
+  const parts = t.split(':').map(Number);
+  let total = (parts[0] || 0) * 60 + (parts[1] || 0) - minutesBefore - (seed % 15);
+  if (total < 0) total += 1440;
+  const H = String(Math.floor(total / 60) % 24).padStart(2, '0');
+  const M = String(total % 60).padStart(2, '0');
+  return `${base}T${H}:${M}:00`;
+}
+
+// 1 dòng "hành khách trung chuyển" trong bảng gộp — các cột Thời gian / In lúc / Trung chuyển / Phòng vé
+// / Thao tác render Y HỆT dòng khách rước liền (cùng markup, class, định dạng 2 dòng, nút bấm). Phần
+// khác duy nhất là nguồn dữ liệu: lấy từ seat bank (khách trung chuyển của mọi phơi) + dữ liệu mẫu ổn
+// định khi chưa có giá trị thật. Ghi chú "Phòng vé" bấm được, sửa qua #tsStatusNoteModal theo ticketNo.
+function pkRenderTransshipRow(r, idx, shuttleDriverMap) {
+  const m = r.main;
+  const sampleSeed = pkStableIndex(m.phone || m.ticketNo || r.seatCodes[0] || String(idx), PK_TS_SAMPLE_DRIVERS.length);
+  const sampleDriver = PK_TS_SAMPLE_DRIVERS[sampleSeed];
+  const routeParts = (r.trip && r.trip.route ? String(r.trip.route).split(' - ') : []);
+  const fromMain = escapeHtml(m.firstStop || routeParts[0] || '—');
+  const toMain = escapeHtml(m.lastStop || routeParts[routeParts.length - 1] || '—');
+  const fromSub = m.pickupAddress || m.transship || m.transshipStation || '';
+  const toSub = m.dropoffAddress || m.arrivalTransfer || '';
+  const firstStopHtml = fromSub
+    ? `${fromMain}<div class="ch-sub-address" style="font-size:12px;color:var(--text-sub);margin-top:2px;">Đón: ${escapeHtml(fromSub)}</div>`
+    : fromMain;
+  const lastStopHtml = toSub
+    ? `${toMain}<div class="ch-sub-address" style="font-size:12px;color:var(--text-sub);margin-top:2px;">Trả: ${escapeHtml(toSub)}</div>`
+    : toMain;
+  const routeHtml = `
+    <div class="pax-route">
+      <div class="pax-route-row pax-route-from">
+        <svg class="pax-route-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
+        <div class="pax-route-text">${firstStopHtml}</div>
+      </div>
+      <div class="pax-route-connector"></div>
+      <div class="pax-route-row pax-route-to">
+        <svg class="pax-route-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+        <div class="pax-route-text">${lastStopHtml}</div>
+      </div>
+    </div>`;
+
+  const driverKey = `${String(m.phone || '').replace(/\s+/g, '')}_don`;
+  const assignedDriver = shuttleDriverMap[driverKey];
+  // Cột "Trung chuyển": CHỈ tên tài xế + ghi chú của tài xế đó (driverNote), đều từ trang shuttle.html —
+  // dùng dữ liệu mẫu ổn định khi seat bank chưa có tài xế thật. KHÔNG hiện ghi chú của cột "Phòng vé".
+  const drvName = (assignedDriver && assignedDriver.driverName) || sampleDriver.name;
+  const drvNote = (assignedDriver && assignedDriver.driverNote) || sampleDriver.note || '';
+  const transshipCell = `<div class="pk-transship-cell">
+      <span class="pk-driver-name">${escapeHtml(drvName)}</span>
+      ${drvNote ? `<span class="pk-driver-sub">${escapeHtml(drvNote)}</span>` : ''}
+    </div>`;
+
+  // Cột "Phòng vé": Y HỆT dòng rước liền — nút .pk-note-cell bấm để ghi/sửa ghi chú trạng thái đón. Ở
+  // đây khoá theo ticketNo (mở #tsStatusNoteModal, saveTransshipStatusNote ghi vào seat bank). Có ghi
+  // chú thì hiện nội dung, chưa có thì hiện icon bút chì — giống hệt cột "Phòng vé" bảng rước liền.
+  const pickupNote = m.transshipPickupNote || '';
+  const hasStatusNote = !!pickupNote;
+  const phongVeCell = `<button type="button" class="pk-note-cell${hasStatusNote ? ' has-note' : ''}" data-action="openTransshipStatusNoteModal" data-args='${JSON.stringify([m.ticketNo || '', 'pickup'])}' title="Bấm để ghi/sửa ghi chú trạng thái">
+      ${hasStatusNote
+        ? `<span class="pk-note-text">${escapeHtml(pickupNote)}</span>`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`}
+    </button>`;
+
+  // Cột "Thời gian" / "In lúc": 2 dòng ngày + giờ giống dòng rước liền (dùng mốc mẫu ổn định vì vé trong
+  // seat bank không mang mốc tạo/in riêng).
+  const createdAt = pkSampleStamp(r.trip, 210, sampleSeed);
+  const timeStr = `${formatHistoryDate(createdAt)}<br>${formatActionTime(createdAt)}`;
+  const printedAt = m.printedAt || pkSampleStamp(r.trip, 90, sampleSeed);
+  const printedStr = `${formatHistoryDate(printedAt)}<br>${formatActionTime(printedAt)}`;
+
+  const seatCell = `<button type="button" class="pk-seat-link" data-action="sellTicketForTrip" data-args='${JSON.stringify([r.tripId])}' title="Bấm để mở phơi đã chỉ định">${escapeHtml(r.seatCodes.join(', '))}</button>`;
+  // Cột "Thao tác": Y HỆT dòng rước liền đã chỉ định — nút "Đổi chỉ định" (kiểu viền trắng). Khách trung
+  // chuyển đã có vé trên phơi nên bấm là mở thẳng phơi đó để sửa (sellTicketForTrip).
+  const actionCell = `<button class="assign-action-btn reassign" data-action="sellTicketForTrip" data-args='${JSON.stringify([r.tripId])}'>Đổi chỉ định</button>`;
+
+  return `
+    <tr>
+      <td class="col-stt">${idx + 1}</td>
+      <td><div class="pax-info"><span class="pk-type-chip">Trung chuyển</span><div class="pax-name">KH: ${escapeHtml(m.customerName || 'Khách')}</div><div class="pax-phone">SĐT: ${escapeHtml(m.phone || '')}</div></div></td>
+      <td>${routeHtml}</td>
+      <td class="center" style="font-weight:700; font-size:13.5px; color:var(--text-main);">${r.seatCount}</td>
+      <td class="center">${seatCell}</td>
+      <td class="note-cell">${m.note ? escapeHtml(m.note) : '—'}</td>
+      <td class="center mono" style="font-size:12px; color:var(--text-sub);">${timeStr}</td>
+      <td class="center mono" style="font-size:12px; color:var(--text-sub);">${printedStr}</td>
+      <td class="center">${transshipCell}</td>
+      <td class="center">${phongVeCell}</td>
+      <td class="center col-action">${actionCell}</td>
+    </tr>`;
+}
+
+// ===== Modal ghi chú trạng thái đón khách rước liền (#pkStatusNoteModal, cột "Phòng vé") =====
 
 let pkStatusNoteActiveId = null;
 

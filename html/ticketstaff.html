@@ -48,7 +48,7 @@
           Quản lý vé
         </button>
         <button id="tabPickup" class="pill-btn" type="button" data-action="switchView" data-args='["pickup"]'>
-          Rước liền <span class="badge" id="headerPickupBadge" style="background:white; color:var(--red); border-radius:999px; padding:1px 6px; font-size:11px; font-weight:800; margin-left:5px; display:inline-block;">4</span>
+          Trung chuyển <span class="badge" id="headerPickupBadge">4</span>
         </button>
         <button id="tabHistory" class="pill-btn" type="button" data-action="switchView" data-args='["history"]'>
           Lịch sử
@@ -904,13 +904,14 @@
             <tr>
               <th class="col-stt">STT</th>
               <th style="width: 165px;">Khách hàng</th>
-              <th style="width: 255px;">Hành trình</th>
+              <th style="width: 280px;">Hành trình</th>
               <th style="width: 40px;">SL</th>
+              <th style="width: 62px;">Số ghế</th>
               <th style="width: 160px;">Ghi chú</th>
               <th style="width: 100px;">Thời gian</th>
               <th style="width: 90px;">In lúc</th>
-              <th class="col-status" style="width: 160px;">Trạng thái</th>
-              <th style="width: 244px;">Tên phơi xe</th>
+              <th class="col-status" style="width: 178px;">Trung chuyển</th>
+              <th style="width: 170px;">Phòng vé</th>
               <th class="col-action" style="width: 70px;">Thao tác</th>
             </tr>
           </thead>
@@ -1793,10 +1794,10 @@
   </div>
 </div>
 
-<!-- ===== MODAL: GHI CHÚ TRẠNG THÁI KHÁCH RƯỚC LIỀN (cột "Trạng thái" trang Rước liền) ===== -->
+<!-- ===== MODAL: GHI CHÚ TRẠNG THÁI KHÁCH RƯỚC LIỀN (cột "Phòng vé" trang Rước liền) ===== -->
 <div class="modal-overlay" id="pkStatusNoteModal">
   <div class="modal" style="max-width:380px;">
-    <h3>Ghi chú trạng thái</h3>
+    <h3>Ghi chú</h3>
     <div class="form-field">
       <label>Ghi chú</label>
       <textarea id="pkStatusNoteInput" placeholder="Nhập ghi chú về trạng thái đón khách..."></textarea>
@@ -1811,7 +1812,7 @@
 <!-- ===== MODAL: GHI CHÚ TRẠNG THÁI (cột "Trạng thái" 2 bảng Trung chuyển đón/trả) ===== -->
 <div class="modal-overlay" id="tsStatusNoteModal">
   <div class="modal" style="max-width:380px;">
-    <h3>Ghi chú trạng thái</h3>
+    <h3>Ghi chú</h3>
     <div class="form-field">
       <label>Ghi chú</label>
       <textarea id="tsStatusNoteInput" placeholder="Nhập ghi chú về trạng thái đón/trả khách..."></textarea>
