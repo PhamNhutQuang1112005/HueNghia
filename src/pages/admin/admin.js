@@ -19,8 +19,7 @@
    shuttle) cố tình KHÔNG chặn, giữ nguyên hiện trạng hệ thống demo.
    --------------------------------------------------------- */
 (function adminGuard() {
-  var u = null;
-  try { u = JSON.parse(sessionStorage.getItem(HN_CURRENT_USER_KEY) || 'null'); } catch (e) {}
+  var u = Session.get();
   if (!u || u.role !== 'admin') {
     location.replace('index.html');
   }
@@ -93,8 +92,7 @@ function getManifests() { return lsRead(TS_MANIFESTS_KEY, {}); }
    USER MENU  (port initUserMenu() từ ticketstaff.js — cùng id DOM)
    --------------------------------------------------------- */
 function initAdminUserMenu() {
-  var u = null;
-  try { u = JSON.parse(sessionStorage.getItem(HN_CURRENT_USER_KEY) || 'null'); } catch (e) {}
+  var u = Session.get();
   var name = (u && u.username) || 'Quản trị viên';
   $('userName').textContent = name;
   $('userUsername').textContent = (u && u.username) || '—';
@@ -103,7 +101,7 @@ function initAdminUserMenu() {
 }
 function toggleAdminUserMenu() { $('userMenu').classList.toggle('open'); }
 function adminLogout() {
-  sessionStorage.removeItem(HN_CURRENT_USER_KEY);
+  Session.clear();
   window.location.href = 'index.html';
 }
 document.addEventListener('click', function (e) {

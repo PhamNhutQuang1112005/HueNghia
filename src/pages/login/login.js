@@ -136,13 +136,12 @@ function loginSuccess(account){
   btnSubmit.textContent = "Đang chuyển hướng...";
   btnSubmit.disabled = true;
 
-  // Lưu lại phiên đăng nhập tối thiểu để các trang sau (vd: callcenter.html)
-  // có thể đọc và hiển thị đúng vai trò người dùng nếu cần.
-  sessionStorage.setItem("hn_current_user", JSON.stringify({
+  // Lưu lại phiên đăng nhập tối thiểu để các trang sau đọc & hiển thị đúng vai trò.
+  Session.set({
     username: account.username,
     role: account.role,
     roleLabel: account.roleLabel
-  }));
+  });
 
   setTimeout(() => {
     if (existingPages.includes(account.redirect)){

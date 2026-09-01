@@ -96,13 +96,8 @@ function setCurrentStation(name) {
 
 // ---- Nhân viên thực hiện (đọc từ phiên đăng nhập nếu có, không thì lấy tên đang hiện trên topbar) ----
 function getCurrentStaffLabel() {
-  try {
-    const raw = sessionStorage.getItem(HN_CURRENT_USER_KEY);
-    if (raw) {
-      const user = JSON.parse(raw);
-      if (user && user.username) return getStaffCode(user.username) || user.username;
-    }
-  } catch (e) { /* ignore */ }
+  const user = Session.get();
+  if (user && user.username) return getStaffCode(user.username) || user.username;
   const nameEl = document.getElementById('userName');
   return (nameEl && nameEl.textContent.trim()) || 'Nhân viên trực';
 }

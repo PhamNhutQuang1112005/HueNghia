@@ -299,13 +299,8 @@ let phCancelledViewActive = false;
 // trước đây callcenter.html không nạp ticketstaff-manifest-core.js (nay callcenter.html đã gộp vào
 // ticketstaff.html, chỗ khai báo vẫn giữ ở đây vì booking.js là code lõi đặt vé dùng chung).
 function getCurrentActionStaffCode() {
-  try {
-    const raw = sessionStorage.getItem(HN_CURRENT_USER_KEY);
-    if (raw) {
-      const user = JSON.parse(raw);
-      if (user && user.username) return getStaffCode(user.username) || user.username;
-    }
-  } catch (e) { /* ignore */ }
+  const user = Session.get();
+  if (user && user.username) return getStaffCode(user.username) || user.username;
   const nameEl = document.getElementById('userName');
   return (nameEl && nameEl.textContent.trim()) || 'NV trực';
 }

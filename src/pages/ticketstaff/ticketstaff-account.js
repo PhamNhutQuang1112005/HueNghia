@@ -7,21 +7,18 @@
   if (!menu || !chipBtn || !dropdown || !logoutBtn) return;
 
   // Hiển thị thông tin người dùng từ phiên đăng nhập (nếu có)
-  try {
-    const raw = sessionStorage.getItem(HN_CURRENT_USER_KEY);
-    if (raw) {
-      const user = JSON.parse(raw);
-      const nameEl = document.getElementById('userName');
-      const avatarEl = document.getElementById('userAvatar');
-      const roleEl = document.getElementById('userRoleLabel');
-      const userEl = document.getElementById('userUsername');
-      const display = user.username || 'Nhân viên';
-      if (nameEl) nameEl.textContent = display;
-      if (avatarEl) avatarEl.textContent = display.charAt(0).toUpperCase();
-      if (roleEl) roleEl.textContent = user.roleLabel || 'Nhân viên tổng đài';
-      if (userEl) userEl.textContent = user.username || '';
-    }
-  } catch (_) { /* ignore */ }
+  const user = Session.get();
+  if (user) {
+    const nameEl = document.getElementById('userName');
+    const avatarEl = document.getElementById('userAvatar');
+    const roleEl = document.getElementById('userRoleLabel');
+    const userEl = document.getElementById('userUsername');
+    const display = user.username || 'Nhân viên';
+    if (nameEl) nameEl.textContent = display;
+    if (avatarEl) avatarEl.textContent = display.charAt(0).toUpperCase();
+    if (roleEl) roleEl.textContent = user.roleLabel || 'Nhân viên tổng đài';
+    if (userEl) userEl.textContent = user.username || '';
+  }
 
   function closeMenu() {
     menu.classList.remove('open');
@@ -49,7 +46,7 @@
   });
 
   logoutBtn.addEventListener('click', () => {
-    sessionStorage.removeItem(HN_CURRENT_USER_KEY);
+    Session.clear();
     window.location.href = 'index.html';
   });
 })();
