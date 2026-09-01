@@ -286,3 +286,13 @@ Lưu vào `docs/REFACTOR/_baseline-screenshots/`:
 | 2.4.8 / 2.4.9 | Thanh "Chuyển ghế / Đặt vé nhóm / Hủy" không hiện khi chọn ghế ở sơ đồ (role phòng vé). Nguyên nhân: `querySelector('.sticky-actions')` trúng nhầm `#tsPrintActionBar` (thanh "In vé trung chuyển" đứng trước trong DOM sau đợt gộp shuttle→ticketstaff). | **ĐÃ SỬA** trước Phase B — thêm `id="seatTransferBar"`, đổi 3 call site sang `getElementById`. Commit riêng, không thuộc refactor. |
 | 2.8.4 / 2.8.5 / 2.1.2 | Role phòng vé (`tongdai01`) bị lộn thành role trung chuyển ở tab Trung chuyển (hiện checkbox chọn nhiều + nút "Cập nhật" thay vì "Chỉ định"). Nguyên nhân: đợt gộp shuttle→ticketstaff đổi `tongdai01.role` từ `call_center` → `shuttle_dispatch`, trùng với `trungchuyen01`, làm chế độ phòng vé không truy cập được. | **ĐÃ SỬA** trong Phase B — khôi phục `tongdai01` về `role: "call_center"` / "Nhân viên tổng đài" (giống bản trước commit `b04d927`); bump `login.js?v=3`. |
 | 3.* (admin trắng trang) | Sau Phase E1 (tách `admin.js`), trang admin không hiển thị gì. Nguyên nhân: `VIEW_RENDERERS` trong mảnh `admin.js` tham chiếu thẳng các hàm `render*` (nằm ở mảnh nạp SAU) ngay lúc dựng object ở top-level → `ReferenceError` khi mảnh 1 chạy. | **ĐÃ SỬA** ngay trong Phase E1 — bọc mỗi renderer bằng closure gọi-khi-cần `function(){ renderX(); }` (các hàm đều không tham số → hành vi y hệt); bump `admin.js?v=17`. |
+
+## Điều chỉnh hành vi theo yêu cầu (Phase K)
+
+Không phải lỗi refactor — người dùng yêu cầu đổi hành vi có sẵn khi rà soát:
+
+| Chỗ | Trước | Sau |
+|---|---|---|
+| Tab "Trung chuyển" (`pkRenderPaxTable`) — cột "Trung chuyển" (tài xế) | Dòng khách rước liền: "Chưa gán tài xế". Dòng khách trung chuyển: **tên tài xế MẪU**. | Cả hai: **để trống** khi chưa gán tài xế thật. |
+| Tab "Trung chuyển" — thứ tự dòng trung chuyển | Theo vị trí ghế. | Vé vừa đặt/sửa từ modal đặt vé (`seat.actionTime` mới nhất) **nổi lên đầu** nhóm trung chuyển. |
+| `pkGetTransshipRows` — điều kiện hiện | (giữ nguyên) đã gom mọi loại khách có địa chỉ trung chuyển đón/trả — xác nhận đúng, không sửa. | — |

@@ -776,7 +776,7 @@ function pkRenderPaxTable() {
     const driverNote = (assignedDriver && assignedDriver.driverNote) || '';
     const driverNameHtml = assignedDriver
       ? `<span class="pk-driver-name">${escapeHtml(assignedDriver.driverName)}</span>`
-      : `<span class="pk-driver-name pk-driver-empty">Chưa gán tài xế</span>`;
+      : `<span class="pk-driver-name pk-driver-empty"></span>`;
     const transshipInnerHtml = driverNote
       ? `${driverNameHtml}<span class="pk-driver-sub">${escapeHtml(driverNote)}</span>`
       : `${driverNameHtml}${isDispatchRole ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;margin-top:2px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>` : ''}`;
@@ -826,6 +826,9 @@ function pkRenderPaxTable() {
     seats.forEach(code => pickupAssignedSeatKeys.add(`${p.assigned.tripId}|${code}`));
   });
   const transshipRows = pkGetTransshipRows(pkSelectedDateStr, pkFilterState, pickupAssignedSeatKeys);
+  // Vé trung chuyển vừa đặt/sửa từ modal đặt vé (seat.actionTime stamp mỗi lần lưu form) nổi lên đầu
+  // nhóm trung chuyển — khách mới nhận thông tin đứng trước. Dòng chưa có actionTime (dữ liệu cũ) xuống sau.
+  transshipRows.sort((a, b) => (Date.parse(b.main.actionTime) || 0) - (Date.parse(a.main.actionTime) || 0));
 
   // Có SĐT tài xế trung chuyển vừa đổi bên shuttle (từ pkApplyShuttleDriverChange) -> đánh dấu cập nhật
   // cho đúng dòng khách trung chuyển tương ứng, để nó cũng được đẩy lên đầu như dòng rước liền.
@@ -982,7 +985,6 @@ function pkSampleStamp(trip, minutesBefore, seed) {
 function pkRenderTransshipRow(r, idx, shuttleDriverMap) {
   const m = r.main;
   const sampleSeed = pkStableIndex(m.phone || m.ticketNo || r.seatCodes[0] || String(idx), PK_TS_SAMPLE_DRIVERS.length);
-  const sampleDriver = PK_TS_SAMPLE_DRIVERS[sampleSeed];
   const routeParts = (r.trip && r.trip.route ? String(r.trip.route).split(' - ') : []);
   const fromMain = escapeHtml(m.firstStop || routeParts[0] || '—');
   const toMain = escapeHtml(m.lastStop || routeParts[routeParts.length - 1] || '—');
@@ -1018,8 +1020,9 @@ function pkRenderTransshipRow(r, idx, shuttleDriverMap) {
   // Cột "Trung chuyển": tên tài xế (dùng dữ liệu mẫu ổn định khi seat bank chưa có tài xế thật) + ghi
   // chú CỦA TRUNG CHUYỂN (driverNote). Role trung chuyển bấm được để ghi/sửa driverNote (y hệt pattern
   // cột "Phòng vé" ở role bán vé — #pkDriverNoteModal, không mở modal Cập nhật lớn); role bán vé chỉ xem.
-  const drvName = (assignedDriver && assignedDriver.driverName) || sampleDriver.name;
-  const drvNote = (assignedDriver && assignedDriver.driverNote) || sampleDriver.note || '';
+  // Cột "Trung chuyển": ĐỂ TRỐNG khi chưa gán tài xế thật (không dùng tên/ghi chú tài xế mẫu nữa).
+  const drvName = (assignedDriver && assignedDriver.driverName) || '';
+  const drvNote = (assignedDriver && assignedDriver.driverNote) || '';
   const tsTransshipInnerHtml = `<span class="pk-driver-name">${escapeHtml(drvName)}</span>${drvNote
     ? `<span class="pk-driver-sub">${escapeHtml(drvNote)}</span>`
     : (isDispatchRole ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;margin-top:2px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>` : '')}`;
