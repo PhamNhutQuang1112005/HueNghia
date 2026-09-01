@@ -24,14 +24,14 @@ const accounts = [
   {
     username: "tongdai01",
     password: "123456",
-    role: "shuttle_dispatch",
-    roleLabel: "Điều hành trung chuyển",
-    // Mọi nghiệp vụ (đặt vé, xếp ghế, Phơi xe, Lịch sử và điều hành
-    // trung chuyển ở tab "Trung chuyển": 4 tab con Tất cả/Trung chuyển
-    // đón/Rước liền/Trung chuyển trả) đều nằm trong ticketstaff.html.
-    // Các trang callcenter.html và shuttle.html cũ đã bị xoá — tài
-    // khoản này đăng nhập thẳng vào ticketstaff.html với quyền trung
-    // chuyển (chọn nhiều dòng + nút "Cập nhật" tài xế).
+    role: "call_center",
+    roleLabel: "Nhân viên tổng đài",
+    // Trang callcenter.html cũ đã bị xoá — mọi nghiệp vụ (đặt vé, xếp ghế,
+    // Phơi xe, Lịch sử, Rước liền) nằm trong ticketstaff.html nên tài khoản
+    // này đăng nhập thẳng vào đó với QUYỀN PHÒNG VÉ (bán vé): ở tab "Trung
+    // chuyển" chỉ chọn 1 dòng, nút "Chỉ định" (gán chuyến + ghế). Chế độ
+    // trung chuyển (chọn nhiều, nút "Cập nhật" tài xế) là của trungchuyen01
+    // — phân biệt qua pkIsShuttleDispatchRole() (role === 'shuttle_dispatch').
     redirect: "ticketstaff.html",
     color: "var(--red)"
   },
