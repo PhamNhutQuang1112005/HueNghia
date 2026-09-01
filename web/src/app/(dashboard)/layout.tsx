@@ -1,1 +1,1 @@
-// Layout dùng chung cho ticketstaff/shuttle — header, sidebar, kiểm tra đăng nhập
+// Layout dùng chung cho khu (dashboard) — header, sidebar, kiểm tra đăng nhập

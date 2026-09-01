@@ -12,19 +12,17 @@ web/
 ├── src/
 │   ├── app/                        Next.js App Router — routing theo cây thư mục
 │   │   ├── (auth)/login/           trang đăng nhập
-│   │   ├── (dashboard)/            layout chung + 2 trang nghiệp vụ
-│   │   │   ├── ticketstaff/
-│   │   │   └── shuttle/
+│   │   ├── (dashboard)/            layout chung + trang nghiệp vụ
+│   │   │   └── ticketstaff/
 │   │   └── api/                    API routes (Route Handlers) gọi Supabase
 │   │       ├── trips/
 │   │       ├── seats/
-│   │       ├── passengers/
-│   │       └── shuttle-drivers/
+│   │       └── passengers/
 │   ├── components/                 UI component tách theo khu vực chức năng
 │   │   ├── ui/                     nút, modal... dùng chung toàn app
 │   │   ├── booking/                sơ đồ ghế, form đặt vé
 │   │   ├── passenger-list/         bảng danh sách hành khách
-│   │   ├── shuttle/                phơi xe, gán tài xế trung chuyển
+│   │   ├── trung-chuyen/           tab Trung chuyển: gán tài xế trung chuyển
 │   │   └── layout/                 header, sidebar
 │   ├── lib/                        logic thuần (không phải UI)
 │   │   └── supabase/               supabase client (browser + server)
@@ -42,8 +40,7 @@ web/
 | Code cũ | Code mới |
 |---|---|
 | `html/index.html` + `js/login.js` | `src/app/(auth)/login/page.tsx` |
-| `html/ticketstaff.html` + `js/ticketstaff*.js` | `src/app/(dashboard)/ticketstaff/page.tsx` (gộp cả nghiệp vụ Đặt vé/Lịch sử/Phơi xe của Callcenter cũ — trang Callcenter đã bị xóa) |
-| `html/shuttle.html` + `js/shuttle.js` | `src/app/(dashboard)/shuttle/page.tsx` |
+| `html/ticketstaff.html` + `js/ticketstaff*.js` | `src/app/(dashboard)/ticketstaff/page.tsx` (gộp cả nghiệp vụ Đặt vé/Lịch sử/Phơi xe của Callcenter cũ + điều hành trung chuyển của Shuttle cũ — cả 2 trang đó đã bị xóa) |
 | `js/shared/booking.js` | `src/lib/booking.ts` + `src/components/booking/` |
 | `js/shared/seat-bank.js` | `src/lib/seat-bank.ts` + `src/hooks/useSeatBank.ts` |
 | `js/shared/format.js` | `src/lib/format.ts` |
@@ -53,7 +50,7 @@ web/
 | `css/shared/variables.css` | `src/styles/variables.css` |
 | `css/shared/base.css` | `src/styles/base.css` |
 | `css/shared/booking-ui.css` (1 file 4673 dòng) | `src/styles/booking-ui/*.css` (tách theo Zone/Modal/History...) |
-| `css/login.css`, `css/ticketstaff.css`, `css/shuttle.css` | CSS module riêng theo từng page/component tương ứng |
+| `css/login.css`, `css/ticketstaff.css` | CSS module riêng theo từng page/component tương ứng |
 
 ## Khi bắt đầu migrate thật
 
