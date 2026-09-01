@@ -41,7 +41,8 @@ hiện tại và **NGOÀI phạm vi** đợt tái cấu trúc này. Không sửa
 | A — Checklist baseline | ✅ (tài liệu) | `01-PHASE-A-CHECKLIST.md` — cần người duyệt điền cột GỐC |
 | B — Tạo cây `src/`, di chuyển file | ✅ | `git mv` thuần (0 đổi nội dung JS/CSS) + sửa đường dẫn `<link>/<script>` trong 3 HTML |
 | C — Tách dữ liệu mẫu → `src/data/` | ✅ | `CUSTOMER_HISTORY_DATA`, `DEFAULT_*_TRIPS`, các pool sinh ghế (`nameSamples`…) ra khỏi `constants.js` + `ticketstaff.js`. Chỉ `ticketstaff.html` nạp thêm 3 file `src/data/*`; hành vi giữ nguyên (biến global như cũ). |
-| D trở đi | ⬜ | chưa bắt đầu |
+| D — Tách `booking-ui.css` → `booking-ui/` | ✅ | Cắt 5139 dòng thành 11 lát liền mạch theo banner Zone. `cmp`+`sha256` xác nhận ghép lại giống hệt từng byte. `ticketstaff.html` nạp 11 `<link>` đúng thứ tự 01→11. Xem `src/shared/css/booking-ui/README.md`. |
+| E trở đi | ⬜ | chưa bắt đầu |
 
 ### Cây thư mục sau Phase B
 
@@ -53,7 +54,7 @@ src/
 │   ├── ticketstaff/ ticketstaff.css · ticketstaff.js · ticketstaff-manifest-core.js · ticketstaff-manifest-ui.js
 │   └── admin/        admin.css · admin.js
 ├── shared/
-│   ├── css/  variables.css · base.css · booking-ui.css
+│   ├── css/  variables.css · base.css · booking-ui/ (11 lát của booking-ui.css — Phase D)
 │   └── js/   storage-keys.js · format.js · constants.js · seat-bank.js · fleet-store.js · ui.js · booking.js · events.js
 ├── assets/
 │   └── img/  login-hero.png
