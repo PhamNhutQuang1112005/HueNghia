@@ -40,7 +40,8 @@ hiện tại và **NGOÀI phạm vi** đợt tái cấu trúc này. Không sửa
 | 0 — Điểm lùi an toàn | ✅ | nhánh `refactor/restructure`, tag `pre-refactor` |
 | A — Checklist baseline | ✅ (tài liệu) | `01-PHASE-A-CHECKLIST.md` — cần người duyệt điền cột GỐC |
 | B — Tạo cây `src/`, di chuyển file | ✅ | `git mv` thuần (0 đổi nội dung JS/CSS) + sửa đường dẫn `<link>/<script>` trong 3 HTML |
-| C trở đi | ⬜ | chưa bắt đầu |
+| C — Tách dữ liệu mẫu → `src/data/` | ✅ | `CUSTOMER_HISTORY_DATA`, `DEFAULT_*_TRIPS`, các pool sinh ghế (`nameSamples`…) ra khỏi `constants.js` + `ticketstaff.js`. Chỉ `ticketstaff.html` nạp thêm 3 file `src/data/*`; hành vi giữ nguyên (biến global như cũ). |
+| D trở đi | ⬜ | chưa bắt đầu |
 
 ### Cây thư mục sau Phase B
 
@@ -54,8 +55,9 @@ src/
 ├── shared/
 │   ├── css/  variables.css · base.css · booking-ui.css
 │   └── js/   storage-keys.js · format.js · constants.js · seat-bank.js · fleet-store.js · ui.js · booking.js · events.js
-└── assets/
-    └── img/  login-hero.png
+├── assets/
+│   └── img/  login-hero.png
+└── data/   sample-seat-pool.js · sample-customer-history.js · sample-trip-templates.js  (dữ liệu MẪU — Phase C)
 ```
 
 `src/shared/` là **kho tạm** — các phase sau sẽ tách/nâng dần thành `core/`, `services/`, `ui/`,
