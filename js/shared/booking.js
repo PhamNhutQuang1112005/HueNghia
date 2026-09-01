@@ -1132,10 +1132,13 @@ function openCustomerHistory(phone, pushHistory = true) {
 
   const rightCol = document.querySelector('.right-col');
   if (rightCol) {
-    ['.zone2', '.tabs', '.sticky-actions'].forEach(sel => {
+    ['.zone2', '.tabs'].forEach(sel => {
       const el = rightCol.querySelector(sel);
       if (el) el.style.display = 'none';
     });
+    // Thanh chọn ghế lấy theo id (xem updateTransferBarVisibility) — '.sticky-actions' sẽ trúng nhầm #tsPrintActionBar.
+    const seatTransferBar = document.getElementById('seatTransferBar');
+    if (seatTransferBar) seatTransferBar.style.display = 'none';
     rightCol.querySelectorAll('.zone3').forEach(el => el.style.display = 'none');
   }
 
@@ -1969,7 +1972,9 @@ function updateRebookBtn() {
 }
 
 function updateTransferBarVisibility() {
-  const sticky = document.querySelector('.sticky-actions');
+  // Thanh chọn ghế (Chuyển ghế / Đặt vé nhóm) — lấy theo id, KHÔNG querySelector('.sticky-actions')
+  // vì #tsPrintActionBar (thanh "In vé trung chuyển") dùng cùng class và đứng trước trong DOM.
+  const sticky = document.getElementById('seatTransferBar');
   if (!sticky) return;
   const paxSection = document.getElementById('zone3Passengers');
   const isSeatMapVisible = !paxSection || paxSection.style.display === 'none';

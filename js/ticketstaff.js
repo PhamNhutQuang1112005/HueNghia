@@ -338,9 +338,13 @@ function switchTab(tab, el) {
   const paxSection = document.getElementById('zone3Passengers');
   const transSection = document.getElementById('zone3Transship');
   const cancelledSection = document.getElementById('zone3Cancelled');
-  const sticky = document.querySelector('.sticky-actions');
+  // Chọn theo id — KHÔNG dùng querySelector('.sticky-actions') vì trang có nhiều thanh cùng class
+  // (#tsPrintActionBar, #bulkTemplateBar, #pkActionBar...) và #tsPrintActionBar đứng TRƯỚC thanh chọn ghế
+  // trong DOM nên querySelector trả nhầm nó, khiến thanh "Chuyển ghế / Đặt vé nhóm" không bao giờ hiện.
+  const sticky = document.getElementById('seatTransferBar');
+  const tsPrintBar = document.getElementById('tsPrintActionBar');
 
-  [seatSection, paxSection, transSection, cancelledSection, sticky].forEach(sec => { if (sec) sec.style.display = 'none'; });
+  [seatSection, paxSection, transSection, cancelledSection, sticky, tsPrintBar].forEach(sec => { if (sec) sec.style.display = 'none'; });
 
   if (tab === 'seatmap') {
     if (seatSection) seatSection.style.display = '';

@@ -278,4 +278,4 @@ Lưu vào `docs/REFACTOR/_baseline-screenshots/`:
 
 | # mục | Mô tả lỗi hiện tại | Ghi chú |
 |---|---|---|
-| | | |
+| 2.4.8 / 2.4.9 | Thanh "Chuyển ghế / Đặt vé nhóm / Hủy" không hiện khi chọn ghế ở sơ đồ (role phòng vé). Nguyên nhân: `querySelector('.sticky-actions')` trúng nhầm `#tsPrintActionBar` (thanh "In vé trung chuyển" đứng trước trong DOM sau đợt gộp shuttle→ticketstaff). | **ĐÃ SỬA** trước Phase B — thêm `id="seatTransferBar"`, đổi 3 call site sang `getElementById`. Commit riêng, không thuộc refactor. |
