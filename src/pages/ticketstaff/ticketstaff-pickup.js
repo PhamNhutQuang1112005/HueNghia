@@ -636,6 +636,30 @@ function savePickupInfo() {
 
 // ===== Danh sách hành khách rước liền =====
 
+/* ---------------------------------------------------------------------------
+   PHÂN QUYỀN 2 CỘT theo role (1 chỗ duy nhất) — dùng cho CẢ dòng khách rước
+   liền (pkRenderPickupRow) lẫn dòng khách trung chuyển (pkRenderTransshipRow):
+
+     Cột "Trung chuyển" (ghi chú tài xế) : role trung chuyển BẤM ĐƯỢC (mở
+        #pkDriverNoteModal) — role phòng vé chỉ xem.
+     Cột "Phòng vé" (ghi chú trạng thái đón) : role phòng vé BẤM ĐƯỢC — role
+        trung chuyển chỉ xem.
+
+   `isDispatch` = pkIsShuttleDispatchRole() do nơi gọi truyền vào (đã tính sẵn
+   1 lần/dòng, tránh đọc lại sessionStorage cho từng ô).
+   --------------------------------------------------------------------------- */
+function pkTransshipCellHtml(inner, rowKey, isDispatch) {
+  return isDispatch
+    ? `<button type="button" class="pk-transship-cell pk-transship-cell--clickable" data-action="pkOpenDriverNoteModal" data-args='["${rowKey}"]' title="Bấm để ghi/sửa ghi chú trung chuyển">${inner}</button>`
+    : `<div class="pk-transship-cell">${inner}</div>`;
+}
+function pkPhongVeCellHtml(inner, hasNote, isDispatch, dataAction, dataArgsJson) {
+  const cls = `pk-note-cell${hasNote ? ' has-note' : ''}`;
+  return isDispatch
+    ? `<div class="${cls} pk-note-cell--readonly">${inner}</div>`
+    : `<button type="button" class="${cls}" data-action="${dataAction}" data-args='${dataArgsJson}' title="Bấm để ghi/sửa ghi chú trạng thái">${inner}</button>`;
+}
+
 // "Đẩy lên đầu khi có cập nhật mới" — mỗi lần cột "Trung chuyển" (tài xế/ghi chú tài xế đổi bên
 // shuttle.html) hoặc cột "Phòng vé" (ghi chú trạng thái) của MỘT dòng thay đổi thì gọi pkMarkRowUpdated()
 // với khoá dòng đó; pkRenderPaxTable() sắp các dòng có mốc cập nhật lên trước (mới nhất trước), áp dụng
@@ -780,9 +804,7 @@ function pkRenderPaxTable() {
     const transshipInnerHtml = driverNote
       ? `${driverNameHtml}<span class="pk-driver-sub">${escapeHtml(driverNote)}</span>`
       : `${driverNameHtml}${isDispatchRole ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;margin-top:2px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>` : ''}`;
-    const transshipCell = isDispatchRole
-      ? `<button type="button" class="pk-transship-cell pk-transship-cell--clickable" data-action="pkOpenDriverNoteModal" data-args='["${pkRowKeyForCell}"]' title="Bấm để ghi/sửa ghi chú trung chuyển">${transshipInnerHtml}</button>`
-      : `<div class="pk-transship-cell">${transshipInnerHtml}</div>`;
+    const transshipCell = pkTransshipCellHtml(transshipInnerHtml, pkRowKeyForCell, isDispatchRole);
 
     // Cột "Trạng thái" — TÁCH RIÊNG khỏi cột "Trung chuyển", hiện ở CẢ 2 role (chỉ xem — đổi trạng thái
     // qua thanh nổi "Cập nhật", xem pkOpenDriverUpdateModal/pkSaveDriverUpdate).
@@ -795,9 +817,7 @@ function pkRenderPaxTable() {
     const phongVeInnerHtml = hasStatusNote
       ? `<span class="pk-note-text">${escapeHtml(p.statusNote)}</span>`
       : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
-    const phongVeCell = isDispatchRole
-      ? `<div class="pk-note-cell${hasStatusNote ? ' has-note' : ''} pk-note-cell--readonly">${phongVeInnerHtml}</div>`
-      : `<button type="button" class="pk-note-cell${hasStatusNote ? ' has-note' : ''}" data-action="pkOpenStatusNoteModal" data-args='[${p.id}]' title="Bấm để ghi/sửa ghi chú trạng thái">${phongVeInnerHtml}</button>`;
+    const phongVeCell = pkPhongVeCellHtml(phongVeInnerHtml, hasStatusNote, isDispatchRole, 'pkOpenStatusNoteModal', `[${p.id}]`);
 
     return `
       <tr class="${pkSelectedIds.has(pkRowKeyForCell) ? 'selected-row' : ''}">
@@ -1017,18 +1037,15 @@ function pkRenderTransshipRow(r, idx, shuttleDriverMap) {
   const driverKey = pkShuttleDriverLegKey(m.phone);
   const assignedDriver = shuttleDriverMap[driverKey];
   const isDispatchRole = pkIsShuttleDispatchRole();
-  // Cột "Trung chuyển": tên tài xế (dùng dữ liệu mẫu ổn định khi seat bank chưa có tài xế thật) + ghi
-  // chú CỦA TRUNG CHUYỂN (driverNote). Role trung chuyển bấm được để ghi/sửa driverNote (y hệt pattern
-  // cột "Phòng vé" ở role bán vé — #pkDriverNoteModal, không mở modal Cập nhật lớn); role bán vé chỉ xem.
-  // Cột "Trung chuyển": ĐỂ TRỐNG khi chưa gán tài xế thật (không dùng tên/ghi chú tài xế mẫu nữa).
+  // Cột "Trung chuyển" = tên tài xế đã gán (HN_SHUTTLE_DRIVER_KEY) + ghi chú của trung chuyển
+  // (driverNote). ĐỂ TRỐNG khi chưa gán tài xế thật (không còn tên/ghi chú tài xế mẫu).
+  // Bấm được / chỉ xem theo role: xem pkTransshipCellHtml().
   const drvName = (assignedDriver && assignedDriver.driverName) || '';
   const drvNote = (assignedDriver && assignedDriver.driverNote) || '';
   const tsTransshipInnerHtml = `<span class="pk-driver-name">${escapeHtml(drvName)}</span>${drvNote
     ? `<span class="pk-driver-sub">${escapeHtml(drvNote)}</span>`
     : (isDispatchRole ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;margin-top:2px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>` : '')}`;
-  const transshipCell = isDispatchRole
-    ? `<button type="button" class="pk-transship-cell pk-transship-cell--clickable" data-action="pkOpenDriverNoteModal" data-args='["${pkTransshipRowKey(r)}"]' title="Bấm để ghi/sửa ghi chú trung chuyển">${tsTransshipInnerHtml}</button>`
-    : `<div class="pk-transship-cell">${tsTransshipInnerHtml}</div>`;
+  const transshipCell = pkTransshipCellHtml(tsTransshipInnerHtml, pkTransshipRowKey(r), isDispatchRole);
 
   // Cột "Trạng thái" — TÁCH RIÊNG khỏi cột "Trung chuyển", hiện ở CẢ 2 role (chỉ xem — đổi trạng thái
   // qua thanh nổi "Cập nhật", xem pkOpenDriverUpdateModal/pkSaveDriverUpdate).
@@ -1042,9 +1059,7 @@ function pkRenderTransshipRow(r, idx, shuttleDriverMap) {
   const phongVeInnerHtml = hasStatusNote
     ? `<span class="pk-note-text">${escapeHtml(pickupNote)}</span>`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
-  const phongVeCell = isDispatchRole
-    ? `<div class="pk-note-cell${hasStatusNote ? ' has-note' : ''} pk-note-cell--readonly">${phongVeInnerHtml}</div>`
-    : `<button type="button" class="pk-note-cell${hasStatusNote ? ' has-note' : ''}" data-action="openTransshipStatusNoteModal" data-args='${JSON.stringify([m.ticketNo || '', 'pickup'])}' title="Bấm để ghi/sửa ghi chú trạng thái">${phongVeInnerHtml}</button>`;
+  const phongVeCell = pkPhongVeCellHtml(phongVeInnerHtml, hasStatusNote, isDispatchRole, 'openTransshipStatusNoteModal', JSON.stringify([m.ticketNo || '', 'pickup']));
 
   // Cột "Thời gian" / "In lúc": 2 dòng ngày + giờ giống dòng rước liền (dùng mốc mẫu ổn định vì vé trong
   // seat bank không mang mốc tạo/in riêng).
