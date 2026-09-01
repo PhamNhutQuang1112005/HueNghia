@@ -42,7 +42,10 @@ hiện tại và **NGOÀI phạm vi** đợt tái cấu trúc này. Không sửa
 | B — Tạo cây `src/`, di chuyển file | ✅ | `git mv` thuần (0 đổi nội dung JS/CSS) + sửa đường dẫn `<link>/<script>` trong 3 HTML |
 | C — Tách dữ liệu mẫu → `src/data/` | ✅ | `CUSTOMER_HISTORY_DATA`, `DEFAULT_*_TRIPS`, các pool sinh ghế (`nameSamples`…) ra khỏi `constants.js` + `ticketstaff.js`. Chỉ `ticketstaff.html` nạp thêm 3 file `src/data/*`; hành vi giữ nguyên (biến global như cũ). |
 | D — Tách `booking-ui.css` → `booking-ui/` | ✅ | Cắt 5139 dòng thành 11 lát liền mạch theo banner Zone. `cmp`+`sha256` xác nhận ghép lại giống hệt từng byte. `ticketstaff.html` nạp 11 `<link>` đúng thứ tự 01→11. Xem `src/shared/css/booking-ui/README.md`. |
-| E trở đi | ⬜ | chưa bắt đầu |
+| **E — Tách file JS lớn theo banner** | 🔄 đang làm — từng file 1 commit + verify riêng | |
+| &nbsp;&nbsp;E1 `admin.js` → 9 mảnh | ✅ | Cắt 1333 dòng theo banner mục 1–8. `cmp` xác nhận ghép lại giống hệt; `node --check` từng mảnh OK; không có def trùng. `admin.html` nạp 9 `<script>` đúng thứ tự. Xem `src/pages/admin/README.md`. |
+| &nbsp;&nbsp;E2 `booking.js` | ⬜ | cần soi 3 chỗ gọi đồng bộ top-level (`initDatalistCombobox` ×3, IIFE `initZone1ComboBoxes`) |
+| &nbsp;&nbsp;E3 `ticketstaff.js` | ⬜ | rủi ro cao — nhiều lệnh top-level rải rác gọi hàm định nghĩa phía dưới (hoisting). Cần phân tích từng điểm cắt |
 
 ### Cây thư mục sau Phase B
 

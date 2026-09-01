@@ -91,7 +91,18 @@
   <script src="../shared/js/constants.js?v=4"></script>
   <script src="../shared/js/seat-bank.js?v=3"></script>
   <script src="../shared/js/fleet-store.js?v=5"></script>
-  <script src="admin/admin.js?v=15"></script>
+  <!-- admin.js (1333 dòng) đã tách theo banner mục 1–8 thành các mảnh liền mạch — NẠP ĐÚNG
+       THỨ TỰ (= thứ tự dòng file gốc); admin-settings-boot.js chứa dòng BOOT ở cuối nên phải nạp
+       SAU cùng. Biến/hàm vẫn là global top-level như cũ. -->
+  <script src="admin/admin.js?v=16"></script>
+  <script src="admin/admin-dashboard.js?v=1"></script>
+  <script src="admin/admin-stations.js?v=1"></script>
+  <script src="admin/admin-trips.js?v=1"></script>
+  <script src="admin/admin-vehicles.js?v=1"></script>
+  <script src="admin/admin-staff.js?v=1"></script>
+  <script src="admin/admin-accounts.js?v=1"></script>
+  <script src="admin/admin-activity.js?v=1"></script>
+  <script src="admin/admin-settings-boot.js?v=1"></script>
   <script src="../shared/js/events.js?v=2"></script>
 </body>
 </html>
