@@ -522,7 +522,8 @@
 
 .shuttle-table thead th {
   position: sticky;
-  top: 0;
+  top: 16px; /* khớp đúng chiều cao .pk-table-gap-spacer bên dưới — header luôn dính cách đỉnh vùng
+    cuộn đúng 16px dù cuộn bao nhiêu, không dính sát mép 0 nữa */
   background: var(--white);
   z-index: 5;
   text-align: center;
@@ -576,20 +577,143 @@
    (xem .pax-table--grid ở css/shared/booking-ui.css): mỗi ô đều có viền, header nền xám nhạt, thay cho
    kiểu chỉ có viền dưới mỗi hàng mặc định của .shuttle-table. */
 .shuttle-table.shuttle-table--grid {
-  border-collapse: collapse;
+  /* border-collapse:separate (+ border-spacing:0) thay vì collapse — collapse khiến Chrome vẽ lẫn viền
+     của hàng vừa cuộn qua lên trên nền header sticky (bóng mờ 1 dòng chữ rất nhạt lộ ra phía trên
+     header khi cuộn), lỗi hiển thị đã biết khi kết hợp border-collapse:collapse với position:sticky
+     trên <th> (đã gặp và sửa y hệt cho .shuttle-table bên trang shuttle.html trước đây). border-spacing:
+     0 giữ nguyên hình dáng viền, không có khe hở giữa các ô. */
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
+/* Với border-collapse:separate, mỗi ô tự vẽ viền riêng — nếu khai border:1px cho cả 4 cạnh thì 2 ô kề
+   nhau (phải/trái hoặc trên/dưới) MỖI ô đều vẽ 1px tại đúng ranh giới chung, cộng lại thành đường kẻ dày
+   ~2px (khác hẳn border-collapse:collapse gộp làm 1 đường 1px). Để đường kẻ mảnh 1px giống hệt bảng
+   Lịch sử (.pax-table--grid) dù vẫn giữ separate (cần cho sticky header, xem trên), mỗi ô CHỈ vẽ viền
+   phải + dưới (viền trái/trên của ô kề đã lo phần đó rồi); viền ngoài cùng (trái bảng/trên bảng) do
+   .shuttle-table-wrap đảm nhận qua border của chính khung bọc — ở đây tự vẽ bù thêm cho ô đầu cột/hàng
+   đầu để không thiếu viền khi không có khung bọc riêng. */
 .shuttle-table.shuttle-table--grid th,
 .shuttle-table.shuttle-table--grid td {
-  border: 1px solid var(--border-gray);
+  border: none;
+  border-right: 1px solid var(--border-gray);
+  border-bottom: 1px solid var(--border-gray);
+}
+
+.shuttle-table.shuttle-table--grid th:first-child,
+.shuttle-table.shuttle-table--grid td:first-child {
+  border-left: 1px solid var(--border-gray);
 }
 
 .shuttle-table.shuttle-table--grid thead th {
   background: var(--surface-2);
+  border-top: 1px solid var(--border-gray);
 }
 
-.shuttle-table.shuttle-table--grid tbody tr:last-child td {
+/* .pk-table-wrap không cần style riêng — khoảng cách 16px phía trên bảng giờ do .pk-table-gap-spacer
+   (bên dưới) chiếm chỗ sẵn trong luồng bình thường, không còn dựa vào margin-top ở đây nữa.
+   Dải trắng cố định 16px phía trên bảng #pickupView — đứng NGAY TRƯỚC .pk-table-wrap trong .grid-wrap
+   (chính vùng cuộn overflow:auto). Bản thân dải này CŨNG sticky top:0 nên luôn dính khít đỉnh vùng cuộn
+   trong lúc cuộn, đóng vai trò 1 "nắp" đặc (nền trắng) che kín khoảng 0-16px — nhờ vậy khoảng cách giữa
+   mép trên vùng cuộn và header (chính header cũng sticky, neo top:16px — xem .shuttle-table thead th)
+   LUÔN cố định đúng 16px dù cuộn bao nhiêu, đồng thời không hàng nào lọt/lộ ra được trong dải 16px đó
+   (khác với cách cũ dùng padding-top trên .grid-wrap, để lộ hàng đang cuộn qua trong đúng dải đệm này). */
+.pk-table-gap-spacer {
+  position: sticky;
+  top: 0;
+  height: 16px;
+  background: var(--white);
+  z-index: 6;
+  flex: 0 0 auto;
+}
+
+/* Nav 4-tab lọc "Tất cả/Trung chuyển đón/Rước liền/Trung chuyển trả" ở đầu #pickupView — kiểu underline
+   (không pill, không nền đỏ đậm): nằm 1 hàng, trải đều đúng 4 phần bằng nhau kín 100% bề ngang khu vực
+   nội dung (mỗi tab flex:1, không còn co theo nội dung), có line phân tách dọc giữa các tab. border-
+   bottom của .pk-subtabs làm "đường ray" nền cho underline; tab active vẽ thêm 1 vạch đỏ 2px đè lên
+   đúng vị trí đó (::after) để không bị dính-nhảy layout khi chuyển active. */
+.pk-subtabs {
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  flex: 0 0 auto;
+  width: 100%;
+  background: var(--white);
   border-bottom: 1px solid var(--border-gray);
+}
+
+.pk-subtab {
+  position: relative;
+  flex: 1 1 0;
+  padding: 13px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-sub);
+  text-align: center;
+  border: none;
+  border-left: 1px solid var(--border-gray);
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: color .12s ease, background .12s ease;
+}
+
+.pk-subtab:first-child {
+  border-left: none;
+}
+
+.pk-subtab.active {
+  color: var(--red);
+  font-weight: 700;
+  background: rgba(194, 13, 8, 0.04);
+}
+
+.pk-subtab.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--red);
+}
+
+.pk-subtab:hover:not(.active) {
+  color: var(--red);
+  background: rgba(194, 13, 8, 0.04);
+}
+
+.pk-subtab-count {
+  margin-left: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: inherit;
+  opacity: .7;
+}
+
+/* Cột checkbox thay cho "Thao tác" ở bảng #pickupView — dùng lại đúng width/canh giữa của .col-stt */
+.shuttle-table th.col-check,
+.shuttle-table td.col-check {
+  width: 44px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Ô tick cột "col-check" — Y CHANG shuttle.html (css/shuttle.css: input[type="checkbox"]{width:16px;
+   height:16px;accent-color:var(--red);cursor:pointer;}): to hơn mặc định trình duyệt 1 chút + khi tick
+   hiện màu đỏ thương hiệu (accent-color, trình duyệt tự vẽ). Áp dụng cho cả 2 role vì dùng chung 1 bảng. */
+.shuttle-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--red);
+  cursor: pointer;
+}
+
+/* Tô cả dòng nền hồng/đỏ rất nhạt khi checkbox dòng đó được chọn — Y CHANG shuttle.html
+   (css/shuttle.css: .shuttle-table tbody tr.selected-row{background:var(--red-light);}). Class
+   "selected-row" gắn trực tiếp lúc render (pkRenderPickupRow/pkRenderTransshipRow, ticketstaff.js). */
+.shuttle-table tbody tr.selected-row {
+  background: var(--red-light);
 }
 
 /* Chú giải trạng thái (giống trang shuttle) */
@@ -654,9 +778,11 @@
 .assign-action-btn.reassign { background: white; color: var(--text-main); border: 1px solid var(--border-gray); box-shadow: none; }
 .assign-action-btn.reassign:hover { border-color: var(--red); color: var(--red); background: var(--red-light); }
 
-/* Cột "Trung chuyển" (trang Trung chuyển) — CHỈ tên tài xế trung chuyển đã gán ở trang shuttle.html
-   (để trống nếu chưa gán) + ghi chú của tài xế đó (driverNote, cũng từ shuttle) ở dòng phụ .pk-driver-sub.
-   KHÔNG hiện ghi chú của cột "Phòng vé". Chỉ để HIỂN THỊ, không bấm được. Xếp dọc để tên và ghi chú
+/* Cột "Trung chuyển" (trang Trung chuyển) — tên tài xế đã gán ở shuttle.html (hoặc "Chưa gán tài xế")
+   + ghi chú CỦA TRUNG CHUYỂN (driverNote) ở dòng phụ .pk-driver-sub. Cột "Trạng thái" tách riêng, xem
+   .pk-status-tag bên dưới. Role bán vé chỉ xem (<div>); role trung chuyển bấm được cả ô (<button>, thêm
+   class .pk-transship-cell--clickable) để ghi/sửa driverNote qua #pkDriverNoteModal — CÙNG PATTERN với
+   cột "Phòng vé" bên role bán vé, không mở modal Cập nhật trạng thái/tài xế lớn. Xếp dọc để tên/ghi chú
    không đè lên nhau. */
 .pk-transship-cell {
   display: flex;
@@ -665,8 +791,47 @@
   justify-content: center;
   gap: 3px;
   text-align: center;
+  width: 100%;
+  font-family: inherit;
 }
+
+/* Tag trạng thái đón (PK_STATUS_LABELS, ticketstaff.js) — cột "Trạng thái" RIÊNG (đã tách khỏi cột
+   "Trung chuyển"), chỉ xem ở CẢ 2 role (đổi trạng thái qua thanh nổi "Cập nhật"). Cùng bảng màu 4 trạng
+   thái với trang shuttle.html (--status-waiting/enroute/onboard/issue bên css/shuttle.css). */
+.pk-status-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pk-status-tag.status-waiting { background: #F3F4F6; color: #9CA3AF; }
+.pk-status-tag.status-enroute { background: #FFF7E0; color: #B45309; }
+.pk-status-tag.status-onboard { background: #EFF4FF; color: #1D4ED8; }
+.pk-status-tag.status-issue { background: #FEF0EF; color: #DC2626; }
+
+.pk-transship-cell--clickable {
+  border: 1px dashed var(--border-gray);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  padding: 4px 6px;
+  transition: background .12s ease, border-color .12s ease;
+}
+.pk-transship-cell--clickable:hover { background: var(--surface-2); border-color: var(--text-sub); }
+
+/* Cột "Phòng vé" chỉ xem (role trung chuyển, .pk-note-cell--readonly) — không phải nút, bỏ con trỏ tay/
+   hover, viền nhạt hơn .pk-note-cell (role bán vé, vẫn bấm được như cũ) để phân biệt rõ 2 trạng thái. */
+.pk-note-cell--readonly {
+  cursor: default;
+  border-style: solid;
+  border-color: var(--surface);
+}
+.pk-note-cell--readonly:hover { background: transparent; border-color: var(--surface); color: var(--text-sub); }
 .pk-driver-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; font-size: 12.5px; font-weight: 600; color: var(--text-main); }
+.pk-driver-name.pk-driver-empty { color: #B0B2B3; font-style: italic; font-weight: 500; }
 .pk-note-text { font-size: 11.5px; font-weight: 500; color: var(--red); white-space: normal; line-height: 1.3; }
 
 /* Cột "Phòng vé" (trang Rước liền) — ghi chú trạng thái đón do phòng vé nhập (p.statusNote), hiện thẳng
@@ -755,6 +920,161 @@
 .ts-status-badge.ongoing { background: #EAFBF1; color: var(--green); }
 .ts-status-badge.blue { background: #EAF2FE; color: #2563eb; }
 .ts-status-badge.done { background: var(--surface-2); color: var(--text-sub); }
+
+/* Cột checkbox thêm vào 2 bảng "Trung chuyển đón/trả" (zone3Transship, tab Trung chuyển trong booking
+   view) — CHỈ hiện cho role trung chuyển: mặc định ẩn (display:none), JS gắn class "ts-dispatch-role"
+   lên #zone3Transship khi role = shuttle_dispatch (xem tsApplyRoleUI() ticketstaff.js) mới hiện. Chọn
+   dòng rồi bấm "In vé trung chuyển" trên thanh nổi #tsPrintActionBar để in — y hệt cách checkbox trang
+   shuttle.html trông (16px, tick màu đỏ). */
+.pax-table--transship th.pax-col-check,
+.pax-table--transship td.pax-col-check {
+  width: 40px;
+  text-align: center;
+  vertical-align: middle;
+}
+.pax-table--transship input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--red);
+  cursor: pointer;
+}
+.ts-check-col {
+  display: none;
+}
+#zone3Transship.ts-dispatch-role .ts-check-col {
+  display: table-cell;
+}
+
+/* ===================== VÉ TRUNG CHUYỂN / PHIẾU IN TÀI XẾ (tab Trung chuyển, role trung chuyển) — port
+   Y CHANG từ shuttle.html (css/shuttle.css), đổi id #printTicketModal/#printTicketContainer thành
+   #tsPrintTicketModal/#tsPrintTicketContainer cho khớp HTML đã port. ===================== */
+.print-ticket-wrapper {
+  background: var(--white);
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  max-height: 440px;
+  overflow-y: auto;
+}
+.ticket-receipt {
+  font-family: inherit;
+  color: var(--text-main);
+}
+.ticket-receipt-head {
+  text-align: center;
+  border-bottom: 2px dashed var(--border-gray);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.ticket-receipt-brand {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--red-dark);
+  letter-spacing: 0.5px;
+}
+.ticket-receipt-title {
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+.ticket-receipt-meta {
+  font-size: 11.5px;
+  color: var(--text-sub);
+  margin-top: 2px;
+}
+.ticket-driver-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  margin-bottom: 14px;
+}
+.ticket-driver-box div b {
+  color: var(--text-main);
+}
+.ticket-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.ticket-table th {
+  background: var(--surface);
+  border: 1px solid var(--border-gray);
+  padding: 6px 8px;
+  font-weight: 700;
+  text-align: left;
+}
+.ticket-table td {
+  border: 1px solid var(--border-gray);
+  padding: 6px 8px;
+  vertical-align: top;
+}
+.ticket-sign-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 10px;
+}
+.ticket-sign-box {
+  text-align: center;
+  width: 45%;
+  font-size: 12px;
+}
+.ticket-sign-box b {
+  display: block;
+  font-weight: 700;
+}
+.ticket-sign-box span {
+  font-size: 11px;
+  color: var(--text-sub);
+  font-style: italic;
+  display: block;
+  margin-top: 2px;
+}
+.ticket-sign-space {
+  height: 40px;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #tsPrintTicketContainer, #tsPrintTicketContainer * {
+    visibility: visible !important;
+  }
+  #tsPrintTicketModal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    background: white;
+    display: block !important;
+  }
+  #tsPrintTicketModal .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+  #tsPrintTicketModal .modal-actions,
+  #tsPrintTicketModal h3,
+  #tsPrintTicketModal button {
+    display: none !important;
+  }
+  .print-ticket-wrapper {
+    border: none !important;
+    max-height: none !important;
+    padding: 0 !important;
+  }
+}
 
 /* Modal "Chỉ định xe rước liền" (#assignPickupModal) — .panel-head/.panel-body/.panel-footer/.icon-close
    đã dùng chung ở css/shared/booking-ui.css; chỉ ghi đè riêng layout 2 cột + kích thước cho modal này. */

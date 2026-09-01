@@ -48,7 +48,7 @@
           Quản lý vé
         </button>
         <button id="tabPickup" class="pill-btn" type="button" data-action="switchView" data-args='["pickup"]'>
-          Trung chuyển <span class="badge" id="headerPickupBadge">4</span>
+          Trung chuyển
         </button>
         <button id="tabHistory" class="pill-btn" type="button" data-action="switchView" data-args='["history"]'>
           Lịch sử
@@ -455,7 +455,7 @@
       </section>
 
       <!-- ZONE 3C: TRUNG CHUYỂN VIEW -->
-      <section class="zone3 passenger-view" id="zone3Transship" style="display:none; flex-direction:column; gap:20px; padding:16px;">
+      <section class="zone3 passenger-view" id="zone3Transship" style="display:none; flex-direction:column; gap:20px; padding:16px 20px;">
         <!-- BẢNG 1: DANH SÁCH TRUNG CHUYỂN ĐÓN -->
         <div class="transship-block">
           <div class="transship-block-header">
@@ -479,6 +479,7 @@
                   <th class="pax-col-total">Tổng tiền</th>
                   <th class="pax-col-status">Trạng thái</th>
                   <th class="pax-col-note">Ghi chú</th>
+                  <th class="pax-col-check ts-check-col"><input type="checkbox" data-action="tsToggleAll" data-args='["pickup", "__this__"]'></th>
                 </tr>
               </thead>
               <tbody id="transshipPickupBody"></tbody>
@@ -508,6 +509,7 @@
                   <th class="pax-col-total">Tổng tiền</th>
                   <th class="pax-col-status">Trạng thái</th>
                   <th class="pax-col-note">Ghi chú</th>
+                  <th class="pax-col-check ts-check-col"><input type="checkbox" data-action="tsToggleAll" data-args='["dropoff", "__this__"]'></th>
                 </tr>
               </thead>
               <tbody id="transshipDropoffBody"></tbody>
@@ -515,6 +517,16 @@
           </div>
         </div>
       </section>
+
+      <!-- Thanh nổi chọn khách trung chuyển để in vé (role trung chuyển, tab Trung chuyển) — cùng kiểu
+           .sticky-actions với thanh "Chuyển ghế" ở tab Hành khách, id riêng để không đụng nhau. -->
+      <div class="sticky-actions" id="tsPrintActionBar" style="display:none;">
+        <span class="hint" id="tsPrintActionHint"></span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" type="button" data-action="tsClearPrintSelection">Hủy</button>
+          <button class="btn btn-sell" type="button" data-action="tsPrintSelectedTickets">In vé trung chuyển</button>
+        </div>
+      </div>
 
       <!-- ZONE 3D: DANH SÁCH GHẾ HỦY VIEW -->
       <section class="zone3 passenger-view" id="zone3Cancelled" style="display:none;">
@@ -653,7 +665,7 @@
         </button>
       </div>
 
-      <div class="grid-wrap" style="flex: 1; overflow: auto; padding: 0 0 20px;">
+      <div class="grid-wrap" style="flex: 1; overflow: auto; padding: 16px 20px 20px;">
         <div class="pax-table-wrap pax-table-wrap--history" id="phHistoryTableWrap">
           <table class="pax-table pax-table--history pax-table--grid">
             <thead>
@@ -661,13 +673,13 @@
                 <th>STT</th>
                 <th>Tên phơi</th>
                 <th>Hành khách</th>
-                <th>Số điện thoại</th>
+                <th>SDT</th>
                 <th>Hành trình</th>
                 <th>SL</th>
                 <th>Vị trí</th>
                 <th>Giá vé</th>
                 <th>Ghi chú</th>
-                <th>Nhân viên</th>
+                <th>Mã NV</th>
                 <th>Thời gian</th>
                 <th></th>
               </tr>
@@ -811,6 +823,12 @@
     <!-- ===== TRANG RƯỚC LIỀN (gộp từ pickup-list.html) ===== -->
     <div id="pickupView" class="main-view-container"
       style="display: none; flex-direction: column; flex: 1; overflow: hidden; background: var(--white);">
+      <nav class="pk-subtabs" id="pkSubtabs">
+        <button type="button" class="pk-subtab active" data-action="pkSwitchSubTab" data-args='["all"]'>Tất cả<span class="pk-subtab-count" id="pkSubtabCount-all"></span></button>
+        <button type="button" class="pk-subtab" data-action="pkSwitchSubTab" data-args='["don"]'>Trung chuyển đón<span class="pk-subtab-count" id="pkSubtabCount-don"></span></button>
+        <button type="button" class="pk-subtab" data-action="pkSwitchSubTab" data-args='["ruoclien"]'>Rước liền<span class="pk-subtab-count" id="pkSubtabCount-ruoclien"></span></button>
+        <button type="button" class="pk-subtab" data-action="pkSwitchSubTab" data-args='["tra"]'>Trung chuyển trả<span class="pk-subtab-count" id="pkSubtabCount-tra"></span></button>
+      </nav>
       <div class="filter-toolbar">
         <div class="filter-field">
           <label>Tìm kiếm</label>
@@ -888,37 +906,43 @@
 
         <div class="filter-reset">
           <button type="button" class="btn btn-secondary" data-action="pkResetFilters">Đặt lại bộ lọc</button>
-          <button type="button" class="btn btn-primary" data-action="openPickupModal">Rước liền</button>
+          <button type="button" class="btn btn-primary" id="pkOpenPickupBtn" data-action="openPickupModal">Rước liền</button>
         </div>
       </div>
 
-      <div class="status-legend" aria-label="Chú giải trạng thái">
-        <span class="status-legend-title">Chú giải trạng thái</span>
-        <div class="legend-row"><span class="status-dot" style="background:#B45309;"></span>Chưa chỉ định</div>
-        <div class="legend-row"><span class="status-dot" style="background:var(--green);"></span>Đã chỉ định xe</div>
-      </div>
-
-      <div class="grid-wrap" style="padding: 0 0 24px;">
-        <table class="shuttle-table shuttle-table--grid">
-          <thead>
-            <tr>
-              <th class="col-stt">STT</th>
-              <th style="width: 165px;">Khách hàng</th>
-              <th style="width: 280px;">Hành trình</th>
-              <th style="width: 40px;">SL</th>
-              <th style="width: 62px;">Số ghế</th>
-              <th style="width: 160px;">Ghi chú</th>
-              <th style="width: 100px;">Thời gian</th>
-              <th style="width: 90px;">In lúc</th>
-              <th class="col-status" style="width: 178px;">Trung chuyển</th>
-              <th style="width: 170px;">Phòng vé</th>
-              <th class="col-action" style="width: 70px;">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody id="pkPaxTableBody"></tbody>
-        </table>
+      <div class="grid-wrap" style="padding: 0 20px 24px;">
+        <div class="pk-table-gap-spacer"></div>
+        <div class="pk-table-wrap">
+          <table class="shuttle-table shuttle-table--grid">
+            <thead>
+              <tr>
+                <th class="col-stt">STT</th>
+                <th style="width: 165px;">Khách hàng</th>
+                <th style="width: 280px;">Hành trình</th>
+                <th style="width: 40px;">SL</th>
+                <th style="width: 62px;">Số ghế</th>
+                <th style="width: 140px;">Ghi chú</th>
+                <th style="width: 100px;">Thời gian</th>
+                <th style="width: 90px;">In lúc</th>
+                <th class="col-status" style="width: 118px;">Trạng thái</th>
+                <th style="width: 170px;">Trung chuyển</th>
+                <th style="width: 170px;">Phòng vé</th>
+                <th class="col-check" style="width: 44px;"><input type="checkbox" id="pkCheckAll" data-action="pkToggleAllVisible" data-args='["__this__"]'></th>
+              </tr>
+            </thead>
+            <tbody id="pkPaxTableBody"></tbody>
+          </table>
+        </div>
         <div class="grid-empty" id="pkGridEmpty" style="display:none;">
           Không có hành khách nào phù hợp với điều kiện lọc hiện tại.
+        </div>
+      </div>
+
+      <div class="sticky-actions" id="pkActionBar" style="display:none;">
+        <span class="hint" id="pkActionHint"></span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" type="button" data-action="pkClearSelection">Hủy</button>
+          <button class="btn btn-sell" id="pkActionBtn" type="button" data-action="pkConfirmSelectionAction"></button>
         </div>
       </div>
     </div>
@@ -1130,6 +1154,70 @@
         <button class="btn btn-secondary" data-action="pkCloseAssignModal">Đóng</button>
         <button class="btn btn-primary" id="pkConfirmAssignBtn" disabled data-action="pkConfirmAssign">Bán vé</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: Cập nhật trạng thái/tài xế trung chuyển (role trung chuyển, tab Trung chuyển) —
+     port Y CHANG shuttle.html #updateStatusModal (cùng field/thứ tự/nhãn), đổi tiền tố id thành pk để
+     không trùng ============ -->
+<div class="modal-overlay" id="pkUpdateStatusModal">
+  <div class="modal">
+    <h3 id="pkUpdateStatusModalTitle">Cập nhật trạng thái khách hàng</h3>
+    <p class="modal-sub" id="pkUpdateStatusCustomerLabel">Khách hàng: —</p>
+    <input type="hidden" id="pkUpdateStatusTargetKeys" value="">
+
+    <div class="form-field">
+      <label>Chọn trạng thái *</label>
+      <select id="pkStatusSelect" data-change-action="pkOnStatusSelectChange">
+        <option value="waiting">Chờ điều phối</option>
+        <option value="enroute">Đang trung chuyển</option>
+        <option value="onboard">Đã đón</option>
+        <option value="issue">Không đón được</option>
+      </select>
+    </div>
+
+    <div class="form-field" id="pkStatusReasonBox" style="display: none;">
+      <label>Lý do không đón được *</label>
+      <textarea id="pkStatusReasonInput" placeholder="Nhập lý do (VD: Điện thoại thuê bao, khách đổi ý, sai địa chỉ...)"></textarea>
+    </div>
+
+    <div id="pkStatusDriverSection">
+      <div class="form-field">
+        <label>Tài xế trung chuyển</label>
+        <select id="pkStatusDriverSelect">
+          <option value="">-- Giữ nguyên / chưa gán --</option>
+        </select>
+      </div>
+
+      <div class="form-row-grid">
+        <div class="form-field" style="margin-bottom: 0;">
+          <label>Loại xe</label>
+          <select id="pkStatusVehicleTypeSelect">
+            <option value="Xe 16 chỗ">Xe 16 chỗ</option>
+            <option value="Xe 7 chỗ">Xe 7 chỗ</option>
+            <option value="Xe 29 chỗ">Xe 29 chỗ</option>
+            <option value="Xe Limousine 9 chỗ">Xe Limousine 9 chỗ</option>
+          </select>
+        </div>
+
+        <div class="form-field" style="margin-bottom: 0;">
+          <label>Biển số xe</label>
+          <select id="pkStatusPlateSelect">
+            <option value="51B-666.66">51B-666.66</option>
+            <option value="51B-777.77">51B-777.77</option>
+            <option value="50H-888.88">50H-888.88</option>
+            <option value="51B-999.99">51B-999.99</option>
+            <option value="51B-111.11">51B-111.11</option>
+            <option value="51B-222.22">51B-222.22</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" data-action="closeModal" data-args='["pkUpdateStatusModal"]'>Hủy</button>
+      <button type="button" class="btn btn-primary" data-action="pkSaveDriverUpdate">Lưu</button>
     </div>
   </div>
 </div>
@@ -1794,7 +1882,7 @@
   </div>
 </div>
 
-<!-- ===== MODAL: GHI CHÚ TRẠNG THÁI KHÁCH RƯỚC LIỀN (cột "Phòng vé" trang Rước liền) ===== -->
+<!-- ===== MODAL: GHI CHÚ TRẠNG THÁI KHÁCH RƯỚC LIỀN (cột "Phòng vé", role bán vé) ===== -->
 <div class="modal-overlay" id="pkStatusNoteModal">
   <div class="modal" style="max-width:380px;">
     <h3>Ghi chú</h3>
@@ -1805,6 +1893,47 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" data-action="closeModal" data-args='["pkStatusNoteModal"]'>Đóng</button>
       <button class="btn btn-primary" data-action="pkSaveStatusNote">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: GHI CHÚ TRUNG CHUYỂN (cột "Trung chuyển", role trung chuyển) — cùng kiểu đơn giản với
+     #pkStatusNoteModal, chỉ khác lưu vào driverNote của HN_SHUTTLE_DRIVER_KEY thay vì p.statusNote ===== -->
+<div class="modal-overlay" id="pkDriverNoteModal">
+  <div class="modal" style="max-width:380px;">
+    <h3>Ghi chú trung chuyển</h3>
+    <div class="form-field">
+      <label>Ghi chú</label>
+      <textarea id="pkDriverNoteInput" placeholder="Nhập ghi chú trung chuyển cho khách này..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="closeModal" data-args='["pkDriverNoteModal"]'>Đóng</button>
+      <button class="btn btn-primary" data-action="pkSaveDriverNote">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: In vé trung chuyển (tab Trung chuyển, role trung chuyển) — port từ shuttle.html
+     #printTicketModal, đổi tiền tố id thành ts để không trùng ============ -->
+<div class="modal-overlay" id="tsPrintTicketModal">
+  <div class="modal modal-wide" style="width: 720px; max-width: 95vw;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-gray); padding-bottom: 10px;">
+      <h3 style="margin: 0; font-size: 16px;">In Vé / Phơi Trung Chuyển Cho Tài Xế</h3>
+      <button type="button" class="btn btn-secondary" data-action="closeModal" data-args='["tsPrintTicketModal"]' style="padding: 4px 10px; font-size: 12px;">✕ Đóng</button>
+    </div>
+
+    <div class="print-ticket-wrapper" id="tsPrintTicketContainer"></div>
+
+    <div class="modal-actions" style="margin-top: 16px; border-top: 1px solid var(--surface); padding-top: 12px;">
+      <button class="btn btn-secondary" data-action="closeModal" data-args='["tsPrintTicketModal"]'>Bỏ qua</button>
+      <button class="btn btn-primary" data-action="tsTriggerPrintTicket">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width: 14px; height: 14px; margin-right: 4px;">
+          <polyline points="6 9 6 2 18 2 18 9"></polyline>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+          <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        In vé trung chuyển
+      </button>
     </div>
   </div>
 </div>
@@ -1954,13 +2083,14 @@
 <div class="seat-menu" id="seatMenu"></div>
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg><span id="toastText"></span></div>
 
-<script src="../js/shared/storage-keys.js?v=2"></script>
+<script src="../js/shared/storage-keys.js?v=7"></script>
 <script src="../js/shared/format.js?v=9"></script>
 <script src="../js/shared/constants.js?v=3"></script>
 <script src="../js/shared/seat-bank.js?v=3"></script>
+<script src="../js/shared/fleet-store.js?v=5"></script>
 <script src="../js/shared/ui.js?v=13"></script>
-<script src="../js/shared/booking.js?v=47"></script>
-<script src="../js/ticketstaff.js?v=115"></script>
+<script src="../js/shared/booking.js?v=48"></script>
+<script src="../js/ticketstaff.js?v=116"></script>
 <script src="../js/ticketstaff-manifest-core.js?v=5"></script>
 <script src="../js/ticketstaff-manifest-ui.js?v=38"></script>
 <script src="../js/shared/events.js?v=2"></script>

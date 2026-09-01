@@ -179,13 +179,24 @@ function loadAllTrips() {
   return [...DEFAULT_SGCD_TRIPS, ...DEFAULT_CDSG_TRIPS, ...DEFAULT_EXTRA_TEMPLATE_TRIPS];
 }
 
+// Suy chiều của 1 tuyến: ưu tiên FleetStore (chuẩn theo hướng Admin cấu hình, đúng cả với tuyến KHÔNG
+// bắt đầu bằng "Sài Gòn"), fallback về quy ước cũ route.startsWith('Sài Gòn') cho phơi/tuyến lạ chưa có
+// trong store. Trả 'di' (chiều đi) hoặc 've' (chiều về).
+function tripRouteSense(route) {
+  if (!route) return 've';
+  try {
+    if (window.FleetStore && typeof FleetStore.getRouteSense === 'function') {
+      const s = FleetStore.getRouteSense(route);
+      if (s === 'di' || s === 've') return s;
+    }
+  } catch (e) { /* fallback bên dưới */ }
+  return route.startsWith('Sài Gòn') ? 'di' : 've';
+}
+
 // Lọc allTripsMeta thành 2 danh sách theo chiều (dùng chung ở nơi cần đồng bộ lại sau khi allTripsMeta thay đổi).
-// Suy chiều bằng "route bắt đầu bằng Sài Gòn" (giống đúng quy ước fDir ở applyFilters bên dưới) thay vì
-// liệt kê từng tiền tố điểm đến — liệt kê thiếu tiền tố (VD "An Giang -") từng khiến phơi tuyến đó biến
-// mất khỏi Zone1 nên nút "Bán vé" không tìm thấy thẻ phơi để chuyển tới.
 function refreshTripMetaFilters() {
-  sgcdTripsMeta = allTripsMeta.filter(t => t.route && t.route.startsWith('Sài Gòn') && t.status !== 'Đã hủy');
-  cdsgTripsMeta = allTripsMeta.filter(t => t.route && !t.route.startsWith('Sài Gòn') && t.status !== 'Đã hủy');
+  sgcdTripsMeta = allTripsMeta.filter(t => t.route && tripRouteSense(t.route) === 'di' && t.status !== 'Đã hủy');
+  cdsgTripsMeta = allTripsMeta.filter(t => t.route && tripRouteSense(t.route) === 've' && t.status !== 'Đã hủy');
 }
 
 let allTripsMeta = loadAllTrips();
@@ -241,6 +252,14 @@ let zone1HourFilter = 'all'; // lọc zone1 theo giờ (dropdown #zone1HourFilte
 let currentView = 'booking'; // 'booking' | 'history' — goToTripFromHistory() (shared/booking.js) đọc biến này để tự chuyển về màn đặt vé khi cần
 
 window.addEventListener('storage', (e) => {
+  // Admin sửa Hướng/Tuyến ở tab khác → dựng lại cấu hình + các dropdown/bộ lọc phụ thuộc.
+  if (e.key === HN_DIRECTIONS_KEY || e.key === HN_ROUTES_KEY) {
+    reloadFleetCfg();
+    try { if (typeof populateTripDirectionSelect === 'function') populateTripDirectionSelect(); } catch (err) {}
+    try { if (typeof onFilterDirectionChange === 'function') onFilterDirectionChange(); } catch (err) {}
+    try { if (typeof refreshTripsList === 'function') refreshTripsList(); } catch (err) {}
+    try { if (typeof applyFilters === 'function') applyFilters(); } catch (err) {}
+  }
   if (e.key === HN_STORAGE_KEY || e.key === HN_TRIPS_KEY) {
     if (e.key === HN_TRIPS_KEY) {
       allTripsMeta = loadAllTrips();
@@ -383,6 +402,147 @@ function renderCancelledListTable() {
 // cùng hàng) — trước đây dùng nhầm item.paid (trạng thái thu tiền vé, không liên quan gì đến việc đã có
 // tài xế đi đón hay chưa) nên hiện sai. Chiều "trả" chưa có cột gán tài xế hiển thị ở bảng này nên vẫn
 // giữ nguyên theo item.paid như cũ.
+// ===== Chọn dòng (checkbox) + thanh nổi "In vé trung chuyển" ở 2 bảng Trung chuyển đón/trả (tab Trung
+// chuyển trong booking view, zone3Transship) — CHỈ hiện cho role trung chuyển (xem renderTransshipTables,
+// toggle class "ts-dispatch-role"). Key = "pickup:"/"dropoff:" + ticketNo (2 bảng khoá độc lập, 1 khách
+// có cả 2 chặng đón+trả thì mỗi chặng là 1 dòng in riêng, đúng như mẫu phiếu #tsPrintTicketModal chỉ có
+// 1 địa chỉ/dòng). =====
+let tsSelectedTicketKeys = new Set();
+
+function tsToggleRow(key, checkboxEl) {
+  if (checkboxEl.checked) tsSelectedTicketKeys.add(key);
+  else tsSelectedTicketKeys.delete(key);
+  tsUpdatePrintActionBar();
+}
+
+function tsToggleAll(prefix, checkboxEl) {
+  const body = document.getElementById(prefix === 'pickup' ? 'transshipPickupBody' : 'transshipDropoffBody');
+  if (!body) return;
+  body.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+    let key = null;
+    try { key = JSON.parse(cb.dataset.args || '[]')[0]; } catch (e) { /* ignore */ }
+    if (!key) return;
+    cb.checked = checkboxEl.checked;
+    if (checkboxEl.checked) tsSelectedTicketKeys.add(key);
+    else tsSelectedTicketKeys.delete(key);
+  });
+  tsUpdatePrintActionBar();
+}
+
+function tsClearPrintSelection() {
+  tsSelectedTicketKeys.clear();
+  renderTransshipTables();
+}
+
+function tsUpdatePrintActionBar() {
+  const bar = document.getElementById('tsPrintActionBar');
+  const hint = document.getElementById('tsPrintActionHint');
+  if (!bar) return;
+  if (tsSelectedTicketKeys.size === 0) {
+    bar.style.display = 'none';
+    return;
+  }
+  bar.style.display = 'flex';
+  if (hint) hint.textContent = `Đã chọn ${tsSelectedTicketKeys.size} khách`;
+}
+
+// Tìm lại đúng dòng (item + seatCount) theo key "pickup:"/"dropoff:"+ticketNo — dùng khi in vé, lấy lại
+// đúng địa chỉ theo ĐÚNG chặng đã chọn (đón dùng pickupAddress, trả dùng dropoffAddress).
+function tsFindRowByKey(key) {
+  const leg = key.startsWith('dropoff:') ? 'dropoff' : 'pickup';
+  const ticketKeyPart = key.slice(leg.length + 1);
+  const grouped = groupSeatsByTicket(getAllBookedSeats());
+  const g = grouped.find((gr) => (gr.main.ticketNo || ('T-' + gr.main.code)) === ticketKeyPart);
+  if (!g) return null;
+  return { leg, item: g.main, seatCodes: g.members ? g.members.map((s) => s.code) : [g.main.code], seatCount: g.members ? g.members.length : 1 };
+}
+
+function tsPrintSelectedTickets() {
+  if (tsSelectedTicketKeys.size === 0) return;
+  const rows = Array.from(tsSelectedTicketKeys).map(tsFindRowByKey).filter(Boolean);
+  if (!rows.length) return;
+
+  const currentTrip = (typeof allTripsMeta !== 'undefined' && allTripsMeta.find((t) => t.id === currentTripId)) || {};
+  const container = document.getElementById('tsPrintTicketContainer');
+  const now = new Date();
+  const printTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} - ${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+  const totalPax = rows.reduce((sum, r) => sum + r.seatCount, 0);
+
+  container.innerHTML = `
+    <div class="ticket-receipt">
+      <div class="ticket-receipt-head">
+        <div class="ticket-receipt-brand">NHÀ XE HUỆ NGHĨA EXPRESS</div>
+        <div class="ticket-receipt-title">PHIẾU ĐIỀU PHỐI TRUNG CHUYỂN KHÁCH HÀNG</div>
+        <div class="ticket-receipt-meta">Thời gian xuất lệnh: ${printTimeStr}</div>
+      </div>
+
+      <div class="ticket-driver-box">
+        <div><b>Chuyến đi:</b> ${escapeHtml(currentTrip.route || 'Sài Gòn - Châu Đốc')}</div>
+        <div><b>Giờ khởi hành:</b> ${escapeHtml(currentTrip.time || '—')}</div>
+        <div><b>Ngày chạy:</b> ${escapeHtml(currentTrip.date || '—')}</div>
+        <div><b>Tổng số khách:</b> ${rows.length} lượt khách (${totalPax} pax)</div>
+      </div>
+
+      <table class="ticket-table">
+        <thead>
+          <tr>
+            <th style="width:30px; text-align:center;">STT</th>
+            <th style="width:130px;">Tên khách & SĐT</th>
+            <th style="width:60px;">Chặng</th>
+            <th>Địa chỉ đón / trả</th>
+            <th style="width:50px; text-align:center;">Số vé</th>
+            <th style="width:70px;">Số ghế</th>
+            <th style="width:75px; text-align:right;">Giá vé</th>
+            <th style="width:90px;">Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((r, idx) => {
+            const item = r.item;
+            const address = r.leg === 'dropoff'
+              ? (item.dropoffAddress || item.arrivalTransfer || item.lastStop || '—')
+              : (item.pickupAddress || item.transship || item.transshipStation || item.firstStop || '—');
+            const totalPrice = item.price ? (item.price * r.seatCount).toLocaleString('vi-VN') + 'đ' : '—';
+            return `
+            <tr>
+              <td style="text-align:center; font-weight:600;">${idx + 1}</td>
+              <td>
+                <b>${escapeHtml(item.customerName || 'Khách')}</b><br>
+                <span style="font-size:11px; color:#555;">${escapeHtml(item.phone || '—')}</span>
+              </td>
+              <td>${r.leg === 'dropoff' ? 'Trả' : 'Đón'}</td>
+              <td>${escapeHtml(address)}</td>
+              <td style="text-align:center; font-weight:700;">${r.seatCount}</td>
+              <td><b>${escapeHtml(r.seatCodes.join(', '))}</b></td>
+              <td style="text-align:right; font-weight:600;">${totalPrice}</td>
+              <td>${escapeHtml(seatNoteWithReason(item) || '—')}</td>
+            </tr>
+          `; }).join('')}
+        </tbody>
+      </table>
+
+      <div class="ticket-sign-row">
+        <div class="ticket-sign-box">
+          <b>Điều hành viên</b>
+          <span>(Ký & ghi rõ họ tên)</span>
+          <div class="ticket-sign-space"></div>
+        </div>
+        <div class="ticket-sign-box">
+          <b>Tài xế nhận lệnh</b>
+          <span>(Ký & ghi rõ họ tên)</span>
+          <div class="ticket-sign-space"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('tsPrintTicketModal').classList.add('open');
+}
+
+function tsTriggerPrintTicket() {
+  window.print();
+}
+
 function tsRenderTransshipStatusBadge(item, leg, hasAssignedDriver) {
   const noteField = leg === 'dropoff' ? 'transshipDropoffNote' : 'transshipPickupNote';
   const note = item[noteField] || '';
@@ -457,6 +617,11 @@ function renderTransshipTables() {
   const dropoffCntEl = document.getElementById('transshipDropoffCount');
   const tabCntEl = document.getElementById('transshipTabCnt');
 
+  // Cột checkbox + thanh nổi "In vé trung chuyển" CHỈ hiện cho role trung chuyển — gắn/gỡ class ngay
+  // mỗi lần render để luôn khớp đúng role hiện tại (đăng nhập lại/đổi tab không cần load lại trang).
+  const zone3Transship = document.getElementById('zone3Transship');
+  if (zone3Transship) zone3Transship.classList.toggle('ts-dispatch-role', pkIsShuttleDispatchRole());
+
   const allBooked = getAllBookedSeats();
   const grouped = groupSeatsByTicket(allBooked);
 
@@ -490,7 +655,7 @@ function renderTransshipTables() {
   // Render Table 1: DANH SÁCH TRUNG CHUYỂN ĐÓN
   if (pickupBody) {
     if (pickupList.length === 0) {
-      pickupBody.innerHTML = '<tr><td colspan="10" class="ts-empty">Không có hành khách cần trung chuyển đón trong chuyến này</td></tr>';
+      pickupBody.innerHTML = '<tr><td colspan="11" class="ts-empty">Không có hành khách cần trung chuyển đón trong chuyến này</td></tr>';
     } else {
       pickupBody.innerHTML = pickupList.map((g, idx) => {
         const item = g.main;
@@ -514,6 +679,7 @@ function renderTransshipTables() {
           : `<span class="pax-note-empty">—</span>`;
         const customerNameSafe = escapeHtml(item.customerName || 'Khách');
         const statusBadge = tsRenderTransshipStatusBadge(item, 'pickup', !!assignedDriver);
+        const ticketKey = 'pickup:' + (item.ticketNo || ('T-' + item.code));
 
         return `
           <tr data-ticket="${escapeHtml(item.ticketNo || '')}">
@@ -527,6 +693,7 @@ function renderTransshipTables() {
             <td class="pax-col-total">${totalPrice}</td>
             <td class="pax-col-status">${statusBadge}</td>
             <td class="pax-col-note" title="${noteSafe}">${noteHtml}</td>
+            <td class="pax-col-check ts-check-col"><input type="checkbox" ${tsSelectedTicketKeys.has(ticketKey) ? 'checked' : ''} data-change-action="tsToggleRow" data-args='["${ticketKey}","__this__"]'></td>
           </tr>
         `;
       }).join('');
@@ -536,7 +703,7 @@ function renderTransshipTables() {
   // Render Table 2: DANH SÁCH TRUNG CHUYỂN TRẢ
   if (dropoffBody) {
     if (dropoffList.length === 0) {
-      dropoffBody.innerHTML = '<tr><td colspan="9" class="ts-empty">Không có hành khách cần trung chuyển trả trong chuyến này</td></tr>';
+      dropoffBody.innerHTML = '<tr><td colspan="10" class="ts-empty">Không có hành khách cần trung chuyển trả trong chuyến này</td></tr>';
     } else {
       dropoffBody.innerHTML = dropoffList.map((g, idx) => {
         const item = g.main;
@@ -552,6 +719,7 @@ function renderTransshipTables() {
           : `<span class="pax-note-empty">—</span>`;
         const customerNameSafe = escapeHtml(item.customerName || 'Khách');
         const statusBadge = tsRenderTransshipStatusBadge(item, 'dropoff');
+        const ticketKey = 'dropoff:' + (item.ticketNo || ('T-' + item.code));
 
         return `
           <tr data-ticket="${escapeHtml(item.ticketNo || '')}">
@@ -564,11 +732,14 @@ function renderTransshipTables() {
             <td class="pax-col-total">${totalPrice}</td>
             <td class="pax-col-status">${statusBadge}</td>
             <td class="pax-col-note" title="${noteSafe}">${noteHtml}</td>
+            <td class="pax-col-check ts-check-col"><input type="checkbox" ${tsSelectedTicketKeys.has(ticketKey) ? 'checked' : ''} data-change-action="tsToggleRow" data-args='["${ticketKey}","__this__"]'></td>
           </tr>
         `;
       }).join('');
     }
   }
+
+  tsUpdatePrintActionBar();
 }
 
 document.addEventListener('click', function (e) {
@@ -1921,9 +2092,53 @@ function saveSubSeat() {
   showToast(editingSubSeatCode ? 'Đã cập nhật ghế phụ' : 'Đã thêm ghế phụ');
 }
 
+// Dựng lại các <select>/dropdown trong modal Chỉ định xe từ store dùng chung (loại xe / biển số / tài xế
+// / phụ xe do Admin quản trị). Chạy TRƯỚC phần pre-select bên dưới để cơ chế "chèn giá trị hiện tại nếu
+// thiếu" vẫn là lưới an toàn cho phơi cũ có biển/loại lạ.
+function hydrateAssignModalFromStore() {
+  try {
+    if (!window.FleetStore) return;
+
+    const vtSel = document.getElementById('vehicleTypeSelect');
+    if (vtSel) {
+      const cur = vtSel.value;
+      const types = FleetStore.getVehicleTypes({ scope: 'line' }).filter(v => v.active !== false);
+      vtSel.innerHTML = '<option value="">-- Chọn loại xe --</option>' +
+        types.map(v => `<option value="${escapeHtml(v.name)}">${escapeHtml(v.name)}</option>`).join('');
+      if (cur) vtSel.value = cur;
+    }
+
+    const plateSel = document.getElementById('plateSelect');
+    if (plateSel) {
+      const cur = plateSel.value;
+      const plates = FleetStore.getVehicles({ scope: 'line' }).filter(v => v.active !== false).map(v => v.plate);
+      plateSel.innerHTML = plates.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+      if (cur && plates.indexOf(cur) !== -1) plateSel.value = cur;
+    }
+
+    hydrateCrewDropdown('driverDropdownPanel', 'driverDropdownContainer', 'driver');
+    hydrateCrewDropdown('helperDropdownPanel', 'helperDropdownContainer', 'helper');
+  } catch (e) {
+    console.warn('[ticketstaff] hydrateAssignModalFromStore lỗi', e);
+  }
+}
+
+function hydrateCrewDropdown(panelId, containerId, role) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  const people = FleetStore.getStaff({ role }).filter(s => s.active !== false).map(s => s.name);
+  panel.innerHTML = people.map(name => {
+    const a = escapeHtml(name);
+    return `<div class="dropdown-item" data-value="${a}" data-action="selectSearchDropdownItem" ` +
+      `data-args='["${containerId}", "${a}", "${a}", "${role}"]'>` +
+      `<span>${a}</span><span class="dropdown-item-check">✓</span></div>`;
+  }).join('');
+}
+
 function openAssignModal() {
   document.getElementById('assignModal').classList.add('open');
   document.getElementById('driverWarn').style.display = 'none';
+  hydrateAssignModalFromStore();
 
   // Pre-select current vehicle type and add to select options if missing
   const carTypeEl = document.querySelector('.car-type');
@@ -2413,6 +2628,8 @@ function switchView(viewName) {
     if (pickupView) pickupView.style.display = 'flex';
     if (tabPickup) tabPickup.classList.add('active');
     if (searchInput) searchInput.placeholder = 'Tìm tên, SĐT khách trung chuyển...';
+    const pkOpenPickupBtn = document.getElementById('pkOpenPickupBtn');
+    if (pkOpenPickupBtn) pkOpenPickupBtn.style.display = pkIsShuttleDispatchRole() ? 'none' : '';
     pkRenderCalendar();
     pkRenderPaxTable();
   } else if (viewName === 'phoi') {
@@ -2434,92 +2651,22 @@ function switchView(viewName) {
 
 /* ===================== PHƠI XE MANAGEMENT (chuyển từ callcenter.js qua) ===================== */
 
-// Routes default configuration
-const ROUTES_CFG = {
-  'chieu-di': [
-    { label: 'Sài Gòn - Châu Đốc', abbr: 'SG-CD', price: 280000 },
-    { label: 'Sài Gòn - Long Xuyên', abbr: 'SG-LX', price: 150000 },
-    { label: 'Sài Gòn - Cần Thơ', abbr: 'SG-CT', price: 180000 },
-    { label: 'Sài Gòn - An Giang', abbr: 'SG-AG', price: 160000 }
-  ],
-  'chieu-ve': [
-    { label: 'Châu Đốc - Sài Gòn', abbr: 'CD-SG', price: 280000 },
-    { label: 'Long Xuyên - Sài Gòn', abbr: 'LX-SG', price: 150000 },
-    { label: 'Cần Thơ - Sài Gòn', abbr: 'CT-SG', price: 180000 },
-    { label: 'An Giang - Sài Gòn', abbr: 'AG-SG', price: 160000 },
-    { label: 'Châu Đốc - An Giang', abbr: 'CD-AG', price: 90000 },
-    { label: 'An Giang - Châu Đốc', abbr: 'AG-CD', price: 90000 }
-  ]
-};
+// Routes / Hướng đi — TRƯỚC ĐÂY khai báo cứng ở đây; NAY đọc từ store dùng chung (js/shared/fleet-store.js)
+// để trang Admin quản trị được và đồng bộ sang cả ticketstaff/shuttle. Builder trả về ĐÚNG shape cũ nên
+// mọi chỗ đọc ROUTES_CFG / TRIP_DIRECTIONS_CFG bên dưới không phải sửa. reloadFleetCfg() dựng lại khi
+// Admin sửa ở tab khác (xem listener 'storage' phía trên). Seed lần đầu = đúng giá trị hard-code cũ.
+let ROUTES_CFG = FleetStore.buildRoutesCfg();
 
-// Cấu hình "Hướng đi" cho modal Tạo phơi xe (singleModal) — 1 dropdown phẳng liệt kê thẳng từng cặp
-// tuyến theo dạng mũi tên (thay vì 2 bước Chiều đi/Chiều về rồi mới chọn Tuyến như ROUTES_CFG ở trên,
-// ROUTES_CFG vẫn giữ nguyên để các chỗ khác dùng — tìm tên viết tắt/giá khi lưu phơi, tên gợi ý khi để
-// trống Tên phơi). Mỗi hướng có sẵn danh sách Trạm đi/Trạm đến cụ thể để chọn, và danh sách trạm dọc
-// đường có thể nhận thêm khách (Trạm có thể nhận). "An Giang" là điểm mới, trạm tự đặt tên — khác với
-// Long Xuyên (đã có sẵn dữ liệu ở nơi khác trong hệ thống) nên không dùng chung trạm.
-const TRIP_DIRECTIONS_CFG = {
-  'sg-cd': {
-    label: 'SG → CĐ', route: 'Sài Gòn - Châu Đốc', price: 280000,
-    fromStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương', 'Trạm An Sương', 'Trạm Q.5'],
-    toStations: ['Bến xe Châu Đốc', 'Trạm Châu Đốc', 'Trạm Tân Châu'],
-    pickupStations: ['Trạm An Sương', 'Trạm Q.5', 'Trạm Kinh Dương Vương', 'Trạm Tân Châu']
-  },
-  'cd-sg': {
-    label: 'CĐ → SG', route: 'Châu Đốc - Sài Gòn', price: 280000,
-    fromStations: ['Bến xe Châu Đốc', 'Trạm Châu Đốc', 'Trạm Tân Châu'],
-    toStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương', 'Trạm An Sương'],
-    pickupStations: ['Trạm Tân Châu', 'Trạm An Sương']
-  },
-  'sg-lx': {
-    label: 'SG → LX', route: 'Sài Gòn - Long Xuyên', price: 150000,
-    fromStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương', 'Trạm An Sương'],
-    toStations: ['Bến xe Long Xuyên', 'Trạm Long Xuyên'],
-    pickupStations: ['Trạm An Sương']
-  },
-  'lx-sg': {
-    label: 'LX → SG', route: 'Long Xuyên - Sài Gòn', price: 150000,
-    fromStations: ['Bến xe Long Xuyên', 'Trạm Long Xuyên'],
-    toStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương'],
-    pickupStations: []
-  },
-  'sg-ct': {
-    label: 'SG → CT', route: 'Sài Gòn - Cần Thơ', price: 180000,
-    fromStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương', 'Trạm An Sương'],
-    toStations: ['Bến xe Cần Thơ', 'Bến Ninh Kiều'],
-    pickupStations: ['Trạm An Sương']
-  },
-  'ct-sg': {
-    label: 'CT → SG', route: 'Cần Thơ - Sài Gòn', price: 180000,
-    fromStations: ['Bến xe Cần Thơ', 'Bến Ninh Kiều'],
-    toStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương'],
-    pickupStations: []
-  },
-  'sg-ag': {
-    label: 'SG → AG', route: 'Sài Gòn - An Giang', price: 160000,
-    fromStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương', 'Trạm An Sương'],
-    toStations: ['Bến xe An Giang', 'Trạm Châu Thành', 'Trạm Tri Tôn'],
-    pickupStations: ['Trạm An Sương']
-  },
-  'ag-sg': {
-    label: 'AG → SG', route: 'An Giang - Sài Gòn', price: 160000,
-    fromStations: ['Bến xe An Giang', 'Trạm Châu Thành', 'Trạm Tri Tôn'],
-    toStations: ['Văn phòng trung tâm', 'Trạm Kinh Dương Vương'],
-    pickupStations: []
-  },
-  'cd-ag': {
-    label: 'CĐ → AG', route: 'Châu Đốc - An Giang', price: 90000,
-    fromStations: ['Bến xe Châu Đốc', 'Trạm Châu Đốc', 'Trạm Tân Châu'],
-    toStations: ['Bến xe An Giang', 'Trạm Châu Thành', 'Trạm Tri Tôn'],
-    pickupStations: ['Trạm Tân Châu']
-  },
-  'ag-cd': {
-    label: 'AG → CĐ', route: 'An Giang - Châu Đốc', price: 90000,
-    fromStations: ['Bến xe An Giang', 'Trạm Châu Thành', 'Trạm Tri Tôn'],
-    toStations: ['Bến xe Châu Đốc', 'Trạm Châu Đốc'],
-    pickupStations: []
-  }
-};
+// Cấu hình "Hướng đi" cho modal Tạo phơi xe (singleModal) — shape { [id]: {label,route,price,
+// fromStations,toStations,pickupStations} }. TRƯỚC ĐÂY khai báo cứng; NAY dựng từ store dùng chung
+// (Hướng + Tuyến do Admin quản trị). Builder chỉ gồm hướng đang bật + có tuyến đang bật.
+let TRIP_DIRECTIONS_CFG = FleetStore.buildTripDirectionsCfg();
+
+// Dựng lại 2 cấu hình trên khi Admin sửa Hướng/Tuyến (gọi từ listener 'storage' và sau khi Admin cùng máy đổi dữ liệu).
+function reloadFleetCfg() {
+  ROUTES_CFG = FleetStore.buildRoutesCfg();
+  TRIP_DIRECTIONS_CFG = FleetStore.buildTripDirectionsCfg();
+}
 
 // Global variables specific to Phơi xe
 let phoiBulkMode = false; // chế độ chọn "phơi mẫu" để tạo hàng loạt — xem toggleBulkTemplateMode()
@@ -2742,8 +2889,9 @@ function applyFilters() {
     if (fDate && t.date && t.date !== fDate) return false;
 
     if (fDir) {
-      if (fDir === 'chieu-di' && !routeStr.startsWith('Sài Gòn')) return false;
-      if (fDir === 'chieu-ve' && routeStr.startsWith('Sài Gòn')) return false;
+      const sense = tripRouteSense(routeStr);
+      if (fDir === 'chieu-di' && sense !== 'di') return false;
+      if (fDir === 'chieu-ve' && sense !== 've') return false;
     }
 
     if (fRoute && routeStr !== fRoute) return false;
@@ -2979,7 +3127,7 @@ function sellTicketForTrip(tripId) {
   const sgList = document.getElementById('tripListSGCD');
   const cdList = document.getElementById('tripListCDSG');
   if (trip && sgList && cdList) {
-    const isCD = !trip.route.startsWith('Sài Gòn');
+    const isCD = tripRouteSense(trip.route) === 've';
     sgList.style.display = isCD ? 'none' : '';
     cdList.style.display = isCD ? '' : 'none';
     selectedDirection = isCD ? 'cd-sg' : 'sg-cd';
@@ -3046,6 +3194,27 @@ function showTripRoute(tripId) {
   document.getElementById('tripRouteModal').classList.add('open');
 }
 
+// Đổ <select id="tripVehicleType"> từ store — giữ đúng "3 loại nổi bật" cũ qua cờ featuredForTrip
+// (Admin có thể gắn cờ cho loại khác). Giữ nguyên giá trị đang chọn nếu có.
+function populateTripVehicleTypeSelect() {
+  const sel = document.getElementById('tripVehicleType');
+  if (!sel || !window.FleetStore) return;
+  const cur = sel.value;
+  let types = FleetStore.getVehicleTypes({ scope: 'line' }).filter(v => v.active !== false && v.featuredForTrip);
+  if (!types.length) types = FleetStore.getVehicleTypes({ scope: 'line' }).filter(v => v.active !== false);
+  sel.innerHTML = types.map(v => `<option value="${escapeHtml(v.name)}">${escapeHtml(v.name)}</option>`).join('');
+  if (cur && types.some(v => v.name === cur)) sel.value = cur;
+}
+
+// Chèn 1 <option> tạm nếu giá trị cần chọn không có sẵn trong <select> (lưới an toàn cho dữ liệu cũ).
+function ensureSelectOption(selectId, value) {
+  if (!value) return;
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const has = Array.prototype.some.call(sel.options, o => o.value === value);
+  if (!has) sel.add(new Option(value, value));
+}
+
 // Single Modal triggers
 function openSingleModal() {
   document.getElementById("singleModalTitle").textContent = "Tạo phơi xe mới";
@@ -3055,6 +3224,7 @@ function openSingleModal() {
   document.getElementById("btnSaveSingle").disabled = false;
   document.getElementById("btnCancelTrip").style.display = "none";
 
+  populateTripVehicleTypeSelect();
   populateTripDirectionSelect();
   onTripDirectionChange();
 
@@ -3079,6 +3249,8 @@ function openEditModal(id) {
 
   document.getElementById("tripDate").value = trip.date || '';
   document.getElementById("tripTime").value = trip.time || '';
+  populateTripVehicleTypeSelect();
+  ensureSelectOption("tripVehicleType", trip.vehicleType); // phơi cũ có loại xe không nằm trong danh sách nổi bật
   document.getElementById("tripVehicleType").value = trip.vehicleType || 'Limousine 24 Phòng';
   document.getElementById("tripNote").value = trip.note || '';
 
@@ -3691,34 +3863,8 @@ function confirmRebookAndSell() {
   }
 })();
 
-function updateHeaderPickupBadge() {
-  const badge = document.getElementById('headerPickupBadge');
-  if (!badge) return;
-  let storedPax = [];
-  try {
-    const saved = localStorage.getItem(HN_PICKUP_PAX_KEY) || localStorage.getItem('hn_pickup_passengers_v5');
-    if (saved) storedPax = JSON.parse(saved);
-  } catch (e) {}
-
-  if (!Array.isArray(storedPax) || storedPax.length === 0) {
-    storedPax = [
-      { id: 1, assigned: null },
-      { id: 2, assigned: { tripId: '1' } },
-      { id: 3, assigned: null },
-      { id: 4, assigned: null },
-      { id: 5, assigned: null }
-    ];
-  }
-
-  const pendingCount = storedPax.filter(p => !p.assigned).length;
-  badge.textContent = pendingCount;
-  badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
-}
-
-updateHeaderPickupBadge();
 window.addEventListener('storage', (e) => {
   if (!e.key || e.key === HN_PICKUP_PAX_KEY) {
-    updateHeaderPickupBadge();
     pickupPassengers = loadPickupPassengers();
     if (currentView === 'pickup') pkRenderPaxTable();
   }
@@ -3817,6 +3963,362 @@ let pkFilterState = {
   status: 'all',
   search: ''
 };
+
+// ===== Nav 4-tab (Tất cả/Trung chuyển đón/Rước liền/Trung chuyển trả) + chọn dòng (checkbox) ở
+// #pickupView — phân quyền theo role đăng nhập (pkIsShuttleDispatchRole()). =====
+let pkSubTab = 'all'; // 'all' | 'don' | 'ruoclien' | 'tra'
+let pkSelectedIds = new Set(); // key theo pkPickupRowKey()/pkTransshipRowKey() — dùng chung 1 Set cho cả 2 loại dòng
+
+// role = 'shuttle_dispatch' (tài khoản trungchuyen01) -> chế độ "trung chuyển": chọn nhiều, nút "Cập
+// nhật" (gán/sửa tài xế). Mọi role khác -> chế độ "bán vé": chọn 1, nút "Chỉ định" (gán chuyến+ghế /
+// mở phơi đã gán). role chỉ là nhãn hiển thị trong session hiện tại — dùng lại đúng field đã có, không
+// thêm role/tài khoản mới.
+function pkIsShuttleDispatchRole() {
+  try {
+    const raw = sessionStorage.getItem(HN_CURRENT_USER_KEY);
+    const user = raw ? JSON.parse(raw) : null;
+    return !!(user && user.role === 'shuttle_dispatch');
+  } catch (e) { return false; }
+}
+
+function pkSwitchSubTab(tab) {
+  pkSubTab = tab;
+  document.querySelectorAll('#pkSubtabs .pk-subtab').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-args') === `["${tab}"]`);
+  });
+  pkSelectedIds.clear();
+  pkRenderPaxTable();
+}
+
+// Điều kiện lọc 1 dòng (mergedRows) theo 1 trong 4 tab — tách riêng khỏi pkRenderPaxTable() để dùng
+// chung cho cả việc lọc danh sách hiển thị (tab đang xem) lẫn đếm số lượng cho tất cả 4 tab cùng lúc
+// (hiện bên cạnh tên tab, xem pkRenderPaxTable()).
+function pkRowMatchesSubTab(row, tab) {
+  if (tab === 'all') return true;
+  if (tab === 'ruoclien') return row.kind === 'pk';
+  if (row.kind !== 'ts') return false;
+  const m = row.data.main;
+  if (tab === 'don') return !!(m.pickupAddress || m.transship || m.transshipStation);
+  if (tab === 'tra') return !!(m.dropoffAddress || m.arrivalTransfer);
+  return true;
+}
+
+function pkToggleRow(key, checkboxEl) {
+  if (checkboxEl.checked) {
+    if (!pkIsShuttleDispatchRole()) pkSelectedIds.clear(); // chế độ bán vé: chọn 1 — bỏ chọn cũ trước
+    pkSelectedIds.add(key);
+  } else {
+    pkSelectedIds.delete(key);
+  }
+  pkRenderPaxTable();
+}
+
+function pkToggleAllVisible(checkboxEl) {
+  if (!pkIsShuttleDispatchRole()) {
+    // Chế độ bán vé chỉ chọn 1 — "chọn tất cả" không áp dụng, coi như bỏ chọn.
+    checkboxEl.checked = false;
+    pkSelectedIds.clear();
+    pkRenderPaxTable();
+    return;
+  }
+  // Đọc đúng key của từng dòng đang hiển thị trực tiếp từ data-args mỗi checkbox (đã gắn ở
+  // pkRenderPickupRow/pkRenderTransshipRow), tránh phải tính lại visibleRows ở đây.
+  const rowCheckboxes = document.querySelectorAll('#pkPaxTableBody td.col-check input[type="checkbox"]');
+  rowCheckboxes.forEach(cb => {
+    let key = null;
+    try { key = JSON.parse(cb.dataset.args || '[]')[0]; } catch (e) { /* ignore */ }
+    if (!key) return;
+    if (checkboxEl.checked) pkSelectedIds.add(key);
+    else pkSelectedIds.delete(key);
+  });
+  pkRenderPaxTable();
+}
+
+function pkClearSelection() {
+  pkSelectedIds.clear();
+  pkRenderPaxTable();
+}
+
+function pkUpdateActionBar() {
+  const bar = document.getElementById('pkActionBar');
+  const hint = document.getElementById('pkActionHint');
+  const btn = document.getElementById('pkActionBtn');
+  if (!bar) return;
+  if (pkSelectedIds.size === 0) {
+    bar.style.display = 'none';
+    return;
+  }
+  bar.style.display = 'flex';
+  const isDispatch = pkIsShuttleDispatchRole();
+  if (hint) hint.textContent = `Đã chọn ${pkSelectedIds.size} khách`;
+  if (btn) btn.textContent = isDispatch ? 'Cập nhật' : 'Chỉ định';
+}
+
+function pkConfirmSelectionAction() {
+  if (pkSelectedIds.size === 0) return;
+  if (!pkIsShuttleDispatchRole()) {
+    // Chế độ bán vé: luôn đúng 1 key — gọi lại đúng hành động sẵn có theo loại dòng.
+    const key = Array.from(pkSelectedIds)[0];
+    if (key.startsWith('pk:')) {
+      pkOpenAssignModal(Number(key.slice(3)));
+    } else if (key.startsWith('ts:')) {
+      const row = pkFindMergedRowByKey(key);
+      if (row) sellTicketForTrip(row.data.tripId);
+    }
+    return;
+  }
+  pkOpenDriverUpdateModal(Array.from(pkSelectedIds));
+}
+
+// Tìm lại đúng dòng (kind+data) trong danh sách đang hiển thị theo key — dùng khi thanh nổi cần biết
+// dòng đó thuộc loại nào (pk/ts) để gọi đúng hành động hoặc lấy đúng thông tin khách (tên/SĐT).
+function pkFindMergedRowByKey(key) {
+  if (key.startsWith('pk:')) {
+    const id = Number(key.slice(3));
+    const p = pickupPassengers.find(pp => pp.id === id);
+    return p ? { kind: 'pk', data: p, key } : null;
+  }
+  const pkSelectedDateStr = `${pkSelectedDate.getFullYear()}-${String(pkSelectedDate.getMonth() + 1).padStart(2, '0')}-${String(pkSelectedDate.getDate()).padStart(2, '0')}`;
+  const rows = pkGetTransshipRows(pkSelectedDateStr, pkFilterState, new Set());
+  const row = rows.find(r => pkTransshipRowKey(r) === key);
+  return row ? { kind: 'ts', data: row, key } : null;
+}
+
+// Tên + SĐT của 1 dòng (bất kể pk/ts) — dùng để hiện nhãn khách trong modal cập nhật tài xế.
+function pkRowNameAndPhone(row) {
+  if (row.kind === 'pk') return { name: row.data.name || '', phone: row.data.phone || '' };
+  return { name: row.data.main.customerName || 'Khách', phone: row.data.main.phone || '' };
+}
+
+// ===== Modal "Cập nhật tài xế trung chuyển" (#pkUpdateStatusModal, role trung chuyển) — port cách làm
+// từ shuttle.js (openUpdateStatusModal/saveStatusUpdate), ghi cùng key HN_SHUTTLE_DRIVER_KEY nên đồng
+// bộ 2 chiều với shuttle.html. Đơn giản hơn bản gốc: chỉ gồm tài xế/loại xe/biển số (không có phần chọn
+// trạng thái đón — ticketstaff hiện chưa theo dõi trạng thái đón riêng cho khách trung chuyển). =====
+function pkBuildDriversPool() {
+  try {
+    if (window.FleetStore && typeof FleetStore.getStaff === 'function') {
+      const list = FleetStore.getStaff({ role: 'shuttle_driver' })
+        .filter((s) => s.active !== false)
+        .map((s) => ({ id: s.code || s.name, driverName: s.name, driverPhone: s.phone || '', license: s.license || '' }));
+      if (list.length) return list;
+    }
+  } catch (e) { /* ignore, dùng fallback bên dưới */ }
+  return [
+    { id: "TX01", driverName: "Nguyễn Văn Bình", driverPhone: "0909111222", license: "D" },
+    { id: "TX02", driverName: "Trịnh Công Sơn", driverPhone: "0918222333", license: "B2" },
+    { id: "TX03", driverName: "Lê Hoài Nam", driverPhone: "0927333444", license: "E" },
+    { id: "TX04", driverName: "Phạm Đức Duy", driverPhone: "0936444555", license: "D" },
+    { id: "TX05", driverName: "Trần Văn Hải", driverPhone: "0907222333", license: "FC" }
+  ];
+}
+
+function pkPopulateFleetSelects() {
+  try {
+    if (!window.FleetStore) return;
+    const plates = FleetStore.getVehicles({ scope: 'shuttle' }).filter((v) => v.active !== false).map((v) => v.plate);
+    const plateSelect = document.getElementById('pkStatusPlateSelect');
+    if (plateSelect && plates.length) {
+      const cur = plateSelect.value;
+      plateSelect.innerHTML = plates.map((p) => `<option value="${p}">${p}</option>`).join('');
+      if (cur && plates.indexOf(cur) !== -1) plateSelect.value = cur;
+    }
+    const types = FleetStore.getVehicleTypes({ scope: 'shuttle' }).filter((v) => v.active !== false).map((v) => v.name);
+    const typeSelect = document.getElementById('pkStatusVehicleTypeSelect');
+    if (typeSelect && types.length) {
+      const cur = typeSelect.value;
+      typeSelect.innerHTML = types.map((t) => `<option value="${t}">${t}</option>`).join('');
+      if (cur && types.indexOf(cur) !== -1) typeSelect.value = cur;
+    }
+  } catch (e) { console.warn('[ticketstaff] pkPopulateFleetSelects lỗi', e); }
+}
+
+// Khoá lưu tài xế trung chuyển — Y HỆT công thức shuttleDriverLegKey() bên shuttle.js (SĐT + "_don"/"_tra")
+// để 2 trang đọc/ghi chung 1 định dạng. Dòng "pk" (rước liền) và dòng "ts" hiện chỉ theo dõi chặng "đón"
+// (khớp đúng cách cột "Trung chuyển" đang đọc — xem driverKey trong pkRenderPickupRow/pkRenderTransshipRow).
+function pkShuttleDriverLegKey(phone) {
+  return `${String(phone || '').replace(/\s+/g, '')}_don`;
+}
+
+// Nhãn + màu trạng thái đón — Y HỆT STATUS_LABELS bên shuttle.js, để tag hiển thị ở cột "Trung chuyển"
+// (cả 2 role đều thấy) đồng bộ đúng 4 trạng thái/màu sắc với trang shuttle.html.
+const PK_STATUS_LABELS = {
+  waiting: { text: 'Chờ điều phối', cls: 'status-waiting' },
+  enroute: { text: 'Đang trung chuyển', cls: 'status-enroute' },
+  onboard: { text: 'Đã đón', cls: 'status-onboard' },
+  issue: { text: 'Không đón được', cls: 'status-issue' }
+};
+
+function pkReadShuttleDriverMap() {
+  try {
+    const raw = localStorage.getItem(HN_SHUTTLE_DRIVER_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
+
+// ===== Modal "Ghi chú trung chuyển" (#pkDriverNoteModal, cột "Trung chuyển" — role trung chuyển) —
+// cùng pattern với pkOpenStatusNoteModal/pkSaveStatusNote (cột "Phòng vé", role bán vé), chỉ khác lưu
+// vào driverNote của đúng entry HN_SHUTTLE_DRIVER_KEY (khoá theo SĐT, không phải theo id khách). =====
+let pkDriverNoteActiveKey = null;
+
+function pkOpenDriverNoteModal(key) {
+  pkDriverNoteActiveKey = key;
+  const row = pkFindMergedRowByKey(key);
+  const input = document.getElementById('pkDriverNoteInput');
+  if (!row) { if (input) input.value = ''; return; }
+  const { phone } = pkRowNameAndPhone(row);
+  const shuttleDriverMap = pkReadShuttleDriverMap();
+  const entry = shuttleDriverMap[pkShuttleDriverLegKey(phone)];
+  if (input) input.value = (entry && entry.driverNote) || '';
+  const modal = document.getElementById('pkDriverNoteModal');
+  if (modal) modal.classList.add('open');
+}
+
+function pkSaveDriverNote() {
+  if (!pkDriverNoteActiveKey) return;
+  const row = pkFindMergedRowByKey(pkDriverNoteActiveKey);
+  if (!row) { closeModal('pkDriverNoteModal'); pkDriverNoteActiveKey = null; return; }
+  const { phone } = pkRowNameAndPhone(row);
+  if (!phone) { closeModal('pkDriverNoteModal'); pkDriverNoteActiveKey = null; return; }
+
+  const input = document.getElementById('pkDriverNoteInput');
+  const value = input ? input.value.trim() : '';
+  const legKey = pkShuttleDriverLegKey(phone);
+  const shuttleDriverMap = pkReadShuttleDriverMap();
+  const entry = shuttleDriverMap[legKey] || {};
+  const changed = (entry.driverNote || '') !== value;
+  entry.driverNote = value;
+  shuttleDriverMap[legKey] = entry;
+
+  try { localStorage.setItem(HN_SHUTTLE_DRIVER_KEY, JSON.stringify(shuttleDriverMap)); } catch (e) { /* ignore */ }
+  if (changed) pkMarkRowUpdated(pkDriverNoteActiveKey);
+
+  closeModal('pkDriverNoteModal');
+  pkDriverNoteActiveKey = null;
+  pkRenderPaxTable();
+}
+
+function pkOnStatusSelectChange() {
+  const statusVal = document.getElementById('pkStatusSelect').value;
+  const reasonBox = document.getElementById('pkStatusReasonBox');
+  if (reasonBox) reasonBox.style.display = (statusVal === 'issue') ? 'flex' : 'none';
+}
+
+let pkUpdateTargetKeys = [];
+
+// Modal "Cập nhật trạng thái khách hàng" — Y CHANG shuttle.html #updateStatusModal: 1 khách thì hiện cả
+// trạng thái lẫn tài xế/loại xe/biển số để sửa chung 1 lần; nhiều khách (hàng loạt) thì ẩn hẳn phần tài
+// xế (đúng như statusDriverSection bị ẩn trong openBulkUpdateStatusModal() bên shuttle.js — gán tài xế
+// hàng loạt không nằm trong modal này) và bắt buộc các khách đã chọn phải CÙNG trạng thái hiện tại.
+function pkOpenDriverUpdateModal(keys) {
+  const rows = keys.map(k => pkFindMergedRowByKey(k)).filter(Boolean);
+  if (!rows.length) return;
+  const shuttleDriverMap = pkReadShuttleDriverMap();
+  const statusOf = (row) => {
+    const { phone } = pkRowNameAndPhone(row);
+    const assigned = shuttleDriverMap[pkShuttleDriverLegKey(phone)];
+    return (assigned && assigned.status) || 'waiting';
+  };
+
+  const driverSection = document.getElementById('pkStatusDriverSection');
+  const title = document.getElementById('pkUpdateStatusModalTitle');
+  const statusSelect = document.getElementById('pkStatusSelect');
+  const reasonInput = document.getElementById('pkStatusReasonInput');
+
+  if (rows.length > 1) {
+    const firstStatus = statusOf(rows[0]);
+    const sameStatus = rows.every((r) => statusOf(r) === firstStatus);
+    if (!sameStatus) {
+      showToast('Các khách hàng đã chọn không cùng trạng thái hiện tại. Vui lòng chọn nhóm khách có cùng trạng thái!');
+      return;
+    }
+    pkUpdateTargetKeys = keys.slice();
+    if (title) title.textContent = 'Cập nhật trạng thái hàng loạt';
+    const totalPax = rows.reduce((sum, r) => sum + (r.kind === 'pk' ? (r.data.ticketCount || r.data.count || 1) : r.data.seatCount), 0);
+    document.getElementById('pkUpdateStatusCustomerLabel').textContent =
+      `Đang chọn ${rows.length} khách hàng (${totalPax} pax) — Trạng thái hiện tại: "${PK_STATUS_LABELS[firstStatus].text}"`;
+    statusSelect.value = firstStatus;
+    if (reasonInput) reasonInput.value = '';
+    if (driverSection) driverSection.style.display = 'none';
+  } else {
+    pkUpdateTargetKeys = keys.slice();
+    if (title) title.textContent = 'Cập nhật trạng thái khách hàng';
+    const { name, phone } = pkRowNameAndPhone(rows[0]);
+    document.getElementById('pkUpdateStatusCustomerLabel').textContent = `Khách hàng: ${name} (${phone})`;
+    const currentStatus = statusOf(rows[0]);
+    statusSelect.value = currentStatus;
+    const assigned = shuttleDriverMap[pkShuttleDriverLegKey(phone)];
+    if (reasonInput) reasonInput.value = (currentStatus === 'issue' && assigned && assigned.note) ? assigned.note : '';
+    if (driverSection) driverSection.style.display = 'block';
+
+    pkPopulateFleetSelects();
+    const driversPool = pkBuildDriversPool();
+    const driverSelect = document.getElementById('pkStatusDriverSelect');
+    driverSelect.innerHTML = `<option value="">-- Giữ nguyên / chưa gán --</option>` +
+      driversPool.map((d) => `<option value="${d.id}">Tài xế ${d.driverName} — SĐT: ${d.driverPhone} (${d.license.replace(/^Bằng\s*/i, '')})</option>`).join('');
+    driverSelect.value = '';
+    if (assigned) {
+      const current = driversPool.find((d) => d.driverName === assigned.driverName);
+      driverSelect.value = current ? current.id : '';
+      if (assigned.driverVehicleType) document.getElementById('pkStatusVehicleTypeSelect').value = assigned.driverVehicleType;
+      if (assigned.driverPlate) document.getElementById('pkStatusPlateSelect').value = assigned.driverPlate;
+    }
+  }
+
+  document.getElementById('pkUpdateStatusTargetKeys').value = JSON.stringify(pkUpdateTargetKeys);
+  pkOnStatusSelectChange();
+  document.getElementById('pkUpdateStatusModal').classList.add('open');
+}
+
+function pkSaveDriverUpdate() {
+  const newStatus = document.getElementById('pkStatusSelect').value;
+  const noteVal = document.getElementById('pkStatusReasonInput').value.trim();
+  const isBulk = pkUpdateTargetKeys.length > 1;
+
+  let driver = null;
+  let vehicleType = '';
+  let plate = '';
+  if (!isBulk) {
+    const driverSelect = document.getElementById('pkStatusDriverSelect');
+    if (driverSelect.value) {
+      driver = pkBuildDriversPool().find((d) => d.id === driverSelect.value) || null;
+      vehicleType = document.getElementById('pkStatusVehicleTypeSelect').value;
+      plate = document.getElementById('pkStatusPlateSelect').value;
+    }
+  }
+
+  const shuttleDriverMap = pkReadShuttleDriverMap();
+
+  pkUpdateTargetKeys.forEach((key) => {
+    const row = pkFindMergedRowByKey(key);
+    if (!row) return;
+    const { phone } = pkRowNameAndPhone(row);
+    if (!phone) return;
+    const legKey = pkShuttleDriverLegKey(phone);
+    const entry = shuttleDriverMap[legKey] || {};
+    entry.status = newStatus;
+    entry.note = newStatus === 'issue' ? (noteVal || 'Không liên lạc được') : '';
+    entry.noteImportant = newStatus === 'issue';
+    if (driver) {
+      entry.driverName = driver.driverName;
+      entry.driverPhone = driver.driverPhone;
+      entry.driverVehicleType = vehicleType;
+      entry.driverPlate = plate;
+    }
+    shuttleDriverMap[legKey] = entry;
+    pkMarkRowUpdated(key);
+  });
+
+  try { localStorage.setItem(HN_SHUTTLE_DRIVER_KEY, JSON.stringify(shuttleDriverMap)); } catch (e) { /* ignore */ }
+
+  closeModal('pkUpdateStatusModal');
+  pkSelectedIds.clear();
+  const count = pkUpdateTargetKeys.length;
+  pkUpdateTargetKeys = [];
+  showToast(count > 1
+    ? `Đã cập nhật trạng thái cho ${count} khách hàng thành "${PK_STATUS_LABELS[newStatus].text}".`
+    : `Đã cập nhật trạng thái thành "${PK_STATUS_LABELS[newStatus].text}"${driver ? ` và gán tài xế ${driver.driverName}` : ''}.`);
+  pkRenderPaxTable();
+}
 
 function pkRenderCalendar() {
   const calGrid = document.getElementById("pkCalGrid");
@@ -4175,15 +4677,17 @@ function pkRenderPaxTable() {
     // "Số ghế" — trước đây là cột "Tên phơi xe" (tên phơi + ghế). Giờ chỉ hiện SỐ GHẾ đã chỉ định; bấm
     // vào số ghế thì nhảy thẳng sang phơi được chỉ định (sellTicketForTrip → switchView('booking') + chọn
     // đúng thẻ phơi ở Zone 1). Chưa gán phơi nào thì hiện dấu "_".
-    let seatCell, actionCell;
+    let seatCell;
     if (p.assigned) {
       const seatStr = p.assigned.seat || (Array.isArray(p.assigned.seats) ? p.assigned.seats.join(', ') : 'Rước liền');
       seatCell = `<button type="button" class="pk-seat-link" data-action="sellTicketForTrip" data-args='${JSON.stringify([p.assigned.tripId])}' title="Bấm để mở phơi đã chỉ định">${escapeHtml(seatStr)}</button>`;
-      actionCell = `<button class="assign-action-btn reassign" data-action="pkOpenAssignModal" data-args='[${p.id}]'>Đổi chỉ định</button>`;
     } else {
       seatCell = `<span class="pk-seat-none">_</span>`;
-      actionCell = `<button class="assign-action-btn" data-action="pkOpenAssignModal" data-args='[${p.id}]'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>Chỉ định</button>`;
     }
+    // Cột cuối — checkbox thay cho nút "Chỉ định"/"Đổi chỉ định" mỗi dòng (xem pkToggleRow/pkActionBar):
+    // chọn dòng rồi bấm nút trên thanh nổi thay vì bấm trực tiếp trên từng dòng.
+    const pkRowKey = pkPickupRowKey(p);
+    const checkCell = `<input type="checkbox" ${pkSelectedIds.has(pkRowKey) ? 'checked' : ''} data-change-action="pkToggleRow" data-args='["${pkRowKey}","__this__"]'>`;
 
     // "Thời gian" — thời điểm thông tin khách được nhập từ modal "Rước liền" (savePickupInfo() ở trên
     // ghi p.createdAt lúc lưu modal; syncRuocLienToPickupList() ở js/shared/booking.js cũng ghi/giữ
@@ -4195,31 +4699,42 @@ function pkRenderPaxTable() {
     // p.printedAt) — hiện "—" cho tới khi tính năng in đó được triển khai.
     const printedTimeStr = p.printedAt ? `${formatHistoryDate(p.printedAt)}<br>${formatActionTime(p.printedAt)}` : '—';
 
-    // Cột "Trung chuyển" — CHỈ tên tài xế trung chuyển đã gán bên trang shuttle.html + ghi chú của tài xế
-    // đó (driverNote, cũng lấy từ shuttle). Để trống nếu chưa gán. KHÔNG hiện ghi chú của cột "Phòng vé"
-    // (p.statusNote) ở đây. Chỉ để HIỂN THỊ, không bấm được.
-    const driverKey = `${(p.phone || '').replace(/\s+/g, '')}_don`;
+    // Cột "Trung chuyển" — tên tài xế đã gán (shuttle.html) + ghi chú CỦA TRUNG CHUYỂN (driverNote).
+    // Role trung chuyển bấm được để ghi/sửa driverNote (y hệt pattern cột "Phòng vé" ở role bán vé —
+    // #pkDriverNoteModal, không mở modal Cập nhật trạng thái/tài xế lớn); role bán vé chỉ xem.
+    const pkRowKeyForCell = pkPickupRowKey(p);
+    const isDispatchRole = pkIsShuttleDispatchRole();
+    const driverKey = pkShuttleDriverLegKey(p.phone);
     const assignedDriver = shuttleDriverMap[driverKey];
     const hasStatusNote = !!p.statusNote;
     const driverNote = (assignedDriver && assignedDriver.driverNote) || '';
-    const transshipCell = assignedDriver
-      ? `<div class="pk-transship-cell">
-          <span class="pk-driver-name">${escapeHtml(assignedDriver.driverName)}</span>
-          ${driverNote ? `<span class="pk-driver-sub">${escapeHtml(driverNote)}</span>` : ''}
-        </div>`
-      : '';
+    const driverNameHtml = assignedDriver
+      ? `<span class="pk-driver-name">${escapeHtml(assignedDriver.driverName)}</span>`
+      : `<span class="pk-driver-name pk-driver-empty">Chưa gán tài xế</span>`;
+    const transshipInnerHtml = driverNote
+      ? `${driverNameHtml}<span class="pk-driver-sub">${escapeHtml(driverNote)}</span>`
+      : `${driverNameHtml}${isDispatchRole ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;margin-top:2px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>` : ''}`;
+    const transshipCell = isDispatchRole
+      ? `<button type="button" class="pk-transship-cell pk-transship-cell--clickable" data-action="pkOpenDriverNoteModal" data-args='["${pkRowKeyForCell}"]' title="Bấm để ghi/sửa ghi chú trung chuyển">${transshipInnerHtml}</button>`
+      : `<div class="pk-transship-cell">${transshipInnerHtml}</div>`;
+
+    // Cột "Trạng thái" — TÁCH RIÊNG khỏi cột "Trung chuyển", hiện ở CẢ 2 role (chỉ xem — đổi trạng thái
+    // qua thanh nổi "Cập nhật", xem pkOpenDriverUpdateModal/pkSaveDriverUpdate).
+    const rowStatus = (assignedDriver && assignedDriver.status) || 'waiting';
+    const statusCell = `<span class="pk-status-tag ${PK_STATUS_LABELS[rowStatus].cls}">${PK_STATUS_LABELS[rowStatus].text}</span>`;
 
     // Cột "Phòng vé" — ghi chú trạng thái đón do phòng vé nhập (p.statusNote), hiện thẳng NỘI DUNG trong ô
-    // giống cột "Trung chuyển". Luôn bấm được (dù có ghi chú hay trống) để mở modal ghi/sửa
-    // (#pkStatusNoteModal). Ghi/đổi ghi chú xong thì đẩy khách này lên đầu danh sách (xem pkSaveStatusNote()).
-    const phongVeCell = `<button type="button" class="pk-note-cell${hasStatusNote ? ' has-note' : ''}" data-action="pkOpenStatusNoteModal" data-args='[${p.id}]' title="Bấm để ghi/sửa ghi chú trạng thái">
-        ${hasStatusNote
-          ? `<span class="pk-note-text">${escapeHtml(p.statusNote)}</span>`
-          : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`}
-      </button>`;
+    // giống cột "Trung chuyển". Chỉ role bán vé bấm được để mở modal ghi/sửa (#pkStatusNoteModal) — role
+    // trung chuyển chỉ xem (đây là ghi chú riêng của phòng vé, không phải việc của trung chuyển).
+    const phongVeInnerHtml = hasStatusNote
+      ? `<span class="pk-note-text">${escapeHtml(p.statusNote)}</span>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
+    const phongVeCell = isDispatchRole
+      ? `<div class="pk-note-cell${hasStatusNote ? ' has-note' : ''} pk-note-cell--readonly">${phongVeInnerHtml}</div>`
+      : `<button type="button" class="pk-note-cell${hasStatusNote ? ' has-note' : ''}" data-action="pkOpenStatusNoteModal" data-args='[${p.id}]' title="Bấm để ghi/sửa ghi chú trạng thái">${phongVeInnerHtml}</button>`;
 
     return `
-      <tr>
+      <tr class="${pkSelectedIds.has(pkRowKeyForCell) ? 'selected-row' : ''}">
         <td class="col-stt">${idx + 1}</td>
         <td><div class="pax-info"><div class="pax-name">KH: ${escapeHtml(p.name || '')}</div><div class="pax-phone">SĐT: ${escapeHtml(p.phone || '')}</div></div></td>
         <td>${routeHtml}</td>
@@ -4228,9 +4743,10 @@ function pkRenderPaxTable() {
         <td class="note-cell">${p.note ? escapeHtml(p.note) : '—'}</td>
         <td class="center mono" style="font-size:12px; color:var(--text-sub);">${createdTimeStr}</td>
         <td class="center mono" style="font-size:12px; color:var(--text-sub);">${printedTimeStr}</td>
+        <td class="center">${statusCell}</td>
         <td class="center">${transshipCell}</td>
         <td class="center">${phongVeCell}</td>
-        <td class="center col-action">${actionCell}</td>
+        <td class="col-check">${checkCell}</td>
       </tr>`;
   };
 
@@ -4264,18 +4780,39 @@ function pkRenderPaxTable() {
   ];
   mergedRows.sort((a, b) => (pkRowUpdateStamp.get(b.key) || 0) - (pkRowUpdateStamp.get(a.key) || 0));
 
-  const rowsHtml = mergedRows.map((row, idx) => row.kind === 'pk'
+  // Lọc theo 1 trong 4 tab (Tất cả/Trung chuyển đón/Rước liền/Trung chuyển trả) — tab "all" giữ nguyên
+  // y hệt hành vi gộp trước đây. Khách trung chuyển có cả 2 chặng đón+trả sẽ xuất hiện ở cả 2 tab đó,
+  // giống cách shuttle.html cho khách "urgent" xuất hiện ở cả tab gốc lẫn tab "Rước liền".
+  const visibleRows = mergedRows.filter(row => pkRowMatchesSubTab(row, pkSubTab));
+
+  // Số lượng bên cạnh tên mỗi tab — đếm trên CẢ 4 tab (không chỉ tab đang xem) để chuyển tab vẫn thấy
+  // đúng số ngay, không phải đợi bấm vào mới cập nhật.
+  ['all', 'don', 'ruoclien', 'tra'].forEach((tab) => {
+    const el = document.getElementById(`pkSubtabCount-${tab}`);
+    if (el) el.textContent = `(${mergedRows.filter((row) => pkRowMatchesSubTab(row, tab)).length})`;
+  });
+
+  const rowsHtml = visibleRows.map((row, idx) => row.kind === 'pk'
     ? pkRenderPickupRow(row.data, idx, shuttleDriverMap)
     : pkRenderTransshipRow(row.data, idx, shuttleDriverMap)
   ).join('');
 
+  // Dòng đã bị lọc khỏi tab đang xem thì bỏ chọn luôn (tránh giữ 1 lựa chọn "vô hình" khi đổi tab).
+  const visibleKeys = new Set(visibleRows.map(row => row.key));
+  Array.from(pkSelectedIds).forEach(key => { if (!visibleKeys.has(key)) pkSelectedIds.delete(key); });
+
+  const checkAllEl = document.getElementById('pkCheckAll');
+  if (checkAllEl) checkAllEl.checked = visibleRows.length > 0 && visibleRows.every(row => pkSelectedIds.has(row.key));
+
   if (!rowsHtml) {
     tbody.innerHTML = '';
     if (gridEmpty) gridEmpty.style.display = 'block';
+    pkUpdateActionBar();
     return;
   }
   if (gridEmpty) gridEmpty.style.display = 'none';
   tbody.innerHTML = rowsHtml;
+  pkUpdateActionBar();
 }
 
 // Gom hành khách trung chuyển (có địa chỉ trung chuyển đón/trả, hoặc guestType 'Trung chuyển') từ seat
@@ -4391,40 +4928,54 @@ function pkRenderTransshipRow(r, idx, shuttleDriverMap) {
   const lastStopHtml = toSub
     ? `${toMain}<div class="ch-sub-address" style="font-size:12px;color:var(--text-sub);margin-top:2px;">Trả: ${escapeHtml(toSub)}</div>`
     : toMain;
-  const routeHtml = `
-    <div class="pax-route">
+  // Cột "Hành trình" — 2 tab lọc riêng "Trung chuyển đón"/"Trung chuyển trả" chỉ cần đúng 1 chiều (chỉ
+  // điểm đón / chỉ điểm trả), không cần hiện cả hành trình 2 chặng như tab "Tất cả"/"Rước liền".
+  const fromRowHtml = `
       <div class="pax-route-row pax-route-from">
         <svg class="pax-route-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
         <div class="pax-route-text">${firstStopHtml}</div>
-      </div>
-      <div class="pax-route-connector"></div>
+      </div>`;
+  const toRowHtml = `
       <div class="pax-route-row pax-route-to">
         <svg class="pax-route-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
         <div class="pax-route-text">${lastStopHtml}</div>
-      </div>
-    </div>`;
+      </div>`;
+  const routeHtml = pkSubTab === 'don'
+    ? `<div class="pax-route">${fromRowHtml}</div>`
+    : pkSubTab === 'tra'
+      ? `<div class="pax-route">${toRowHtml}</div>`
+      : `<div class="pax-route">${fromRowHtml}<div class="pax-route-connector"></div>${toRowHtml}</div>`;
 
-  const driverKey = `${String(m.phone || '').replace(/\s+/g, '')}_don`;
+  const driverKey = pkShuttleDriverLegKey(m.phone);
   const assignedDriver = shuttleDriverMap[driverKey];
-  // Cột "Trung chuyển": CHỈ tên tài xế + ghi chú của tài xế đó (driverNote), đều từ trang shuttle.html —
-  // dùng dữ liệu mẫu ổn định khi seat bank chưa có tài xế thật. KHÔNG hiện ghi chú của cột "Phòng vé".
+  const isDispatchRole = pkIsShuttleDispatchRole();
+  // Cột "Trung chuyển": tên tài xế (dùng dữ liệu mẫu ổn định khi seat bank chưa có tài xế thật) + ghi
+  // chú CỦA TRUNG CHUYỂN (driverNote). Role trung chuyển bấm được để ghi/sửa driverNote (y hệt pattern
+  // cột "Phòng vé" ở role bán vé — #pkDriverNoteModal, không mở modal Cập nhật lớn); role bán vé chỉ xem.
   const drvName = (assignedDriver && assignedDriver.driverName) || sampleDriver.name;
   const drvNote = (assignedDriver && assignedDriver.driverNote) || sampleDriver.note || '';
-  const transshipCell = `<div class="pk-transship-cell">
-      <span class="pk-driver-name">${escapeHtml(drvName)}</span>
-      ${drvNote ? `<span class="pk-driver-sub">${escapeHtml(drvNote)}</span>` : ''}
-    </div>`;
+  const tsTransshipInnerHtml = `<span class="pk-driver-name">${escapeHtml(drvName)}</span>${drvNote
+    ? `<span class="pk-driver-sub">${escapeHtml(drvNote)}</span>`
+    : (isDispatchRole ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;margin-top:2px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>` : '')}`;
+  const transshipCell = isDispatchRole
+    ? `<button type="button" class="pk-transship-cell pk-transship-cell--clickable" data-action="pkOpenDriverNoteModal" data-args='["${pkTransshipRowKey(r)}"]' title="Bấm để ghi/sửa ghi chú trung chuyển">${tsTransshipInnerHtml}</button>`
+    : `<div class="pk-transship-cell">${tsTransshipInnerHtml}</div>`;
 
-  // Cột "Phòng vé": Y HỆT dòng rước liền — nút .pk-note-cell bấm để ghi/sửa ghi chú trạng thái đón. Ở
-  // đây khoá theo ticketNo (mở #tsStatusNoteModal, saveTransshipStatusNote ghi vào seat bank). Có ghi
-  // chú thì hiện nội dung, chưa có thì hiện icon bút chì — giống hệt cột "Phòng vé" bảng rước liền.
+  // Cột "Trạng thái" — TÁCH RIÊNG khỏi cột "Trung chuyển", hiện ở CẢ 2 role (chỉ xem — đổi trạng thái
+  // qua thanh nổi "Cập nhật", xem pkOpenDriverUpdateModal/pkSaveDriverUpdate).
+  const tsRowStatus = (assignedDriver && assignedDriver.status) || 'waiting';
+  const statusCell = `<span class="pk-status-tag ${PK_STATUS_LABELS[tsRowStatus].cls}">${PK_STATUS_LABELS[tsRowStatus].text}</span>`;
+
+  // Cột "Phòng vé": Y HỆT dòng rước liền — role bán vé bấm được để ghi/sửa ghi chú trạng thái đón (mở
+  // #tsStatusNoteModal, khoá theo ticketNo); role trung chuyển chỉ xem (ghi chú riêng của phòng vé).
   const pickupNote = m.transshipPickupNote || '';
   const hasStatusNote = !!pickupNote;
-  const phongVeCell = `<button type="button" class="pk-note-cell${hasStatusNote ? ' has-note' : ''}" data-action="openTransshipStatusNoteModal" data-args='${JSON.stringify([m.ticketNo || '', 'pickup'])}' title="Bấm để ghi/sửa ghi chú trạng thái">
-      ${hasStatusNote
-        ? `<span class="pk-note-text">${escapeHtml(pickupNote)}</span>`
-        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`}
-    </button>`;
+  const phongVeInnerHtml = hasStatusNote
+    ? `<span class="pk-note-text">${escapeHtml(pickupNote)}</span>`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
+  const phongVeCell = isDispatchRole
+    ? `<div class="pk-note-cell${hasStatusNote ? ' has-note' : ''} pk-note-cell--readonly">${phongVeInnerHtml}</div>`
+    : `<button type="button" class="pk-note-cell${hasStatusNote ? ' has-note' : ''}" data-action="openTransshipStatusNoteModal" data-args='${JSON.stringify([m.ticketNo || '', 'pickup'])}' title="Bấm để ghi/sửa ghi chú trạng thái">${phongVeInnerHtml}</button>`;
 
   // Cột "Thời gian" / "In lúc": 2 dòng ngày + giờ giống dòng rước liền (dùng mốc mẫu ổn định vì vé trong
   // seat bank không mang mốc tạo/in riêng).
@@ -4434,12 +4985,13 @@ function pkRenderTransshipRow(r, idx, shuttleDriverMap) {
   const printedStr = `${formatHistoryDate(printedAt)}<br>${formatActionTime(printedAt)}`;
 
   const seatCell = `<button type="button" class="pk-seat-link" data-action="sellTicketForTrip" data-args='${JSON.stringify([r.tripId])}' title="Bấm để mở phơi đã chỉ định">${escapeHtml(r.seatCodes.join(', '))}</button>`;
-  // Cột "Thao tác": Y HỆT dòng rước liền đã chỉ định — nút "Đổi chỉ định" (kiểu viền trắng). Khách trung
-  // chuyển đã có vé trên phơi nên bấm là mở thẳng phơi đó để sửa (sellTicketForTrip).
-  const actionCell = `<button class="assign-action-btn reassign" data-action="sellTicketForTrip" data-args='${JSON.stringify([r.tripId])}'>Đổi chỉ định</button>`;
+  // Cột cuối — checkbox thay cho nút "Đổi chỉ định" mỗi dòng (xem pkToggleRow/pkActionBar): chọn dòng
+  // rồi bấm nút trên thanh nổi, nút đó tự gọi lại đúng sellTicketForTrip cho dòng trung chuyển này.
+  const pkRowKey = pkTransshipRowKey(r);
+  const checkCell = `<input type="checkbox" ${pkSelectedIds.has(pkRowKey) ? 'checked' : ''} data-change-action="pkToggleRow" data-args='["${pkRowKey}","__this__"]'>`;
 
   return `
-    <tr>
+    <tr class="${pkSelectedIds.has(pkRowKey) ? 'selected-row' : ''}">
       <td class="col-stt">${idx + 1}</td>
       <td><div class="pax-info"><span class="pk-type-chip">Trung chuyển</span><div class="pax-name">KH: ${escapeHtml(m.customerName || 'Khách')}</div><div class="pax-phone">SĐT: ${escapeHtml(m.phone || '')}</div></div></td>
       <td>${routeHtml}</td>
@@ -4448,9 +5000,10 @@ function pkRenderTransshipRow(r, idx, shuttleDriverMap) {
       <td class="note-cell">${m.note ? escapeHtml(m.note) : '—'}</td>
       <td class="center mono" style="font-size:12px; color:var(--text-sub);">${timeStr}</td>
       <td class="center mono" style="font-size:12px; color:var(--text-sub);">${printedStr}</td>
+      <td class="center">${statusCell}</td>
       <td class="center">${transshipCell}</td>
       <td class="center">${phongVeCell}</td>
-      <td class="center col-action">${actionCell}</td>
+      <td class="col-check">${checkCell}</td>
     </tr>`;
 }
 
@@ -4731,7 +5284,6 @@ function pkConfirmAssign() {
 
   saveSeatBank();
   savePickupPassengers();
-  updateHeaderPickupBadge();
 
   pkCloseAssignModal();
   pkRenderPaxTable();

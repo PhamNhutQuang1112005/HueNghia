@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Quản lý nhà xe | Huệ Nghĩa Express</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/shared/variables.css?v=1" />
+  <link rel="stylesheet" href="../css/shared/base.css?v=1" />
+  <link rel="stylesheet" href="../css/admin.css?v=18" />
+</head>
+
+<body class="admin-body">
+  <div class="app">
+    <!-- ===== TOPBAR ===== -->
+    <header class="topbar">
+      <div class="brand">
+        <span>Huệ Nghĩa Express</span>
+        <span class="brand-tag">ADMIN</span>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="user-menu" id="userMenu">
+        <button type="button" class="user-chip" id="userChipBtn" data-action="toggleAdminUserMenu">
+          <span class="avatar" id="userAvatar">A</span>
+          <span id="userName">Quản trị viên</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+        <div class="user-pop">
+          <div class="u-name" id="userUsername">—</div>
+          <div class="u-role" id="userRoleLabel">Quản trị viên hệ thống</div>
+          <button type="button" id="logoutBtn" data-action="adminLogout">Đăng xuất</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="admin-layout">
+      <!-- ===== SIDEBAR ===== -->
+      <nav class="admin-sidebar" id="adminSidebar">
+        <button type="button" class="admin-nav-item" data-action="switchAdminView" data-args='["viewDashboard"]'>
+          <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</button>
+
+        <div class="side-title">Vận hành</div>
+        <button type="button" class="admin-nav-item" data-action="switchAdminView" data-args='["viewDirections"]'>
+          <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.686-6-10a6 6 0 0 1 12 0c0 4.314-6 10-6 10z"/><circle cx="12" cy="11" r="2.5"/></svg>Quản lý trạm</button>
+        <button type="button" class="admin-nav-item" data-action="switchAdminView" data-args='["viewTrips"]'>
+          <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10"/><path d="M2 16h20"/><path d="M4 16v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2M17 16v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2"/><path d="M7 8h10"/><circle cx="7.5" cy="12.5" r="1"/><circle cx="16.5" cy="12.5" r="1"/></svg>Quản lý chuyến</button>
+
+        <div class="side-title">Xe &amp; nhân sự</div>
+        <button type="button" class="admin-nav-item" data-action="switchAdminView" data-args='["viewVehicles"]'>
+          <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>Quản lý xe</button>
+        <button type="button" class="admin-nav-item" data-action="switchAdminView" data-args='["viewStaff"]'>
+          <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Quản lý nhân viên</button>
+
+        <div class="side-title">Hệ thống</div>
+        <button type="button" class="admin-nav-item" data-action="switchAdminView" data-args='["viewAccounts"]'>
+          <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h4M15 12h4M6 16c.5-1.5 1.8-2 3-2s2.5.5 3 2"/></svg>Tài khoản</button>
+        <button type="button" class="admin-nav-item" data-action="switchAdminView" data-args='["viewActivity"]'>
+          <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Nhật ký hoạt động</button>
+        <button type="button" class="admin-nav-item" data-action="switchAdminView" data-args='["viewSettings"]'>
+          <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.22.65.22 1v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Cài đặt</button>
+      </nav>
+
+      <!-- ===== MAIN ===== -->
+      <main class="admin-main" id="adminMain">
+        <section class="admin-view" id="viewDashboard"></section>
+        <section class="admin-view" id="viewDirections" hidden></section>
+        <section class="admin-view" id="viewTrips" hidden></section>
+        <section class="admin-view" id="viewVehicles" hidden></section>
+        <section class="admin-view" id="viewStaff" hidden></section>
+        <section class="admin-view" id="viewAccounts" hidden></section>
+        <section class="admin-view" id="viewActivity" hidden></section>
+        <section class="admin-view" id="viewSettings" hidden></section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal dùng chung — nội dung dựng động trong admin.js -->
+  <div class="modal-overlay" id="adminModal">
+    <div class="modal" id="adminModalBox"></div>
+  </div>
+
+  <div class="toast" id="toast">
+    <svg viewBox="0 0 24 24" stroke-width="2.5"><path d="m5 13 4 4L19 7" /></svg>
+    <span id="toastText"></span>
+  </div>
+
+  <script src="../js/shared/storage-keys.js?v=7"></script>
+  <script src="../js/shared/format.js?v=9"></script>
+  <script src="../js/shared/constants.js?v=3"></script>
+  <script src="../js/shared/seat-bank.js?v=3"></script>
+  <script src="../js/shared/fleet-store.js?v=5"></script>
+  <script src="../js/admin.js?v=15"></script>
+  <script src="../js/shared/events.js?v=2"></script>
+</body>
+</html>

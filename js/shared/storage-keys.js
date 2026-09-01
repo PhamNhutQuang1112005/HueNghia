@@ -10,3 +10,16 @@ const ZONE1_COLLAPSED_KEY = 'callcenter.zone1Collapsed';
 // (ticketstaff.html/callcenter.html) — khoá theo "sđt_chặng" (chặng 'don' gộp cả khách Rước liền,
 // vì shuttle.html xếp Rước liền vào cùng nhóm "đón" khi đồng bộ từ tripSeatBank).
 const HN_SHUTTLE_DRIVER_KEY = 'hn_shuttle_driver_assign_v1';
+
+// ===== Store cấu hình đội xe dùng chung (trang Admin quản trị, ticketstaff/shuttle đọc theo) =====
+// Nguồn dữ liệu duy nhất cho Hướng/Tuyến/Loại xe/Xe/Nhân viên — trước đây hard-code rải rác trong
+// js/ticketstaff.js (TRIP_DIRECTIONS_CFG, ROUTES_CFG) và các <select> trong ticketstaff.html/shuttle.html.
+// Đọc/ghi qua window.FleetStore (js/shared/fleet-store.js). Seed 1 lần từ giá trị hard-code cũ nên
+// hành vi 2 trang kia không đổi.
+const HN_DIRECTIONS_KEY = 'hn_directions_v3';
+const HN_ROUTES_KEY = 'hn_routes_v5';
+const HN_STATIONS_KEY = 'hn_stations_v1';
+const HN_VEHICLE_TYPES_KEY = 'hn_vehicle_types_v1';
+const HN_VEHICLES_KEY = 'hn_vehicles_v1';
+const HN_STAFF_KEY = 'hn_staff_v1';
+const HN_ADMIN_ACTIVITY_KEY = 'hn_admin_activity_v1';

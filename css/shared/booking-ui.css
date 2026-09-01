@@ -1836,7 +1836,8 @@ button.ph-rebook-btn svg {
 .staff-tag-stack {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center; /* tag mã nhân viên (NV0x) canh giữa trong cột "Mã NV" — flex-start trước đây
+    khiến tag luôn dạt sát mép trái ô, bất kể text-align:center đã đặt trên <td> cha */
   gap: 3px;
 }
 
@@ -2450,12 +2451,16 @@ button.ph-rebook-btn svg {
 .passenger-view {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px; /* khoảng cách từ thanh công cụ lọc (.pax-toolbar) xuống khung bảng (.pax-table-wrap) —
+    chuẩn 16px "phía trên bảng" (Hành khách/Ghế hủy) */
   flex: 0 0 auto;
   overflow: visible;
 }
 
 .zone3.passenger-view {
+  padding-left: 20px; /* chuẩn khoảng cách bảng chung: 20px 2 bên — khớp padding 20px của topbar/
+    filter-toolbar phía trên (thay vì 22px kế thừa từ .zone3 dùng chung với Zone 3 sơ đồ ghế) */
+  padding-right: 20px;
   padding-bottom: 10px;
   overflow: visible;
 }
@@ -2644,7 +2649,13 @@ button.ph-rebook-btn svg {
   border-bottom: 2px solid var(--border-gray);
   white-space: normal;
   vertical-align: bottom;
-  text-align: left;
+  /* Tên cột (thead th) của MỌI bảng dùng .pax-table luôn canh giữa — !important vì nhiều rule chọn cột
+     theo nth-child bên dưới (VD ".pax-table--cancelled-all thead th:nth-child(2), tbody td:nth-child(2)
+     { text-align: left }") gộp chung text-align cho cả th lẫn td, đặc hiệu hơn selector này nên nếu
+     không có !important sẽ đè ngược alignment riêng của cột đó lên tiêu đề, làm tên cột không đồng nhất
+     canh giữa như nhau giữa các cột. Chỉ ảnh hưởng th (tên cột), không đụng tới text-align của td (nội
+     dung ô dữ liệu) vẫn giữ nguyên theo từng cột như cũ. */
+  text-align: center !important;
 }
 
 /* Bảng "Hành khách" gộp còn 9 cột theo nhóm thông tin (Hành trình = điểm đi/đến, Ghế = số vé+mã ghế)
@@ -2837,7 +2848,7 @@ button.ph-rebook-btn svg {
 .pax-table--cancelled-all thead th:nth-child(10),
 .pax-table--cancelled-all tbody td:nth-child(10) {
   width: 7%;
-  text-align: left;
+  text-align: center; /* cột "Nhân viên" — canh giữa nội dung */
 }
 
 .pax-table--cancelled-all thead th:nth-child(11),
@@ -2938,7 +2949,7 @@ button.ph-rebook-btn svg {
 .pax-table.pax-table--history thead th:nth-child(4),
 .pax-table.pax-table--history tbody td:nth-child(4) {
   width: 8%;
-  text-align: left;
+  text-align: center; /* cột "SDT" — canh giữa nội dung */
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -3004,7 +3015,7 @@ button.ph-rebook-btn svg {
 .pax-table.pax-table--history thead th:nth-child(10),
 .pax-table.pax-table--history tbody td:nth-child(10) {
   width: 6.5%;
-  text-align: left;
+  text-align: center; /* cột "Nhân viên" — canh giữa nội dung */
 }
 
 /* Thời gian — bỏ cột "Ngày" riêng (trùng thông tin), gộp cả ngày lẫn giờ nhân viên thao tác (đặt/sửa/

@@ -24,11 +24,14 @@ const accounts = [
   {
     username: "tongdai01",
     password: "123456",
-    role: "call_center",
-    roleLabel: "Nhân viên tổng đài",
-    // Trang Tổng đài (callcenter.html) đã gộp vào trang Nhân viên vé
-    // (ticketstaff.html) — xử lý đặt vé, xếp ghế, Phơi xe, Rước liền
-    // và chăm sóc khách hàng đều thực hiện chung tại đây.
+    role: "shuttle_dispatch",
+    roleLabel: "Điều hành trung chuyển",
+    // Mọi nghiệp vụ (đặt vé, xếp ghế, Phơi xe, Lịch sử và điều hành
+    // trung chuyển ở tab "Trung chuyển": 4 tab con Tất cả/Trung chuyển
+    // đón/Rước liền/Trung chuyển trả) đều nằm trong ticketstaff.html.
+    // Các trang callcenter.html và shuttle.html cũ đã bị xoá — tài
+    // khoản này đăng nhập thẳng vào ticketstaff.html với quyền trung
+    // chuyển (chọn nhiều dòng + nút "Cập nhật" tài xế).
     redirect: "ticketstaff.html",
     color: "var(--red)"
   },
@@ -37,9 +40,8 @@ const accounts = [
     password: "123456",
     role: "shuttle_dispatch",
     roleLabel: "Điều hành trung chuyển",
-    // Trang điều hành trung chuyển (shuttle.html) — quản lý xe trung chuyển,
-    // lịch chạy và phối hợp đón/trả khách giữa các điểm.
-    redirect: "shuttle.html",
+    // Cùng quyền trung chuyển như tongdai01 — vào thẳng ticketstaff.html.
+    redirect: "ticketstaff.html",
     color: "#0EA5E9"
   },
   {
@@ -84,7 +86,7 @@ const accounts = [
 // Nếu tài khoản đăng nhập có "redirect" không nằm trong danh sách này,
 // hệ thống sẽ báo cho người dùng biết trang đó đang được xây dựng,
 // thay vì điều hướng tới một liên kết không tồn tại.
-const existingPages = ["ticketstaff.html", "shuttle.html"];
+const existingPages = ["ticketstaff.html", "admin.html"];
 
 const loginForm      = document.getElementById("loginForm");
 const usernameInput  = document.getElementById("username");

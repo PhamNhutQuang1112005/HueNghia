@@ -118,9 +118,19 @@ function openPassengerHistoryView() {
   renderPassengerHistoryTable();
 }
 
-// Tuyến đường phụ thuộc vào hướng đi đã chọn (Chiều đi = xuất phát từ Sài Gòn, Chiều về = ngược lại) —
-// cùng quy ước routeStr.startsWith('Sài Gòn') đang dùng ở bộ lọc "Phơi xe" (xem onFilterDirectionChange
-// trong callcenter.js/ticketstaff.js) để nhất quán trong toàn hệ thống.
+// Suy chiều của 1 tuyến: ưu tiên store dùng chung (FleetStore — hướng do Admin cấu hình, đúng cả với
+// tuyến KHÔNG bắt đầu bằng "Sài Gòn"), fallback về quy ước cũ route.startsWith('Sài Gòn').
+function phRouteSense(route) {
+  try {
+    if (window.FleetStore && typeof FleetStore.getRouteSense === 'function') {
+      const s = FleetStore.getRouteSense(route);
+      if (s === 'di' || s === 've') return s;
+    }
+  } catch (e) { /* fallback */ }
+  return (route || '').startsWith('Sài Gòn') ? 'di' : 've';
+}
+
+// Tuyến đường phụ thuộc vào hướng đi đã chọn (Chiều đi = xuất phát từ Sài Gòn, Chiều về = ngược lại).
 function rebuildPhRouteOptions() {
   const routeEl = document.getElementById('phFilterRoute');
   if (!routeEl) return;
@@ -128,7 +138,7 @@ function rebuildPhRouteOptions() {
   const prevVal = routeEl.value;
   const pool = _allPassengerHistoryRaw.filter(r => {
     if (!dirVal) return true;
-    const isDi = (r.route || '').startsWith('Sài Gòn');
+    const isDi = phRouteSense(r.route) === 'di';
     return dirVal === 'chieu-di' ? isDi : !isDi;
   });
   const routes = Array.from(new Set(pool.map(r => r.route).filter(Boolean))).sort();
@@ -193,7 +203,7 @@ function renderPassengerHistoryTable() {
     }
     if (phSelectedDateStr && r.date !== phSelectedDateStr) return false;
     if (dirVal) {
-      const isDi = (r.route || '').startsWith('Sài Gòn');
+      const isDi = phRouteSense(r.route) === 'di';
       if (dirVal === 'chieu-di' && !isDi) return false;
       if (dirVal === 'chieu-ve' && isDi) return false;
     }
