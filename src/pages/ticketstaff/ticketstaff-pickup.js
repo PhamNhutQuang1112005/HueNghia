@@ -16,18 +16,7 @@ const DEFAULT_PICKUP_PASSENGERS = [
 
 // Tải danh sách hành khách rước liền từ LocalStorage
 function loadPickupPassengers() {
-  const keysToTry = [HN_PICKUP_PAX_KEY, 'hn_pickup_passengers_v5', 'hn_pickup_passengers_v4', 'hn_pickup_passengers_v3'];
-  let storedPax = [];
-
-  for (const k of keysToTry) {
-    const saved = localStorage.getItem(k);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) { storedPax = parsed; break; }
-      } catch (e) { }
-    }
-  }
+  let storedPax = PickupService.readFirstNonEmpty(['hn_pickup_passengers_v5', 'hn_pickup_passengers_v4', 'hn_pickup_passengers_v3']);
 
   const defaults = JSON.parse(JSON.stringify(DEFAULT_PICKUP_PASSENGERS));
   defaults.forEach(def => {
@@ -36,7 +25,7 @@ function loadPickupPassengers() {
     }
   });
 
-  localStorage.setItem(HN_PICKUP_PAX_KEY, JSON.stringify(storedPax));
+  PickupService.save(storedPax);
   return storedPax;
 }
 
@@ -44,7 +33,7 @@ function loadPickupPassengers() {
 // KHÔNG tự dispatch StorageEvent: nơi gọi hàm này đã tự pkRenderPaxTable() ngay sau đó, dispatch thêm
 // chỉ khiến trang tự nghe lại sự kiện của chính mình và render thừa lần 2 (xem js/shared/seat-bank.js).
 function savePickupPassengers() {
-  localStorage.setItem(HN_PICKUP_PAX_KEY, JSON.stringify(pickupPassengers));
+  PickupService.save(pickupPassengers);
 }
 
 let pickupPassengers = loadPickupPassengers();
@@ -620,21 +609,7 @@ function savePickupInfo() {
     { id: 5, name: 'Võ Thị Kim Ngân', phone: '0977567890', ticketCount: 2, fromStation: 'Trạm Kinh Dương Vương', toStation: 'Trạm Cần Thơ', fromTransfer: '5 Hồ Học Lãm, Bình Tân', toTransfer: 'Bến Ninh Kiều, Cần Thơ', note: 'Gọi trước 15 phút khi xe tới', assigned: null, guestType: 'Rước liền', isRuocLien: true, createdAt: '2026-07-18T09:15:00', printedAt: '2026-07-18T09:20:00', statusNote: 'Đã liên hệ tài xế, đang chờ xác nhận giờ đón' }
   ];
 
-  let paxList = [];
-  const keysToTry = [HN_PICKUP_PAX_KEY, 'hn_pickup_passengers_v5', 'hn_pickup_passengers_v4'];
-  for (const k of keysToTry) {
-    const saved = localStorage.getItem(k);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          paxList = parsed;
-          break;
-        }
-      } catch (e) { }
-    }
-  }
-
+  let paxList = PickupService.readFirstNonEmpty(['hn_pickup_passengers_v5', 'hn_pickup_passengers_v4']);
   if (paxList.length === 0) {
     paxList = JSON.parse(JSON.stringify(defaults));
   }
@@ -657,16 +632,7 @@ function savePickupInfo() {
   };
 
   paxList.unshift(newPax);
-  const jsonStr = JSON.stringify(paxList);
-  localStorage.setItem(HN_PICKUP_PAX_KEY, jsonStr);
-
-  try {
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: HN_PICKUP_PAX_KEY,
-      newValue: jsonStr,
-      storageArea: localStorage
-    }));
-  } catch (e) { }
+  PickupService.saveAndBroadcast(paxList);
 
   closeModal('pickupModal');
   showToast(`Đã lưu thông tin khách rước (${count} vé): ${name}`);

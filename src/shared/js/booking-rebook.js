@@ -385,13 +385,7 @@ function subSeatCard(seat) {
 }
 
 function syncRuocLienToPickupList(seats) {
-  let paxList = [];
-  try {
-    const saved = localStorage.getItem(HN_PICKUP_PAX_KEY);
-    if (saved) paxList = JSON.parse(saved);
-  } catch (e) { }
-
-  if (!Array.isArray(paxList)) paxList = [];
+  let paxList = PickupService.getAll();
 
   const seatsArray = Array.isArray(seats) ? seats : [seats];
   const targetSeat = seatsArray[0];
@@ -438,15 +432,7 @@ function syncRuocLienToPickupList(seats) {
     paxList.unshift(paxObj);
   }
 
-  const jsonStr = JSON.stringify(paxList);
-  localStorage.setItem(HN_PICKUP_PAX_KEY, jsonStr);
-  try {
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: HN_PICKUP_PAX_KEY,
-      newValue: jsonStr,
-      storageArea: localStorage
-    }));
-  } catch (e) { }
+  PickupService.saveAndBroadcast(paxList);
 }
 
 function toggleDirection(dir) {
