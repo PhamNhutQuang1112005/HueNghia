@@ -762,9 +762,7 @@ function pkRenderPaxTable() {
     const checkCell = `<input type="checkbox" ${pkSelectedIds.has(pkRowKey) ? 'checked' : ''} data-change-action="pkToggleRow" data-args='["${pkRowKey}","__this__"]'>`;
 
     // "Thời gian" — thời điểm thông tin khách được nhập từ modal "Rước liền" (savePickupInfo() ở trên
-    // ghi p.createdAt lúc lưu modal; syncRuocLienToPickupList() ở js/shared/booking.js cũng ghi/giữ
-    // nguyên trường này cho đường nhập liệu qua panel đặt vé). Khách demo/nhập từ trước khi có trường
-    // này thì hiện "—" thay vì báo lỗi.
+    // ghi p.createdAt lúc lưu modal). Khách demo/nhập từ trước khi có trường này thì hiện "—" thay vì báo lỗi.
     const createdTimeStr = p.createdAt ? `${formatHistoryDate(p.createdAt)}<br>${formatActionTime(p.createdAt)}` : '—';
 
     // "In lúc" — thời điểm danh sách được in, dành cho trang Trung chuyển làm sau (chưa có nơi nào ghi

@@ -9,12 +9,10 @@
      readFirstNonEmpty(legacyKeys) — thử [KEY, ...legacyKeys] theo thứ tự, trả mảng
        ĐẦU TIÊN hợp lệ & không rỗng ([] nếu không có). Dùng cho loadPickupPassengers
        (legacy tới v3) và modal "Rước liền" (legacy tới v4).
-     getAll() — chỉ đọc KEY hiện tại; [] nếu thiếu/không phải mảng/lỗi
-       (syncRuocLienToPickupList bên booking-rebook.js).
      save(list) — ghi thẳng, KHÔNG bắn StorageEvent (savePickupPassengers — nơi gọi
        đã tự render lại; xem ghi chú trong js/shared/seat-bank.js).
      saveAndBroadcast(list) — ghi + TỰ bắn 'storage' cho CHÍNH tab này, để listener
-       cùng trang chạy lại (savePickupInfo / syncRuocLienToPickupList).
+       cùng trang chạy lại (savePickupInfo).
 
    Tên key + shape record KHÔNG đổi.
 
@@ -42,17 +40,6 @@
     return [];
   }
 
-  function getAll() {
-    try {
-      var saved = localStorage.getItem(KEY);
-      if (!saved) return [];
-      var parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      return [];
-    }
-  }
-
   function save(list) {
     localStorage.setItem(KEY, JSON.stringify(list));
   }
@@ -72,7 +59,6 @@
   window.PickupService = {
     KEY: KEY,
     readFirstNonEmpty: readFirstNonEmpty,
-    getAll: getAll,
     save: save,
     saveAndBroadcast: saveAndBroadcast
   };

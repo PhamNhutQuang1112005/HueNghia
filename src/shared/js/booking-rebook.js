@@ -384,57 +384,6 @@ function subSeatCard(seat) {
   </div>`;
 }
 
-function syncRuocLienToPickupList(seats) {
-  let paxList = PickupService.getAll();
-
-  const seatsArray = Array.isArray(seats) ? seats : [seats];
-  const targetSeat = seatsArray[0];
-  if (!targetSeat || targetSeat.guestType !== 'Rước liền') return;
-
-  const name = targetSeat.customerName || 'Khách rước';
-  const phone = targetSeat.phone || '';
-  const count = seatsArray.length;
-  const address = targetSeat.transshipStation || targetSeat.transship || targetSeat.pickupAddress || '';
-  const station = targetSeat.firstStop || DEFAULT_STAFF_STATION;
-  const destination = targetSeat.lastStop || 'Bến xe Châu Đốc';
-  const destinationTransfer = targetSeat.arrivalTransfer || targetSeat.dropoffAddress || '';
-  const tripNote = targetSeat.note || '';
-  const luggage = !!targetSeat.hasLuggage;
-
-  const existingIdx = paxList.findIndex(p => p.phone === phone && p.name === name);
-  const existingPax = existingIdx > -1 ? paxList[existingIdx] : null;
-  const paxObj = {
-    id: existingPax ? existingPax.id : Date.now(),
-    name,
-    phone,
-    ticketCount: count,
-    fromStation: station,
-    fromTransfer: address,
-    toStation: destination,
-    toTransfer: destinationTransfer,
-    note: tripNote,
-    luggage: luggage,
-    assigned: { tripId: currentTripId, seat: seatsArray.map(s => s.code).join(', ') },
-    guestType: 'Rước liền',
-    isRuocLien: true,
-    // "Thời gian" (trang Rước liền) — mốc lần đầu nhập thông tin, giữ nguyên qua các lần sửa vé sau đó
-    // thay vì cập nhật lại mỗi lần lưu form. statusNote/printedAt (cột "Trạng thái"/"In lúc") cũng phải
-    // giữ nguyên tương tự — nếu không, sửa vé "Rước liền" (VD đổi ghi chú, đổi ghế) sẽ vô tình xoá mất
-    // ghi chú trạng thái đón khách đã nhập trước đó ở trang Rước liền vì paxObj này ghi đè toàn bộ record cũ.
-    createdAt: (existingPax && existingPax.createdAt) || new Date().toISOString(),
-    statusNote: existingPax ? existingPax.statusNote : undefined,
-    printedAt: existingPax ? existingPax.printedAt : undefined
-  };
-
-  if (existingIdx > -1) {
-    paxList[existingIdx] = paxObj;
-  } else {
-    paxList.unshift(paxObj);
-  }
-
-  PickupService.saveAndBroadcast(paxList);
-}
-
 function toggleDirection(dir) {
   if (!directionLabels[dir]) return;
   selectedDirection = dir;
