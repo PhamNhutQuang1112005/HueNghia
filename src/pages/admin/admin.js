@@ -19,8 +19,7 @@
    shuttle) cố tình KHÔNG chặn, giữ nguyên hiện trạng hệ thống demo.
    --------------------------------------------------------- */
 (function adminGuard() {
-  var u = Session.get();
-  if (!u || u.role !== 'admin') {
+  if (!Auth.isAdmin()) {
     location.replace('index.html');
   }
 })();

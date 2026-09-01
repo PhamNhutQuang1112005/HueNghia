@@ -79,8 +79,7 @@ let pkSelectedIds = new Set(); // key theo pkPickupRowKey()/pkTransshipRowKey() 
 // mở phơi đã gán). role chỉ là nhãn hiển thị trong session hiện tại — dùng lại đúng field đã có, không
 // thêm role/tài khoản mới.
 function pkIsShuttleDispatchRole() {
-  const user = Session.get();
-  return !!(user && user.role === 'shuttle_dispatch');
+  return Auth.isShuttleDispatch();
 }
 
 function pkSwitchSubTab(tab) {

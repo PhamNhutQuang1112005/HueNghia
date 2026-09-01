@@ -55,7 +55,8 @@ hiện tại và **NGOÀI phạm vi** đợt tái cấu trúc này. Không sửa
 | &nbsp;&nbsp;dọn dead code `syncRuocLienToPickupList` | ✅ | Hàm 50 dòng ở `booking-rebook.js` — 0 caller (panel đặt vé không có option "Rước liền"). Xoá + gỡ `PickupService.getAll()` (orphan). |
 | **G — Auth (session / accounts / permission)** | 🔄 đang làm — từng phần 1 commit | |
 | &nbsp;&nbsp;G1 `Session` service | ✅ | `src/auth/session.js` (`get`/`set`/`clear`/`role`/`username`, `KEY`) bọc `hn_current_user`. Đổi 9 site: `login.js` (ghi), `admin.js` (guard + chip + logout), `ticketstaff-account.js` (chip + logout), `ticketstaff-pickup.js` (`pkIsShuttleDispatchRole`), `manifest-core.js` + `booking.js` (`getCurrentStaffLabel`/`getCurrentActionStaffCode`). Nạp ở **cả 3 trang** (index.html giờ nạp thêm `storage-keys.js` + `session.js`). `fleet-store.js` reader nội bộ giữ nguyên. |
-| &nbsp;&nbsp;G2 accounts + hasPermission | ⬜ | gộp `accounts[]` (login.js) + `LOGIN_ACCOUNTS_MIRROR` (admin) → `src/auth/accounts.js`; `hasPermission()` bọc 2 gate hiện có (`role==='admin'`, `role==='shuttle_dispatch'`) |
+| &nbsp;&nbsp;G2 accounts + permissions | ✅ | `src/auth/accounts.js` (`window.AUTH_ACCOUNTS` — gộp `accounts[]` login.js + `LOGIN_ACCOUNTS_MIRROR` admin, giờ admin dẫn xuất). `src/auth/permissions.js` (`window.Auth.isAdmin()` / `.isShuttleDispatch()` — gom đúng 2 gate hiện có, đọc role qua `Session`). `adminGuard` → `Auth.isAdmin()`; `pkIsShuttleDispatchRole` → `Auth.isShuttleDispatch()`. Không thêm luật mới. |
+| G hoàn tất | ✅ | session + accounts + permission đã tập trung trong `src/auth/`. `fleet-store.js` reader nội bộ giữ nguyên (module tự-chứa). |
 
 ### Cây thư mục sau Phase B
 

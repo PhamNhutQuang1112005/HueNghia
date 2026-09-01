@@ -4,83 +4,13 @@
    =========================================================
 
    HỆ THỐNG PHÂN QUYỀN (DEMO):
-   Mỗi tài khoản gắn với 1 "role" (vai trò) xác định trang đích
-   sau khi đăng nhập thành công. Trong bản demo này, dữ liệu tài
-   khoản được khai báo cứng (hard-code) ngay trong file JS để dễ
-   kiểm thử giao diện — khi triển khai thực tế, danh sách này cần
-   được thay bằng lời gọi API xác thực tới backend (vd: POST /api/auth/login),
-   mật khẩu phải được hash và không bao giờ để lộ ở phía client.
+   Danh sách tài khoản (window.AUTH_ACCOUNTS) khai báo ở src/auth/accounts.js —
+   dữ liệu hard-code phía client để dễ kiểm thử. Khi triển khai thực tế phải thay
+   bằng lời gọi API xác thực tới backend (vd: POST /api/auth/login), mật khẩu hash
+   và không bao giờ để lộ phía client.
 
-   Mỗi tài khoản gồm:
-   - username, password : thông tin đăng nhập
-   - role      : mã vai trò (dùng để phân quyền chức năng bên trong hệ thống)
-   - roleLabel : tên vai trò hiển thị cho người dùng
-   - redirect  : trang được điều hướng đến sau khi đăng nhập thành công
-   - color     : màu đại diện cho vai trò, dùng để nhận diện trong các
-                 màn hình quản trị sau này (ví dụ: nhãn vai trò, badge...)
+   Mỗi tài khoản: { username, password, role, roleLabel, redirect, color }.
    ========================================================= */
-
-const accounts = [
-  {
-    username: "tongdai01",
-    password: "123456",
-    role: "call_center",
-    roleLabel: "Nhân viên tổng đài",
-    // Trang callcenter.html cũ đã bị xoá — mọi nghiệp vụ (đặt vé, xếp ghế,
-    // Phơi xe, Lịch sử, Rước liền) nằm trong ticketstaff.html nên tài khoản
-    // này đăng nhập thẳng vào đó với QUYỀN PHÒNG VÉ (bán vé): ở tab "Trung
-    // chuyển" chỉ chọn 1 dòng, nút "Chỉ định" (gán chuyến + ghế). Chế độ
-    // trung chuyển (chọn nhiều, nút "Cập nhật" tài xế) là của trungchuyen01
-    // — phân biệt qua pkIsShuttleDispatchRole() (role === 'shuttle_dispatch').
-    redirect: "ticketstaff.html",
-    color: "var(--red)"
-  },
-  {
-    username: "trungchuyen01",
-    password: "123456",
-    role: "shuttle_dispatch",
-    roleLabel: "Điều hành trung chuyển",
-    // Cùng quyền trung chuyển như tongdai01 — vào thẳng ticketstaff.html.
-    redirect: "ticketstaff.html",
-    color: "#0EA5E9"
-  },
-  {
-    username: "quantri01",
-    password: "123456",
-    role: "admin",
-    roleLabel: "Quản trị viên hệ thống",
-    // Trang quản trị tổng thể (chưa xây dựng trong phạm vi demo này).
-    redirect: "admin.html",
-    color: "#111213"
-  },
-  {
-    username: "dieuhanh01",
-    password: "123456",
-    role: "dispatch_manager",
-    roleLabel: "Điều hành bến xe",
-    // Trang quản lý chuyến, tài xế, xe tại bến (chưa xây dựng trong phạm vi demo này).
-    redirect: "dieuhanh.html",
-    color: "#3B82F6"
-  },
-  {
-    username: "ketoan01",
-    password: "123456",
-    role: "accountant",
-    roleLabel: "Kế toán / Thu ngân",
-    // Trang đối soát doanh thu, công nợ (chưa xây dựng trong phạm vi demo này).
-    redirect: "ketoan.html",
-    color: "#16A34A"
-  },
-  {
-    username: "taixe01",
-    password: "123456",
-    role: "driver",
-    roleLabel: "Tài xế / Phụ xe",
-    // Trang xem lịch chạy, danh sách khách lên xe (chưa xây dựng trong phạm vi demo này).
-    redirect: "taixe.html",
-    color: "#FBBF24"
-  }
-];
 
 // Danh sách các trang ĐÃ TỒN TẠI thực sự trong bản demo này.
 // Nếu tài khoản đăng nhập có "redirect" không nằm trong danh sách này,
@@ -119,7 +49,7 @@ loginForm.addEventListener("submit", (e) => {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
 
-  const account = accounts.find(
+  const account = AUTH_ACCOUNTS.find(
     (acc) => acc.username === username && acc.password === password
   );
 
