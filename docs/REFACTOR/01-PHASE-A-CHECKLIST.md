@@ -15,6 +15,11 @@ Mục đích: chốt **hành vi hiện tại** của web local làm mốc so sá
 
 - [ ] Trình duyệt: ghi rõ (Chrome/Edge…) + phiên bản: ______
 - [ ] Cách mở: mở file trực tiếp `file://` HAY qua local server (ghi rõ): ______
+- [ ] **Đường dẫn 3 trang (sau Phase B):**
+  - Login: `src/pages/index.html`
+  - TicketStaff: `src/pages/ticketstaff.html`
+  - Admin: `src/pages/admin.html`
+  - (Local server chạy ở gốc repo → `http://localhost:PORT/src/pages/index.html`)
 - [ ] Trước khi test GỐC: **giữ nguyên** localStorage đang có (đừng xoá) — hoặc ghi chú
   nếu test trên localStorage trống để thấy đường đi seed.
 - [ ] DevTools Console mở suốt buổi test.

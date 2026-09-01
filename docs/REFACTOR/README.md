@@ -33,6 +33,35 @@ git checkout main              # nhánh gốc chưa có WIP admin/shuttle-merge
 hiện tại và **NGOÀI phạm vi** đợt tái cấu trúc này. Không sửa, không trộn, không xoá —
 để nguyên cho giai đoạn sau. Web local đang chạy = `html/` + `css/` + `js/`.
 
+## Tiến độ
+
+| Phase | Trạng thái | Ghi chú |
+|---|---|---|
+| 0 — Điểm lùi an toàn | ✅ | nhánh `refactor/restructure`, tag `pre-refactor` |
+| A — Checklist baseline | ✅ (tài liệu) | `01-PHASE-A-CHECKLIST.md` — cần người duyệt điền cột GỐC |
+| B — Tạo cây `src/`, di chuyển file | ✅ | `git mv` thuần (0 đổi nội dung JS/CSS) + sửa đường dẫn `<link>/<script>` trong 3 HTML |
+| C trở đi | ⬜ | chưa bắt đầu |
+
+### Cây thư mục sau Phase B
+
+```
+src/
+├── pages/
+│   ├── index.html · ticketstaff.html · admin.html   (3 trang — cùng cấp, điều hướng giữ nguyên)
+│   ├── login/       login.css · login.js
+│   ├── ticketstaff/ ticketstaff.css · ticketstaff.js · ticketstaff-manifest-core.js · ticketstaff-manifest-ui.js
+│   └── admin/        admin.css · admin.js
+├── shared/
+│   ├── css/  variables.css · base.css · booking-ui.css
+│   └── js/   storage-keys.js · format.js · constants.js · seat-bank.js · fleet-store.js · ui.js · booking.js · events.js
+└── assets/
+    └── img/  login-hero.png
+```
+
+`src/shared/` là **kho tạm** — các phase sau sẽ tách/nâng dần thành `core/`, `services/`, `ui/`,
+`data/`, `auth/`, `state/` như cấu trúc đích ở `00-AUDIT.md` mục I, khi từng file được dọn.
+Thứ tự nạp `<script>` giữ **nguyên xi** so với trước.
+
 ## Quy trình mỗi phase
 
 ```

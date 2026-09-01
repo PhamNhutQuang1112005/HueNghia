@@ -2,6 +2,11 @@
 
 Ngày audit: 2026-09-01. Không sửa code trong bước này — chỉ phân tích & lập kế hoạch.
 
+> **Lưu ý:** tài liệu này chụp lại hiện trạng **trước** khi refactor. Từ Phase B, toàn bộ
+> `html/ css/ js/ img/` đã được `git mv` vào `src/` (xem `README.md` › "Cây thư mục sau Phase B").
+> Các đường dẫn `js/…`, `css/…` bên dưới là vị trí **cũ** — đối chiếu để hiểu lịch sử, không
+> phải vị trí hiện tại.
+
 ---
 
 ## A. Cấu trúc hiện tại
