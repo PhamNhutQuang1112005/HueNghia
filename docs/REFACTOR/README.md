@@ -45,7 +45,8 @@ hiện tại và **NGOÀI phạm vi** đợt tái cấu trúc này. Không sửa
 | **E — Tách file JS lớn theo banner** | 🔄 đang làm — từng file 1 commit + verify riêng | |
 | &nbsp;&nbsp;E1 `admin.js` → 9 mảnh | ✅ | Cắt 1333 dòng theo banner mục 1–8. `cmp` xác nhận ghép lại giống hệt; `node --check` từng mảnh OK; không có def trùng. `admin.html` nạp 9 `<script>` đúng thứ tự. Xem `src/pages/admin/README.md`. **Đã fix 1 lỗi**: `VIEW_RENDERERS` tham chiếu hàm của mảnh nạp sau → bọc closure. |
 | &nbsp;&nbsp;E2 `booking.js` → 3 mảnh | ✅ | Cắt 2028 dòng tại banner dòng 912 & 1446 → `booking.js` / `booking-combobox.js` / `booking-rebook.js`. `cmp` giống hệt; `node --check` OK; không def trùng. Đã soi: `initDatalistCombobox` (def+3 gọi cùng mảnh 2), IIFE `initZone1ComboBoxes` (3 hàm truyền-theo-giá-trị cùng mảnh 3, trước IIFE). Xem `src/shared/js/README-booking.md`. |
-| &nbsp;&nbsp;E3 `ticketstaff.js` | ⬜ | rủi ro cao — nhiều lệnh top-level rải rác gọi hàm định nghĩa phía dưới (hoisting). Cần phân tích từng điểm cắt |
+| &nbsp;&nbsp;E3 `ticketstaff.js` → 3 mảnh | ✅ | Cắt 5264 dòng tại banner dòng 3584 & 3854 → `ticketstaff.js` / `ticketstaff-account.js` / `ticketstaff-pickup.js`. **Chỉ cắt được ≥ dòng 3543** vì lệnh top-level @980–985 gọi hàm def @1939 & @3543 (hoisting). `cmp` giống hệt (file gốc không có newline cuối → mảnh cuối `sed 3854,$p`); `node --check` OK; không def trùng. `manifest-*.js` vẫn nạp sau cả 3. Xem `src/pages/ticketstaff/README.md`. |
+| E hoàn tất | ✅ | 3 file JS lớn (admin/booking/ticketstaff) đã tách; các mảnh nạp qua nhiều `<script>` đúng thứ tự dòng gốc. |
 
 ### Cây thư mục sau Phase B
 
