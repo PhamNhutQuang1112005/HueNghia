@@ -596,11 +596,7 @@ function renderTransshipTables() {
 
   // Tài xế trung chuyển được gán ở trang shuttle.html, đọc lại qua HN_SHUTTLE_DRIVER_KEY (khoá theo
   // "sđt_don" — xem shuttleDriverLegKey() bên shuttle.js) để hiện đúng tên thay vì tên giả cố định.
-  let shuttleDriverMap = {};
-  try {
-    const rawDriverMap = localStorage.getItem(HN_SHUTTLE_DRIVER_KEY);
-    if (rawDriverMap) shuttleDriverMap = JSON.parse(rawDriverMap);
-  } catch (e) { }
+  let shuttleDriverMap = ShuttleDriverService.getMap();
 
   const pickupList = grouped.filter(g => {
     const s = g.main;

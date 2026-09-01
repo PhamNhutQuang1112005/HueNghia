@@ -56,12 +56,12 @@ let pickupPassengers = loadPickupPassengers();
 // đủ minh hoạ mọi trạng thái của cột: trống / chỉ ghi chú / chỉ tài xế / cả hai.
 function seedDefaultShuttleDriverAssignment() {
   try {
-    if (localStorage.getItem(HN_SHUTTLE_DRIVER_KEY)) return;
+    if (ShuttleDriverService.hasAny()) return;
     const sampleMap = {
       '0918234567_don': { driverName: 'Nguyễn Văn Tài', driverPhone: '0912345678', driverPlate: '51B-888.99', driverVehicleType: 'Xe 7 chỗ trung chuyển' },
       '0977567890_don': { driverName: 'Lê Minh Phát', driverPhone: '0938765432', driverPlate: '51B-234.56', driverVehicleType: 'Xe 16 chỗ trung chuyển' }
     };
-    localStorage.setItem(HN_SHUTTLE_DRIVER_KEY, JSON.stringify(sampleMap));
+    ShuttleDriverService.setMap(sampleMap);
   } catch (e) { }
 }
 seedDefaultShuttleDriverAssignment();
@@ -265,10 +265,7 @@ const PK_STATUS_LABELS = {
 };
 
 function pkReadShuttleDriverMap() {
-  try {
-    const raw = localStorage.getItem(HN_SHUTTLE_DRIVER_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch (e) { return {}; }
+  return ShuttleDriverService.getMap();
 }
 
 // ===== Modal "Ghi chú trung chuyển" (#pkDriverNoteModal, cột "Trung chuyển" — role trung chuyển) —
@@ -305,7 +302,7 @@ function pkSaveDriverNote() {
   entry.driverNote = value;
   shuttleDriverMap[legKey] = entry;
 
-  try { localStorage.setItem(HN_SHUTTLE_DRIVER_KEY, JSON.stringify(shuttleDriverMap)); } catch (e) { /* ignore */ }
+  ShuttleDriverService.setMap(shuttleDriverMap);
   if (changed) pkMarkRowUpdated(pkDriverNoteActiveKey);
 
   closeModal('pkDriverNoteModal');
@@ -424,7 +421,7 @@ function pkSaveDriverUpdate() {
     pkMarkRowUpdated(key);
   });
 
-  try { localStorage.setItem(HN_SHUTTLE_DRIVER_KEY, JSON.stringify(shuttleDriverMap)); } catch (e) { /* ignore */ }
+  ShuttleDriverService.setMap(shuttleDriverMap);
 
   closeModal('pkUpdateStatusModal');
   pkSelectedIds.clear();
@@ -696,13 +693,10 @@ function pkTransshipRowKey(ticketNoOrRow) {
 
 // Bản đồ tài xế trung chuyển (HN_SHUTTLE_DRIVER_KEY) lần trước — để so ra ĐÚNG những SĐT vừa đổi khi có
 // sự kiện 'storage', rồi đánh dấu cập nhật cho các dòng khách tương ứng (cả rước liền lẫn trung chuyển).
-let pkPrevShuttleDriverMap = (() => {
-  try { return JSON.parse(localStorage.getItem(HN_SHUTTLE_DRIVER_KEY) || '{}') || {}; } catch (e) { return {}; }
-})();
+let pkPrevShuttleDriverMap = ShuttleDriverService.getMap();
 let pkPendingTransshipUpdatePhones = null; // Set<phone> — dòng trung chuyển cần đánh dấu ở lần render kế
 function pkApplyShuttleDriverChange() {
-  let newMap = {};
-  try { newMap = JSON.parse(localStorage.getItem(HN_SHUTTLE_DRIVER_KEY) || '{}') || {}; } catch (e) { newMap = {}; }
+  let newMap = ShuttleDriverService.getMap();
   const changedPhones = new Set();
   new Set([...Object.keys(newMap), ...Object.keys(pkPrevShuttleDriverMap)]).forEach(k => {
     if (JSON.stringify(newMap[k] || null) !== JSON.stringify(pkPrevShuttleDriverMap[k] || null)) {
@@ -761,11 +755,7 @@ function pkRenderPaxTable() {
   // "sđt_don" — xem shuttleDriverLegKey() bên shuttle.js) — dùng cùng công thức khoá với cột "Tài xế"
   // bảng "Trung chuyển đón" (renderTransshipTables). Dùng chung cho cả dòng khách rước liền lẫn dòng
   // hành khách trung chuyển gộp bên dưới.
-  let shuttleDriverMap = {};
-  try {
-    const rawDriverMap = localStorage.getItem(HN_SHUTTLE_DRIVER_KEY);
-    if (rawDriverMap) shuttleDriverMap = JSON.parse(rawDriverMap);
-  } catch (e) { }
+  let shuttleDriverMap = ShuttleDriverService.getMap();
 
   const pkRenderPickupRow = (p, idx, shuttleDriverMap) => {
     // Hành trình — gộp Trạm đi/Trạm đến (điểm chính) với Trung chuyển đi/đến (địa chỉ đón/trả cụ thể)

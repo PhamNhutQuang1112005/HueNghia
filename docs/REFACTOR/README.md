@@ -47,6 +47,9 @@ hiện tại và **NGOÀI phạm vi** đợt tái cấu trúc này. Không sửa
 | &nbsp;&nbsp;E2 `booking.js` → 3 mảnh | ✅ | Cắt 2028 dòng tại banner dòng 912 & 1446 → `booking.js` / `booking-combobox.js` / `booking-rebook.js`. `cmp` giống hệt; `node --check` OK; không def trùng. Đã soi: `initDatalistCombobox` (def+3 gọi cùng mảnh 2), IIFE `initZone1ComboBoxes` (3 hàm truyền-theo-giá-trị cùng mảnh 3, trước IIFE). Xem `src/shared/js/README-booking.md`. |
 | &nbsp;&nbsp;E3 `ticketstaff.js` → 3 mảnh | ✅ | Cắt 5264 dòng tại banner dòng 3584 & 3854 → `ticketstaff.js` / `ticketstaff-account.js` / `ticketstaff-pickup.js`. **Chỉ cắt được ≥ dòng 3543** vì lệnh top-level @980–985 gọi hàm def @1939 & @3543 (hoisting). `cmp` giống hệt (file gốc không có newline cuối → mảnh cuối `sed 3854,$p`); `node --check` OK; không def trùng. `manifest-*.js` vẫn nạp sau cả 3. Xem `src/pages/ticketstaff/README.md`. |
 | E hoàn tất | ✅ | 3 file JS lớn (admin/booking/ticketstaff) đã tách; các mảnh nạp qua nhiều `<script>` đúng thứ tự dòng gốc. |
+| **F — Services bọc `localStorage`** | 🔄 đang làm — từng key 1 commit + verify | |
+| &nbsp;&nbsp;F1 `HN_SHUTTLE_DRIVER_KEY` → `ShuttleDriverService` | ✅ | `src/services/shuttle-driver-service.js` (`getMap`/`setMap`/`hasAny`, `KEY`). Bọc 9 call site rải trong `ticketstaff.js` + `ticketstaff-pickup.js` (seed, `pkReadShuttleDriverMap`, `pkPrevShuttleDriverMap`, `pkApplyShuttleDriverChange`, `pkRenderPaxTable`, 2 write). Tên key + shape KHÔNG đổi. `account.js` giữ `e.key === HN_SHUTTLE_DRIVER_KEY` (so StorageEvent); `fleet-store.js` giữ reader nội bộ (thiết kế tự-chứa). |
+| &nbsp;&nbsp;F2… | ⬜ | `HN_TRIPS_KEY`, `HN_PICKUP_PAX_KEY`, seat bank, manifest |
 
 ### Cây thư mục sau Phase B
 
