@@ -115,15 +115,19 @@ document.addEventListener('click', function (e) {
    VIEW ROUTING
    --------------------------------------------------------- */
 var CURRENT_VIEW = 'viewDashboard';
+// Bọc mỗi renderer trong closure GỌI-KHI-CẦN thay vì tham chiếu thẳng: các hàm render*
+// nằm ở các mảnh admin-*.js nạp SAU file này, nên tham chiếu trực tiếp lúc dựng object
+// (top-level của mảnh này) sẽ ReferenceError. Các hàm render* đều không nhận tham số nên
+// wrapper không cần forward gì — hành vi y hệt bảng tham chiếu trực tiếp cũ.
 var VIEW_RENDERERS = {
-  viewDashboard: renderDashboard,
-  viewDirections: renderDirectionsView,
-  viewTrips: renderTripsView,
-  viewVehicles: renderVehiclesView,
-  viewStaff: renderStaffView,
-  viewAccounts: renderAccountsView,
-  viewActivity: renderActivityView,
-  viewSettings: renderSettingsView
+  viewDashboard: function () { renderDashboard(); },
+  viewDirections: function () { renderDirectionsView(); },
+  viewTrips: function () { renderTripsView(); },
+  viewVehicles: function () { renderVehiclesView(); },
+  viewStaff: function () { renderStaffView(); },
+  viewAccounts: function () { renderAccountsView(); },
+  viewActivity: function () { renderActivityView(); },
+  viewSettings: function () { renderSettingsView(); }
 };
 
 function switchAdminView(view) {
