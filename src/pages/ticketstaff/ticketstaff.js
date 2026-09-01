@@ -122,7 +122,7 @@ let seatPlanUp = [
 const todayStr = new Date().toISOString().split("T")[0];
 
 function loadAllTrips() {
-  const saved = localStorage.getItem(HN_TRIPS_KEY);
+  const saved = TripService.getRawString();
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -134,7 +134,7 @@ function loadAllTrips() {
           // lên đầu danh sách (xem applyFilters), còn phơi cũ vẫn giữ đúng thứ tự tương đối với nhau.
           if (!t.createdAt) t.createdAt = idx;
         });
-        localStorage.setItem(HN_TRIPS_KEY, JSON.stringify(parsed));
+        TripService.save(parsed);
         return parsed;
       }
     } catch (e) {
@@ -2648,7 +2648,7 @@ function refreshTripsList() {
 // saveSeatBank() (js/shared/seat-bank.js) đã lưu tripSeatBank vào HN_STORAGE_KEY — chỉ cần tự lưu thêm
 // allTripsMeta vào HN_TRIPS_KEY ở đây, không lặp lại literal localStorage.setItem cho HN_STORAGE_KEY.
 function saveData() {
-  localStorage.setItem(HN_TRIPS_KEY, JSON.stringify(allTripsMeta));
+  TripService.save(allTripsMeta);
   saveSeatBank();
 }
 

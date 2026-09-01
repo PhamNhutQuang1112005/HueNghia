@@ -85,8 +85,8 @@ function lsRead(key, fallback) {
 }
 function lsWrite(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
-function getTrips() { return lsRead(HN_TRIPS_KEY, []); }
-function setTrips(list) { lsWrite(HN_TRIPS_KEY, list); }
+function getTrips() { return TripService.getAll(); }
+function setTrips(list) { TripService.save(list); }
 function getManifests() { return lsRead(TS_MANIFESTS_KEY, {}); }
 
 /* ---------------------------------------------------------

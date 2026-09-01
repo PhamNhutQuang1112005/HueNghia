@@ -49,7 +49,8 @@ hiện tại và **NGOÀI phạm vi** đợt tái cấu trúc này. Không sửa
 | E hoàn tất | ✅ | 3 file JS lớn (admin/booking/ticketstaff) đã tách; các mảnh nạp qua nhiều `<script>` đúng thứ tự dòng gốc. |
 | **F — Services bọc `localStorage`** | 🔄 đang làm — từng key 1 commit + verify | |
 | &nbsp;&nbsp;F1 `HN_SHUTTLE_DRIVER_KEY` → `ShuttleDriverService` | ✅ | `src/services/shuttle-driver-service.js` (`getMap`/`setMap`/`hasAny`, `KEY`). Bọc 9 call site rải trong `ticketstaff.js` + `ticketstaff-pickup.js` (seed, `pkReadShuttleDriverMap`, `pkPrevShuttleDriverMap`, `pkApplyShuttleDriverChange`, `pkRenderPaxTable`, 2 write). Tên key + shape KHÔNG đổi. `account.js` giữ `e.key === HN_SHUTTLE_DRIVER_KEY` (so StorageEvent); `fleet-store.js` giữ reader nội bộ (thiết kế tự-chứa). |
-| &nbsp;&nbsp;F2… | ⬜ | `HN_TRIPS_KEY`, `HN_PICKUP_PAX_KEY`, seat bank, manifest |
+| &nbsp;&nbsp;F2 `HN_TRIPS_KEY` → `TripService` | ✅ | `src/services/trip-service.js` (`getRawString`/`getAll`/`save`, `KEY`) — lớp lưu trữ mỏng, KHÔNG migration. `admin.js` `getTrips`/`setTrips` → service; `ticketstaff.js` `loadAllTrips` (giữ migration date/createdAt + fallback DEFAULT_*_TRIPS tại chỗ) + `saveData` → service. `save` KHÔNG try/catch (giữ đúng `lsWrite`/`saveData` cũ). Nạp ở cả 2 trang. `e.key ===` + fleet-store reader nội bộ giữ nguyên. |
+| &nbsp;&nbsp;F3… | ⬜ | `HN_PICKUP_PAX_KEY` (multi-key legacy + StorageEvent dispatch), seat bank, manifest |
 
 ### Cây thư mục sau Phase B
 
