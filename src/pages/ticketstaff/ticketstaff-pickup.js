@@ -660,6 +660,16 @@ function pkPhongVeCellHtml(inner, hasNote, isDispatch, dataAction, dataArgsJson)
     : `<button type="button" class="${cls}" data-action="${dataAction}" data-args='${dataArgsJson}' title="Bấm để ghi/sửa ghi chú trạng thái">${inner}</button>`;
 }
 
+// Mốc "thời gian nhập thông tin" của 1 dòng trong bảng gộp, để sắp mới-nhất-trước ở tab "Tất cả"
+// (và trong từng sub-tab). Rước liền: p.createdAt (ghi lúc lưu modal "Rước liền"). Trung chuyển:
+// seat.actionTime (ghi mỗi lần lưu form đặt vé). Không có mốc -> 0 (xuống cuối).
+function pkRowEntryTime(row) {
+  const t = row.kind === 'pk'
+    ? row.data.createdAt
+    : (row.data.main && row.data.main.actionTime);
+  return Date.parse(t) || 0;
+}
+
 // "Đẩy lên đầu khi có cập nhật mới" — mỗi lần cột "Trung chuyển" (tài xế/ghi chú tài xế đổi bên
 // shuttle.html) hoặc cột "Phòng vé" (ghi chú trạng thái) của MỘT dòng thay đổi thì gọi pkMarkRowUpdated()
 // với khoá dòng đó; pkRenderPaxTable() sắp các dòng có mốc cập nhật lên trước (mới nhất trước), áp dụng
@@ -846,9 +856,6 @@ function pkRenderPaxTable() {
     seats.forEach(code => pickupAssignedSeatKeys.add(`${p.assigned.tripId}|${code}`));
   });
   const transshipRows = pkGetTransshipRows(pkSelectedDateStr, pkFilterState, pickupAssignedSeatKeys);
-  // Vé trung chuyển vừa đặt/sửa từ modal đặt vé (seat.actionTime stamp mỗi lần lưu form) nổi lên đầu
-  // nhóm trung chuyển — khách mới nhận thông tin đứng trước. Dòng chưa có actionTime (dữ liệu cũ) xuống sau.
-  transshipRows.sort((a, b) => (Date.parse(b.main.actionTime) || 0) - (Date.parse(a.main.actionTime) || 0));
 
   // Có SĐT tài xế trung chuyển vừa đổi bên shuttle (từ pkApplyShuttleDriverChange) -> đánh dấu cập nhật
   // cho đúng dòng khách trung chuyển tương ứng, để nó cũng được đẩy lên đầu như dòng rước liền.
@@ -861,13 +868,21 @@ function pkRenderPaxTable() {
     pkPendingTransshipUpdatePhones = null;
   }
 
-  // Gộp 2 loại dòng rồi sắp các dòng CÓ mốc cập nhật lên trước (mới nhất trước). Array.sort ổn định nên
-  // các dòng chưa từng cập nhật (mốc 0) giữ nguyên thứ tự: rước liền trước, trung chuyển sau.
+  // Gộp 2 loại dòng thành 1 danh sách chung, KHÔNG tách khối "rước liền trước / trung chuyển sau":
+  //   1. Dòng có mốc "vừa cập nhật" (đổi tài xế/ghi chú trong phiên) lên trước nhất.
+  //   2. Còn lại sắp theo THỜI GIAN NHẬP thông tin, mới nhất trước — rước liền dùng createdAt,
+  //      trung chuyển dùng seat.actionTime (stamp mỗi lần lưu form đặt vé). Dòng không có mốc
+  //      (dữ liệu mẫu cũ) coi như 0 -> xuống cuối.
+  // Array.sort ổn định -> các dòng bằng điểm ở cả 2 tiêu chí giữ nguyên thứ tự gộp ban đầu.
   const mergedRows = [
     ...filtered.map(p => ({ kind: 'pk', data: p, key: pkPickupRowKey(p) })),
     ...transshipRows.map(r => ({ kind: 'ts', data: r, key: pkTransshipRowKey(r) }))
   ];
-  mergedRows.sort((a, b) => (pkRowUpdateStamp.get(b.key) || 0) - (pkRowUpdateStamp.get(a.key) || 0));
+  mergedRows.sort((a, b) => {
+    const stampDiff = (pkRowUpdateStamp.get(b.key) || 0) - (pkRowUpdateStamp.get(a.key) || 0);
+    if (stampDiff) return stampDiff;
+    return pkRowEntryTime(b) - pkRowEntryTime(a);
+  });
 
   // Lọc theo 1 trong 4 tab (Tất cả/Trung chuyển đón/Rước liền/Trung chuyển trả) — tab "all" giữ nguyên
   // y hệt hành vi gộp trước đây. Khách trung chuyển có cả 2 chặng đón+trả sẽ xuất hiện ở cả 2 tab đó,
