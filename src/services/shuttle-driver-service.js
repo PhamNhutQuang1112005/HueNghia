@@ -5,8 +5,7 @@
 
    Gom mọi lời gọi localStorage rải rác cho key này về 1 chỗ (Phase F):
      - đọc  : ticketstaff.js (renderTransshipTables), ticketstaff-pickup.js
-              (pkReadShuttleDriverMap, pkPrevShuttleDriverMap, pkApplyShuttleDriverChange,
-               pkRenderPaxTable)
+              (pkReadShuttleDriverMap, pkRenderPaxTable)
      - ghi  : ticketstaff-pickup.js (seed, pkSaveDriverNote, pkSaveDriverUpdate)
    Shape dữ liệu KHÔNG đổi: { "<sđt>_<don|tra>": { driverName, driverPhone,
    driverPlate, driverVehicleType, driverNote } }. Tên key KHÔNG đổi.

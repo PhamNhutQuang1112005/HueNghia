@@ -40,10 +40,74 @@
 .rebook-col-right {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+}
+
+/* Thu gọn riêng tiêu đề "Chọn ghế" ở cột phải (không đụng các tiêu đề bên cột trái) — nhường thêm
+   khoảng trống cho sơ đồ ghế + thẻ "Giá vé & Đặt cọc" bên dưới khi xem xe 45 chỗ. */
+.rebook-col-right > .rebook-section-title {
+  margin: 0 0 8px 0;
+}
+
+/* Thẻ "Giá vé & Đặt cọc" dưới sơ đồ chọn ghế — dùng lại ĐÚNG kiểu .ticket/.ticket-dash/.kv/.deposit-block
+   của tờ vé xem trước bên panel đặt vé chính (css/ticketstaff.css, css/shared/booking-ui/
+   04-overlay-modals.css) như thiết kế trước, nhưng ghi đè padding/margin nhỏ lại (thay vì để nguyên cỡ
+   mặc định của tờ vé 300px) để cả cột phải (sơ đồ ghế + thẻ này) không tràn quá chiều cao modal và phải
+   cuộn dù đang xem xe 45 chỗ (sơ đồ dày, nhiều hàng ghế hơn hẳn xe thường). */
+.rebook-price-ticket {
+  max-width: none;
+  margin: 0;
+  padding: 7px 12px;
+  flex: 0 0 auto;
+}
+
+.rebook-price-ticket .ticket-dash {
+  margin: 5px -12px;
+}
+
+.rebook-price-ticket .price {
+  font-size: 14px;
+}
+
+.rebook-price-ticket .kv {
+  margin-top: 0;
+  font-size: 12.5px;
+}
+
+.rebook-price-ticket .zero-price-reason {
+  margin-top: 5px;
+}
+
+.rebook-price-ticket .deposit-block {
+  margin-top: 12px;
+}
+
+.rebook-price-ticket .deposit-block .checkbox-inline {
+  padding: 4px 9px;
+  font-size: 12.5px;
+}
+
+.rebook-price-caption {
+  font-size: 11px;
+  color: var(--text-sub);
+  font-weight: 600;
+}
+
+.rebook-total-value {
+  font-weight: 800;
+  color: var(--red);
+  font-size: 13.5px;
+}
+
+.rebook-deposit-hint {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green);
+  margin-top: 3px;
 }
 
 .rebook-section-title {
@@ -73,6 +137,30 @@
   flex-direction: column;
   gap: 7px;
   min-width: 0;
+}
+
+/* Riêng mục "Thông tin khách hàng" — các hàng field xích gần nhau hơn (không đụng mục "Chọn phơi xe"
+   bên dưới, vẫn dùng khoảng cách mặc định của .rebook-form-section). */
+.rebook-customer-section {
+  gap: 10px;
+}
+
+.rebook-customer-section > .rebook-section-title {
+  margin-bottom: 8px;
+}
+
+.rebook-customer-section .form-row {
+  gap: 10px;
+}
+
+.rebook-customer-section .form-field {
+  gap: 5px;
+}
+
+/* Mục "Chọn phơi xe": kéo hàng lịch + khung giờ (.rb-trip-filter-row) xích lên sát tiêu đề hơn — bỏ
+   phần margin-bottom 14px của .rebook-section-title, chỉ còn khoảng cách gap:16px của section. */
+.rebook-form-section:not(.rebook-customer-section) > .rebook-section-title {
+  margin-bottom: 0;
 }
 
 .rebook-form-section label {
@@ -350,6 +438,14 @@
    khai width riêng cho .pax-col-note (vẫn tự động nhận đúng phần dư tăng thêm). */
 .pax-table--transship .pax-col-address {
   width: 15%;
+}
+
+/* Riêng bảng "Trung chuyển trả" (.pax-table--transship-dropoff) — không có cột Tài xế nên đỡ chật hơn
+   bảng "đón": bù ngược lại cho cột Địa chỉ đón/trả (đang gộp cả trạm đến + địa chỉ cụ thể, 2 dòng, cần
+   rộng hơn cột Ghi chú) bằng cách bớt bớt phần Ghi chú đang tự nhận dư ra. Không khai width riêng cho
+   .pax-col-note ở đây — nó vẫn tự nhận đúng phần còn lại sau khi Địa chỉ đón/trả lấy thêm. */
+.pax-table--transship-dropoff .pax-col-address {
+  width: 25%;
 }
 
 .ts-driver-unassigned {

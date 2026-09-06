@@ -118,6 +118,26 @@ function openPassengerHistoryView() {
   renderPassengerHistoryTable();
 }
 
+// Gọi ngay sau khi đặt/bán vé xong (đặt vé thường, Đặt lại vé, Chỉ định xe rước...) để trang Lịch sử
+// phản ánh đúng thông tin mới nhất NGAY LẬP TỨC, không cần bấm lại tab "Lịch sử" (tức "load lại") mới
+// thấy. Nếu nhân viên đang đứng sẵn ở tab "Lịch sử hành khách" (bảng tổng hợp mọi khách) thì render lại
+// TẠI CHỖ bảng đó; các trường hợp khác (đang ở màn đặt vé bình thường) thì giữ hành vi cũ — mở luôn kết
+// quả tìm kiếm lịch sử của đúng khách vừa đặt/bán (openCustomerHistory), 1 trong 2 hàm này LUÔN quét lại
+// tripSeatBank sống (searchCustomerByPhone/loadAllPassengerHistory) nên không cần lo dữ liệu cũ.
+function refreshHistoryViewsAfterBooking(phone) {
+  const tabHistory = document.getElementById('tabHistory');
+  const historyView = document.getElementById('historyView');
+  const isOnHistoryTab = tabHistory && tabHistory.classList.contains('active')
+    && historyView && historyView.style.display !== 'none';
+  if (isOnHistoryTab) {
+    _allPassengerHistoryRaw = loadAllPassengerHistory();
+    rebuildPhFilterOptions();
+    renderPassengerHistoryTable();
+    return;
+  }
+  openCustomerHistory(phone);
+}
+
 // Suy chiều của 1 tuyến: ưu tiên store dùng chung (FleetStore — hướng do Admin cấu hình, đúng cả với
 // tuyến KHÔNG bắt đầu bằng "Sài Gòn"), fallback về quy ước cũ route.startsWith('Sài Gòn').
 function phRouteSense(route) {
@@ -130,17 +150,38 @@ function phRouteSense(route) {
   return (route || '').startsWith('Sài Gòn') ? 'di' : 've';
 }
 
-// Tuyến đường phụ thuộc vào hướng đi đã chọn (Chiều đi = xuất phát từ Sài Gòn, Chiều về = ngược lại).
+// Suy id HƯỚNG (1 trong 4 hướng cố định) của 1 tuyến: ưu tiên FleetStore, fallback theo sense cũ
+// (tuyến lạ → gộp vào hướng cùng chiều: 'sg-ag' nếu đi, 'ag-sg' nếu về).
+function phRouteDirectionId(route) {
+  try {
+    if (window.FleetStore && typeof FleetStore.getRouteDirectionId === 'function') {
+      const id = FleetStore.getRouteDirectionId(route);
+      if (id) return id;
+    }
+  } catch (e) { /* fallback */ }
+  return phRouteSense(route) === 've' ? 'ag-sg' : 'sg-ag';
+}
+
+// Đổ 4 hướng cố định vào #phFilterDirection (từ FleetStore), giữ lựa chọn hiện tại.
+function rebuildPhDirectionOptions() {
+  const dirEl = document.getElementById('phFilterDirection');
+  if (!dirEl || !window.FleetStore) return;
+  const cur = dirEl.value;
+  const dirs = FleetStore.getDirections()
+    .filter(d => d && d.active !== false)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  dirEl.innerHTML = `<option value="">Tất cả hướng</option>` +
+    dirs.map(d => `<option value="${d.id}">${d.label}</option>`).join('');
+  dirEl.value = dirs.some(d => d.id === cur) ? cur : '';
+}
+
+// Tuyến đường phụ thuộc vào HƯỚNG đã chọn (1 trong 4 hướng cố định).
 function rebuildPhRouteOptions() {
   const routeEl = document.getElementById('phFilterRoute');
   if (!routeEl) return;
   const dirVal = document.getElementById('phFilterDirection')?.value || '';
   const prevVal = routeEl.value;
-  const pool = _allPassengerHistoryRaw.filter(r => {
-    if (!dirVal) return true;
-    const isDi = phRouteSense(r.route) === 'di';
-    return dirVal === 'chieu-di' ? isDi : !isDi;
-  });
+  const pool = _allPassengerHistoryRaw.filter(r => !dirVal || phRouteDirectionId(r.route) === dirVal);
   const routes = Array.from(new Set(pool.map(r => r.route).filter(Boolean))).sort();
   routeEl.innerHTML = `<option value="all">Tất cả tuyến</option>` +
     routes.map(r => `<option value="${r}">${r}</option>`).join('');
@@ -156,6 +197,7 @@ function rebuildPhFilterOptions() {
   const routeEl = document.getElementById('phFilterRoute');
   const staffEl = document.getElementById('phFilterStaff');
   if (!routeEl) return;
+  rebuildPhDirectionOptions();
   rebuildPhRouteOptions();
   if (staffEl) {
     // Nhân viên "Đặt" và "Bán" có thể khác nhau trên cùng 1 vé (bookStaff/sellStaff) — gộp chung 1 danh
@@ -202,11 +244,7 @@ function renderPassengerHistoryTable() {
       if (!matchName && !matchPhone) return false;
     }
     if (phSelectedDateStr && r.date !== phSelectedDateStr) return false;
-    if (dirVal) {
-      const isDi = phRouteSense(r.route) === 'di';
-      if (dirVal === 'chieu-di' && !isDi) return false;
-      if (dirVal === 'chieu-ve' && isDi) return false;
-    }
+    if (dirVal && phRouteDirectionId(r.route) !== dirVal) return false;
     if (routeVal !== 'all' && r.route !== routeVal) return false;
     if (timeVal !== 'all') {
       const hh = parseInt((r.time || '00:00').split(':')[0], 10);
@@ -512,16 +550,6 @@ function confirmSelectionAction() {
   openGroupBookingFromSelection();
 }
 
-function deleteSubSeat(code) {
-  subSeats = subSeats.filter(s => s.code !== code);
-  if (tripSeatBank[currentTripId]) tripSeatBank[currentTripId].subSeats = subSeats;
-  saveSeatBank();
-  renderSubSeats();
-  updateTripStats();
-  updatePassengerTabCount();
-  showToast('Đã xóa ghế phụ');
-}
-
 function exitMultiSelectMode() {
   multiSelectMode = false;
   selectionMode = null;
@@ -539,13 +567,20 @@ function exitMultiSelectMode() {
 }
 
 function findSeat(code) {
-  return seatPlanDown.find(s => s.code === code) || seatPlanUp.find(s => s.code === code) || extraLeftoverSeats.find(s => s.code === code);
+  return seatPlanDown.find(s => s.code === code) || seatPlanUp.find(s => s.code === code) || extraLeftoverSeats.find(s => s.code === code) || subSeats.find(s => s.code === code);
 }
 
 function findSeatInTrip(tripId, code) {
   const bank = tripSeatBank[tripId];
   if (!bank) return null;
-  return bank.down.find(s => s.code === code) || bank.up.find(s => s.code === code) || (bank.extraSeats || []).find(s => s.code === code);
+  return bank.down.find(s => s.code === code) || bank.up.find(s => s.code === code) || (bank.extraSeats || []).find(s => s.code === code) || (bank.subSeats || []).find(s => s.code === code);
+}
+
+// Ghế phụ ("S1", "S2"...) không nằm trong sơ đồ ghế chính (seatPlanDown/Up) — dùng để tắt phần "Đặt
+// cọc" + nút "Đặt vé" (giữ) trong panel đặt vé chung, chỉ còn "Bán vé" (xem openBookingPanel ở
+// shared/ui.js). Ghi theo mã (không giữ tham chiếu object) vì subSeats bị thay/replace lúc nạp phơi.
+function isSubSeatCode(code) {
+  return typeof subSeats !== 'undefined' && subSeats.some(s => s.code === code);
 }
 
 function getHistoryStopsDisplay(r) {
@@ -604,7 +639,7 @@ function goToTripFromHistory(e, idx, pushHistory = true, highlightSeat = true) {
     try { history.pushState({ view: 'trip', tripId: targetTripId, phone: prevPhone }, '', '#trip-' + targetTripId); } catch (err) { }
   }
 
-  const targetDir = r.route?.trim().startsWith('Châu Đốc') ? 'cd-sg' : 'sg-cd';
+  const targetDir = phRouteDirectionId(r.route);
   if (typeof selectedDirection !== 'undefined' && selectedDirection !== targetDir && directionLabels?.[targetDir]) {
     selectedDirection = targetDir;
     selectedRoute = 'all';
@@ -616,12 +651,9 @@ function goToTripFromHistory(e, idx, pushHistory = true, highlightSeat = true) {
       item.classList.toggle('active', item.dataset.dir === targetDir);
     });
     if (typeof renderRouteOptions === 'function') renderRouteOptions();
-    const sgList = document.getElementById('tripListSGCD');
-    const cdList = document.getElementById('tripListCDSG');
-    if (sgList && cdList) {
-      sgList.style.display = targetDir === 'cd-sg' ? 'none' : '';
-      cdList.style.display = targetDir === 'cd-sg' ? '' : 'none';
-    }
+    // Zone 1 chỉ hiện phơi của hướng đang chọn — dựng lại danh sách theo hướng đích.
+    if (typeof updateTripListForDirection === 'function') updateTripListForDirection(targetDir);
+    else if (typeof renderZone1TripList === 'function') renderZone1TripList();
   }
 
   const card = document.querySelector(`.trip-card[data-trip="${targetTripId}"]`);
@@ -827,7 +859,15 @@ function groupHistoryResults(rawResults) {
     const phone = (item.phone || '').replace(/[\s.\-]/g, '');
     const name = (item.name || '').trim().toLowerCase();
     const tripKey = item.tripId || `${item.date}_${item.route}_${item.time}`;
-    const groupKey = `${tripKey}_${phone}_${name}_${item.state}_${!!item.paid}`;
+    // Nhóm theo ĐÚNG 1 vé (ticketNo, luôn có sẵn trên mọi ghế đã có khách — xem applyFormToSeat()/
+    // groupSeat()/confirmRebook()) chứ không chỉ theo tripKey+SĐT+tên+trạng thái+đã trả như trước —
+    // khoá cũ khiến 2 vé KHÁC NHAU của cùng 1 khách trên CÙNG 1 chuyến (VD: "Đặt lại vé" ngay trên
+    // chuyến đang có sẵn 1 vé cũ của khách đó, cùng trạng thái/đã trả) bị gộp lầm thành 1 dòng — số
+    // ghế và tổng tiền của 2 vé cộng dồn vào nhau, nhìn như vé mới "sửa đè" lên vé cũ thay vì 2 dòng
+    // độc lập. Chỉ lùi về khoá cũ khi thật sự thiếu ticketNo (không nên xảy ra với dữ liệu hợp lệ).
+    const groupKey = item.ticketNo
+      ? `${tripKey}::${item.ticketNo}`
+      : `${tripKey}_${phone}_${name}_${item.state}_${!!item.paid}`;
 
     if (!map.has(groupKey)) {
       map.set(groupKey, {

@@ -32,9 +32,9 @@
      --------------------------------------------------------- */
 
   // ---- Danh mục TRẠM theo 3 vùng (nguồn: bảng người dùng cung cấp) ----
-  var SG_STATIONS = ['508 Kinh Dương Vương', '58 Lê Đại Hành', '4 Tống Văn Trân', 'Bến xe miền Tây quầy 29'];
-  var BD_STATIONS = ['Trạm An Phú', 'Bến xe An Phú', 'Trạm Bến Cát', 'Trạm Phú Chánh', 'Trạm Tân Uyên', 'Trạm An Tây', 'Trạm Bình Phước', 'Trạm An Sương'];
-  var AG_STATIONS = ['Trạm Sa Đéc', 'Trạm Long Xuyên', 'Trạm Vịnh Tre', 'Trạm Châu Đốc', 'Trạm An Phú', 'Trạm Tri Tôn', 'Trạm Chi Lăng', 'Trạm Tịnh Biên', 'Trạm Nhà Bàng', 'Trạm Tân Châu', 'Trạm Núi Sập', 'Trạm Hà Tiên', 'Trạm Long Bình', 'Trạm Đồng Ky', 'Trạm Bắc Đai', 'Trạm Vĩnh Hội Đông', 'Trạm Cần Thảo', 'Trạm Cái Dầu', 'Trạm Năng Gù', 'Trạm Bình Hòa', 'Trạm Châu Thành', 'Trạm Cần Đăng', 'Trạm Phú Hòa', 'Trạm Óc Eo', 'Trạm An Hòa', 'Trạm Cựu Hội', 'Trạm Ba Chúc', 'Trạm Lạc Quới', 'Trạm Giang Thành'];
+  var SG_STATIONS = ['508 Kinh Dương Vương', '58 Lê Đại Hành', '4 Tống Văn Trân', 'Bến xe miền Tây quầy 29', 'Sài Gòn', 'Tiền Giang', 'Vĩnh Long', 'Đồng Tháp'];
+  var BD_STATIONS = ['Trạm An Phú', 'Bến xe An Phú', 'Trạm Bến Cát', 'Trạm Phú Chánh', 'Trạm Tân Uyên', 'Trạm An Tây', 'Trạm Bình Phước', 'Trạm An Sương', 'Bình Dương'];
+  var AG_STATIONS = ['Trạm An Giang', 'Trạm Sa Đéc', 'Trạm Long Xuyên', 'Trạm Vịnh Tre', 'Trạm Châu Đốc', 'Trạm An Phú', 'Trạm Tri Tôn', 'Trạm Chi Lăng', 'Trạm Tịnh Biên', 'Trạm Nhà Bàng', 'Trạm Tân Châu', 'Trạm Núi Sập', 'Trạm Hà Tiên', 'Trạm Long Bình', 'Trạm Đồng Ky', 'Trạm Bắc Đai', 'Trạm Vĩnh Hội Đông', 'Trạm Cần Thảo', 'Trạm Cái Dầu', 'Trạm Năng Gù', 'Trạm Bình Hòa', 'Trạm Châu Thành', 'Trạm Cần Đăng', 'Trạm Phú Hòa', 'Trạm Óc Eo', 'Trạm An Hòa', 'Trạm Cựu Hội', 'Trạm Ba Chúc', 'Trạm Lạc Quới', 'Trạm Giang Thành', 'Trạm Tân An - Tân Châu'];
 
   var SEED_STATIONS = []
     .concat(SG_STATIONS.map(function (n) { return { name: n, region: 'saigon' }; }))
@@ -206,6 +206,44 @@
     seedKey(HN_ADMIN_ACTIVITY_KEY, function () { return []; });
   }
 
+  // Với localStorage đã seed từ bản cũ: tự BỔ SUNG những trạm seed còn thiếu (khớp theo region+name),
+  // KHÔNG xoá/sửa trạm Admin đã thêm hay đã chỉnh. Chạy mỗi lần nạp — idempotent.
+  function mergeSeedStations() {
+    var cur = readJSON(HN_STATIONS_KEY, null);
+    if (cur === null || !Array.isArray(cur)) return; // seedKey đã ghi trọn SEED_STATIONS
+    var have = {};
+    cur.forEach(function (s) { if (s && s.name != null) have[(s.region || '') + '||' + s.name] = true; });
+    var added = 0;
+    SEED_STATIONS.forEach(function (s) {
+      var k = (s.region || '') + '||' + s.name;
+      if (!have[k]) { cur.push({ name: s.name, region: s.region }); have[k] = true; added++; }
+    });
+    if (added) writeJSON(HN_STATIONS_KEY, cur);
+  }
+
+  // Tương tự cho TUYẾN: với các tuyến seed (khớp theo id), bổ sung trạm đi/đến seed còn thiếu để
+  // dropdown "Trạm đi/Trạm đến" khi tạo phơi (kể cả nhánh theo từng tuyến bên Admin) có đủ trạm mới.
+  // Chỉ đụng tuyến seed; tuyến Admin tự tạo (id lạ) và danh sách "trạm có thể nhận" giữ nguyên.
+  function mergeSeedRouteStations() {
+    var cur = readJSON(HN_ROUTES_KEY, null);
+    if (cur === null || !Array.isArray(cur)) return;
+    var seedById = {};
+    SEED_ROUTES.forEach(function (r) { seedById[r.id] = r; });
+    var changed = false;
+    cur.forEach(function (r) {
+      var sd = r && seedById[r.id];
+      if (!sd) return;
+      ['fromStations', 'toStations'].forEach(function (k) {
+        var have = {};
+        (r[k] || []).forEach(function (n) { have[n] = true; });
+        (sd[k] || []).forEach(function (n) {
+          if (!have[n]) { r[k] = (r[k] || []).concat([n]); have[n] = true; changed = true; }
+        });
+      });
+    });
+    if (changed) writeJSON(HN_ROUTES_KEY, cur);
+  }
+
   /* ---------------------------------------------------------
      GETTERS / SETTERS
      --------------------------------------------------------- */
@@ -230,6 +268,59 @@
     list.push({ name: name, region: region || '' });
     setStations(list);
     return true;
+  }
+  // Thêm 1 trạm đầy đủ thông tin (màn "Trạm xe") — trả true nếu vừa thêm, false nếu tên đã tồn tại.
+  // fields: { name, region, code, address, province, hotlineCargo, hotlineTicket }
+  function addStationFull(fields) {
+    var name = String((fields && fields.name) || '').trim();
+    if (!name) return false;
+    var list = getStations();
+    if (list.some(function (s) { return s.name === name; })) return false;
+    list.push({
+      name: name,
+      region: (fields && fields.region) || '',
+      code: (fields && fields.code) || '',
+      address: (fields && fields.address) || '',
+      province: (fields && fields.province) || '',
+      hotlineCargo: (fields && fields.hotlineCargo) || '',
+      hotlineTicket: (fields && fields.hotlineTicket) || ''
+    });
+    setStations(list);
+    return true;
+  }
+  // Sửa 1 trạm theo tên hiện tại — nếu fields.name đổi sang tên mới, cascade đổi tên đó trong mọi
+  // tuyến (fromStations/toStations/pickupStations) để không "mồ côi" tham chiếu trạm cũ.
+  // Trả { ok:true } hoặc { ok:false, reason }.
+  function updateStation(oldName, fields) {
+    var newName = String((fields && fields.name) || '').trim();
+    if (!newName) return { ok: false, reason: 'Tên trạm không được để trống.' };
+    var list = getStations();
+    var st = list.find(function (s) { return s.name === oldName; });
+    if (!st) return { ok: false, reason: 'Không tìm thấy trạm.' };
+    if (newName !== oldName && list.some(function (s) { return s.name === newName; })) {
+      return { ok: false, reason: 'Tên trạm đã tồn tại.' };
+    }
+    st.name = newName;
+    st.region = (fields && fields.region) || '';
+    st.code = (fields && fields.code) || '';
+    st.address = (fields && fields.address) || '';
+    st.province = (fields && fields.province) || '';
+    st.hotlineCargo = (fields && fields.hotlineCargo) || '';
+    st.hotlineTicket = (fields && fields.hotlineTicket) || '';
+    setStations(list);
+    if (newName !== oldName) {
+      var routes = getRoutes();
+      var changed = false;
+      routes.forEach(function (r) {
+        ['fromStations', 'toStations', 'pickupStations'].forEach(function (k) {
+          if (!Array.isArray(r[k])) return;
+          var i = r[k].indexOf(oldName);
+          if (i !== -1) { r[k][i] = newName; changed = true; }
+        });
+      });
+      if (changed) setRoutes(routes);
+    }
+    return { ok: true };
   }
   // Số tuyến đang dùng 1 trạm (ở Trạm đi / Trạm đến / Trạm có thể nhận).
   function stationUsage(name) {
@@ -318,6 +409,67 @@
     return cfg;
   }
 
+  // { [directionId]: { label, route, sense, price, fromStations, toStations, pickupStations, routeLabels } }
+  // Dùng cho modal "Tạo phơi xe" bên TicketStaff khi CHỌN THEO 4 HƯỚNG CHÍNH (không chọn tuyến):
+  //   - label            = nhãn hướng (hiển thị trong dropdown)
+  //   - route            = nhãn tuyến "chính" (tuyến đầu tiên theo order) của hướng — chuỗi lưu vào phơi
+  //                        để tương thích getRouteSense() + bộ lọc "Tuyến đi"; rỗng route → dùng nhãn hướng
+  //   - fromStations     = TỔNG HỢP mọi trạm thuộc (các) địa điểm điểm-đi của hướng
+  //   - toStations       = TỔNG HỢP mọi trạm thuộc (các) địa điểm điểm-đến của hướng
+  //   - pickupStations   = hợp "trạm có thể nhận thêm khách" của mọi tuyến con
+  //   - routeLabels      = mọi nhãn tuyến con (suy ngược hướng từ trip.route của phơi cũ)
+  // Địa điểm điểm-đi/điểm-đến suy từ region của trạm trong fromStations/toStations của các tuyến con.
+  function buildDirTripCfg() {
+    var regionOf = {}, byRegion = {};
+    getStations().forEach(function (s) {
+      regionOf[s.name] = s.region;
+      (byRegion[s.region] = byRegion[s.region] || []).push(s.name);
+    });
+    var uniq = function (arr) { var seen = {}; return arr.filter(function (x) { return seen[x] ? false : (seen[x] = true); }); };
+    var collectRegions = function (regSet) {
+      var out = [];
+      Object.keys(regSet).forEach(function (rk) { (byRegion[rk] || []).forEach(function (n) { out.push(n); }); });
+      return uniq(out);
+    };
+    var routes = getRoutes();
+    var cfg = {};
+    getDirections().slice().sort(byOrder).forEach(function (d) {
+      if (d.active === false) return;
+      var kids = routes.filter(function (r) { return r.directionId === d.id && r.active !== false; }).sort(byOrder);
+      var fromReg = {}, toReg = {}, pickup = {}, routeLabels = [];
+      kids.forEach(function (r) {
+        routeLabels.push(r.label);
+        (r.fromStations || []).forEach(function (n) { if (regionOf[n] != null) fromReg[regionOf[n]] = true; });
+        (r.toStations || []).forEach(function (n) { if (regionOf[n] != null) toReg[regionOf[n]] = true; });
+        (r.pickupStations || []).forEach(function (n) { pickup[n] = true; });
+      });
+      var main = kids[0] || null;
+      cfg[d.id] = {
+        label: d.label,
+        route: main ? main.label : d.label,
+        sense: d.sense === 'di' ? 'di' : 've',
+        price: main ? (main.price || 0) : 0,
+        fromStations: collectRegions(fromReg),
+        toStations: collectRegions(toReg),
+        pickupStations: uniq(Object.keys(pickup)),
+        routeLabels: uniq(routeLabels),
+        // Tuyến con thô để TicketStaff suy ra "tuyến chính" sau khi chọn Trạm đi/Trạm đến,
+        // rồi hiện đúng "trạm có thể rước" (pickupStations) của tuyến đó.
+        routes: kids.map(function (r) {
+          return {
+            label: r.label,
+            price: r.price || 0,
+            order: r.order || 0,
+            fromStations: (r.fromStations || []).slice(),
+            toStations: (r.toStations || []).slice(),
+            pickupStations: (r.pickupStations || []).slice()
+          };
+        })
+      };
+    });
+    return cfg;
+  }
+
   // { 'chieu-di': [{label,abbr,price}], 'chieu-ve': [{label,abbr,price}] } — nhóm theo sense của hướng.
   function buildRoutesCfg() {
     var dirById = {};
@@ -348,6 +500,38 @@
     if (!r) return null;
     var d = getDirections().find(function (x) { return x.id === r.directionId; });
     return d ? (d.sense === 'di' ? 'di' : 've') : null;
+  }
+
+  // 'sg-ag' | 'bd-ag' | 'ag-bd' | 'ag-sg' | null — map nhãn tuyến (chuỗi lưu trong phơi) -> id hướng.
+  // Điểm map DUY NHẤT route -> 1 trong 4 hướng cố định. null = tuyến lạ → caller tự fallback theo sense.
+  function getRouteDirectionId(routeLabel) {
+    if (!routeLabel) return null;
+    var r = getRoutes().find(function (x) { return x.label === routeLabel; });
+    return r ? (r.directionId || null) : null;
+  }
+
+  // Danh sách "Trạm có thể nhận thêm khách" khi tạo phơi = TOÀN BỘ trạm ở phía ĐIỂM ĐẾN của hướng.
+  // Quy ước 2 cụm: {An Giang} và {Sài Gòn + Bình Dương}. Hướng kết thúc ở An Giang → mọi trạm An Giang;
+  // hướng kết thúc ở Sài Gòn/Bình Dương → mọi trạm Sài Gòn + Bình Dương. Dùng chung TicketStaff + Admin.
+  function pickupStationsForDirection(dirId) {
+    var stations = getStations();
+    var d = getDirections().find(function (x) { return x.id === dirId; });
+    var toRegions = {};
+    getRoutes()
+      .filter(function (r) { return r.directionId === dirId && r.active !== false; })
+      .forEach(function (r) {
+        (r.toStations || []).forEach(function (n) {
+          var st = stations.find(function (s) { return s.name === n; });
+          if (st && st.region) toRegions[st.region] = true;
+        });
+      });
+    var arrivesAngiang = !!toRegions['angiang'] || /-ag$/.test(dirId || '') ||
+      ((d && d.label) ? /-\s*An Giang\s*$/i.test(d.label) : false);
+    var wanted = arrivesAngiang ? { angiang: 1 } : { saigon: 1, binhduong: 1 };
+    var seen = {};
+    return stations
+      .filter(function (s) { return s && wanted[s.region] && !seen[s.name] && (seen[s.name] = true); })
+      .map(function (s) { return s.name; });
   }
 
   function byOrder(a, b) { return (a.order || 0) - (b.order || 0); }
@@ -456,6 +640,8 @@
      SEED khi nạp + export
      --------------------------------------------------------- */
   seedAll();
+  mergeSeedStations();
+  mergeSeedRouteStations();
 
   window.FleetStore = {
     KEYS: {
@@ -474,6 +660,8 @@
     getStations: getStations,
     setStations: setStations,
     addStation: addStation,
+    addStationFull: addStationFull,
+    updateStation: updateStation,
     removeStation: removeStation,
     stationUsage: stationUsage,
     getVehicleTypes: getVehicleTypes,
@@ -485,9 +673,12 @@
     getActivity: getActivity,
     pushActivity: pushActivity,
     buildTripDirectionsCfg: buildTripDirectionsCfg,
+    buildDirTripCfg: buildDirTripCfg,
     buildRoutesCfg: buildRoutesCfg,
     vehicleTypeSeats: vehicleTypeSeats,
     getRouteSense: getRouteSense,
+    getRouteDirectionId: getRouteDirectionId,
+    pickupStationsForDirection: pickupStationsForDirection,
     canDeleteDirection: canDeleteDirection,
     canDeleteRoute: canDeleteRoute,
     canDeleteVehicle: canDeleteVehicle,

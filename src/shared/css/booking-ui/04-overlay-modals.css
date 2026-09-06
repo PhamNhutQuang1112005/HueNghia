@@ -480,7 +480,11 @@
   position: fixed;
   inset: 0;
   background: rgba(15, 15, 16, .42);
-  z-index: 200;
+  /* Phải cao hơn #rebookModal (z-index: 9999, css/shared/booking-ui/09-rebook-modal.css) — các modal
+     xác nhận nhỏ (Đặt cọc, Xác nhận thanh toán, Hủy vé...) thường được mở CHỒNG lên từ bên trong 1 modal/
+     panel lớn hơn đang mở sẵn (VD "Đặt lại vé"), nên luôn phải nổi trên mọi overlay/panel khác, không chỉ
+     trên overlay cơ bản (.overlay, z-index: 100). */
+  z-index: 10000;
   display: none;
   align-items: center;
   justify-content: center;

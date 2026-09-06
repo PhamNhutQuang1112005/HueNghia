@@ -6,7 +6,16 @@
      + meta (Loại xe / Ghế trống / Giá vé) + footer 2 nút.
    Cùng nguồn dữ liệu hn_trips_meta_v9 + seat bank hn_trip_seat_bank_v12.
    ========================================================= */
-var TRIP_FILTERS = { name: '', date: '', sense: '', route: '', status: '' };
+var TRIP_FILTERS = { name: '', date: '', direction: '', route: '', status: '' };
+
+// id HƯỚNG (1 trong 4 hướng cố định) của 1 tuyến — ưu tiên FleetStore, fallback theo sense/tiền tố tên.
+function tripRouteDirectionId(route) {
+  var id = FleetStore.getRouteDirectionId ? FleetStore.getRouteDirectionId(route) : null;
+  if (id) return id;
+  var s = FleetStore.getRouteSense ? FleetStore.getRouteSense(route) : null;
+  if (!s) s = String(route || '').indexOf('Sài Gòn') === 0 ? 'di' : 've';
+  return s === 'di' ? 'sg-ag' : 'ag-sg';
+}
 var ADMIN_BULK = { mode: false, ids: [] }; // "Tạo phơi xe hàng loạt" — chọn phơi mẫu (isTemplate) rồi nhân bản theo khoảng ngày
 
 function fld(label, inner) { return '<div class="filter-field"><label>' + esc(label) + '</label>' + inner + '</div>'; }
@@ -16,10 +25,10 @@ function renderTripsView() {
   var trips = getTrips();
   var seatBank = lsRead(HN_STORAGE_KEY, {});
   var seatMap = FleetStore.vehicleTypeSeats();
-  var rc = FleetStore.buildRoutesCfg();               // { 'chieu-di':[{label,abbr,price}], 'chieu-ve':[...] }
-  var routeOpts = TRIP_FILTERS.sense === 'chieu-di' ? rc['chieu-di']
-    : TRIP_FILTERS.sense === 'chieu-ve' ? rc['chieu-ve']
-    : rc['chieu-di'].concat(rc['chieu-ve']);
+  var dtc = FleetStore.buildDirTripCfg();             // { [dirId]: { label, routes:[{label,price,...}], routeLabels:[...] } }
+  var routeOpts = TRIP_FILTERS.direction && dtc[TRIP_FILTERS.direction]
+    ? (dtc[TRIP_FILTERS.direction].routes || [])
+    : Object.keys(dtc).reduce(function (acc, k) { return acc.concat(dtc[k].routes || []); }, []);
 
   var f = TRIP_FILTERS;
   var list = trips.filter(function (t) {
@@ -31,12 +40,7 @@ function renderTripsView() {
       if (hay.indexOf(f.name.toLowerCase()) === -1) return false;
     }
     if (f.date && t.date && t.date !== f.date) return false;
-    if (f.sense) {
-      var s = FleetStore.getRouteSense(t.route);
-      if (!s) s = String(t.route || '').indexOf('Sài Gòn') === 0 ? 'di' : 've';
-      if (f.sense === 'chieu-di' && s !== 'di') return false;
-      if (f.sense === 'chieu-ve' && s !== 've') return false;
-    }
+    if (f.direction && tripRouteDirectionId(t.route) !== f.direction) return false;
     if (f.route && t.route !== f.route) return false;
     if (f.status && (t.status || 'Chưa chỉ định xe') !== f.status) return false;
     return true;
@@ -128,10 +132,12 @@ function renderTripsView() {
     '<div class="filter-toolbar">' +
       fld('Tên phơi', '<input type="text" id="tfName" value="' + esc(f.name) + '" placeholder="Nhập tên phơi..." data-change-action="adminTripFilterInput" data-args=\'["name","__this_value__"]\'>') +
       fld('Ngày khởi hành', '<input type="date" id="tfDate" value="' + esc(f.date) + '" data-change-action="adminTripFilterInput" data-args=\'["date","__this_value__"]\'>') +
-      fld('Hướng đi', '<select id="tfSense" data-change-action="adminTripFilterInput" data-args=\'["sense","__this_value__"]\'>' +
-        '<option value="">Tất cả</option>' +
-        '<option value="chieu-di"' + (f.sense === 'chieu-di' ? ' selected' : '') + '>Chiều đi</option>' +
-        '<option value="chieu-ve"' + (f.sense === 'chieu-ve' ? ' selected' : '') + '>Chiều về</option></select>') +
+      fld('Hướng đi', '<select id="tfDirection" data-change-action="adminTripFilterInput" data-args=\'["direction","__this_value__"]\'>' +
+        '<option value="">Tất cả hướng</option>' +
+        FleetStore.getDirections().filter(function (d) { return d && d.active !== false; })
+          .sort(function (a, b) { return (a.order || 0) - (b.order || 0); })
+          .map(function (d) { return '<option value="' + esc(d.id) + '"' + (f.direction === d.id ? ' selected' : '') + '>' + esc(d.label) + '</option>'; }).join('') +
+        '</select>') +
       fld('Tuyến đi', '<select id="tfRoute" data-change-action="adminTripFilterInput" data-args=\'["route","__this_value__"]\'>' +
         '<option value="">Tất cả tuyến</option>' + optList(routeOpts, f.route, function (r) { return r.label; }, function (r) { return r.label; }) + '</select>') +
       fld('Trạng thái', '<select id="tfStatus" data-change-action="adminTripFilterInput" data-args=\'["status","__this_value__"]\'>' +
@@ -154,7 +160,7 @@ function adminTripSearch() {
 function adminTripFilterInput(field, val) {
   if (!(field in TRIP_FILTERS)) return;
   TRIP_FILTERS[field] = val || '';
-  if (field === 'sense') TRIP_FILTERS.route = ''; // đổi Hướng đi → dựng lại danh sách Tuyến
+  if (field === 'direction') TRIP_FILTERS.route = ''; // đổi Hướng đi → dựng lại danh sách Tuyến
   renderTripsView();
 }
 function adminResetTripFilters() {
@@ -321,8 +327,21 @@ function adminOpenTripModal(id) {
   if (t) {
     if (t.fromStation) setSelect('ttFrom', t.fromStation);
     if (t.toStation) setSelect('ttTo', t.toStation);
-    // tick lại các trạm đón đã lưu
+    // tick lại các trạm đón đã lưu — bổ sung pill cho trạm đã lưu không nằm trong cụm điểm đến hiện tại (dữ liệu cũ)
     var saved = Array.isArray(t.pickupStations) ? t.pickupStations : [];
+    var pbox = $('ttPickups');
+    if (pbox && saved.length) {
+      var em = pbox.querySelector('.station-pick-empty');
+      if (em) em.remove();
+      var have = {};
+      Array.prototype.forEach.call(pbox.querySelectorAll('input[type=checkbox]'), function (cb) { have[cb.value] = true; });
+      saved.forEach(function (s) {
+        if (s && !have[s]) {
+          pbox.insertAdjacentHTML('beforeend', '<label class="station-pick-pill"><input type="checkbox" value="' + esc(s) + '" data-change-action="adminTogglePickup" data-args=\'["__this__"]\'>' + esc(s) + '</label>');
+          have[s] = true;
+        }
+      });
+    }
     Array.prototype.forEach.call(document.querySelectorAll('#ttPickups input[type=checkbox]'), function (cb) {
       cb.checked = saved.indexOf(cb.value) !== -1;
       var pill = cb.closest('.station-pick-pill');
@@ -357,7 +376,9 @@ function adminTripDirChange() {
   if (toSel) toSel.innerHTML = '<option value="">-- Chọn trạm đến --</option>' +
     (d.toStations || []).map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
 
-  var opts = d.pickupStations || [];
+  // "Trạm có thể nhận thêm khách" = TOÀN BỘ trạm phía điểm đến của hướng (giống TicketStaff), không bó
+  // vào riêng pickupStations của tuyến con.
+  var opts = (FleetStore.pickupStationsForDirection ? FleetStore.pickupStationsForDirection(d.directionId) : (d.pickupStations || [])) || [];
   if (pickBox) {
     pickBox.innerHTML = opts.length
       ? opts.map(function (s) {

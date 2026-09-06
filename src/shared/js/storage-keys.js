@@ -11,6 +11,21 @@ const ZONE1_COLLAPSED_KEY = 'callcenter.zone1Collapsed';
 // vì shuttle.html xếp Rước liền vào cùng nhóm "đón" khi đồng bộ từ tripSeatBank).
 const HN_SHUTTLE_DRIVER_KEY = 'hn_shuttle_driver_assign_v1';
 
+// Loại xe + biển số MẶC ĐỊNH đi kèm từng tài xế trung chuyển — dùng ở modal "Cập nhật trạng thái"
+// (ticketstaff-pickup.js, role trung chuyển): chọn 1 tài xế thì 2 ô loại xe/biển số tự điền theo giá trị
+// đã gán trước cho tài xế đó. Nút "Gán" ghi đè giá trị mặc định mới cho tài xế; nút "Lưu" chỉ áp loại
+// xe/biển số cho (các) khách đang sửa nên KHÔNG đụng tới map này (lần sau chọn lại tài xế vẫn ra mặc
+// định cũ). Shape: { "<mã tài xế>": { vehicleType, plate } }.
+const HN_SHUTTLE_DRIVER_VEHICLE_KEY = 'hn_shuttle_driver_vehicle_v1';
+
+// Trang "Trung chuyển" (ticketstaff-pickup.js) — 2 danh sách thông báo/đánh dấu hiện ở đầu bảng gộp,
+// CẢ 2 role (bán vé + trung chuyển) đều thấy nên phải qua localStorage (không phải biến JS trong 1 tab)
+// để đồng bộ giữa các phiên đăng nhập khác nhau (2 tab/2 máy khác nhau), giống cách HN_SHUTTLE_DRIVER_KEY
+// đồng bộ qua sự kiện 'storage' — xem window.addEventListener('storage', ...) trong ticketstaff-account.js.
+// Mỗi lần sửa/thêm là 1 phần tử MỚI (không ghi đè phần tử cũ), phần tử mới nhất đứng đầu mảng.
+const HN_PK_PHONGVE_NOTICES_KEY = 'hn_pk_phongve_notices_v1'; // [{ id, phone, rowKey }]
+const HN_PK_PRINT_RUOC_KEY = 'hn_pk_print_ruoc_dividers_v1'; // [{ id, label }]
+
 // ===== Store cấu hình đội xe dùng chung (trang Admin quản trị, ticketstaff/shuttle đọc theo) =====
 // Nguồn dữ liệu duy nhất cho Hướng/Tuyến/Loại xe/Xe/Nhân viên — trước đây hard-code rải rác trong
 // js/ticketstaff.js (TRIP_DIRECTIONS_CFG, ROUTES_CFG) và các <select> trong ticketstaff.html/shuttle.html.

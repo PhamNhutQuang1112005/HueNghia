@@ -259,6 +259,16 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, .36);
 }
 
+.btn-cancel-seats {
+  background: var(--red);
+  color: white;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, .28);
+}
+
+.btn-cancel-seats:hover {
+  box-shadow: 0 4px 12px rgba(220, 38, 38, .36);
+}
+
 .ticket .price {
   font-size: 19px;
   font-weight: 800;
@@ -856,6 +866,83 @@
 .pk-note-cell:hover { background: var(--surface-2); border-color: var(--text-sub); color: var(--text-main); }
 .pk-note-cell svg { width: 14px; height: 14px; }
 
+/* Thông báo "vừa cập nhật ghi chú Phòng vé" (.pk-phongve-banner-row, tab "Tất cả") — thay cho việc đẩy
+   dòng lên đầu danh sách: 1 DÒNG (<tr>) GHIM CỐ ĐỊNH ở đầu #pkPaxTableBody (nằm TRONG bảng, không phải
+   div nổi ngoài bảng nữa — xem pkRenderPaxTable/pkRenderPhongVeBannerRow), kèm nút "Đến vị trí" nhảy tới
+   đúng dòng và nút đóng. Cùng tông màu/đậm với .violation-alert cho nhất quán "cảnh báo đỏ" trong trang. */
+.pk-phongve-banner-row td {
+  background: var(--red);
+  padding: 0;
+  border-color: var(--red);
+}
+.pk-phongve-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: white;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.pk-phongve-banner-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.pk-phongve-banner-btn {
+  background: white;
+  color: var(--red);
+  border: none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pk-phongve-banner-close {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+/* Vạch "in rước" (nút "In rước", role trung chuyển, xem pkSavePrintRuoc) — 1 dòng đỏ đậm cắt ngang hết
+   bề rộng bảng, GHIM CỐ ĐỊNH ở hàng đầu tiên của #pkPaxTableBody (không tham gia sort/lọc theo tab —
+   xem pkRenderPaxTable) nên luôn nằm trên cùng cho tới khi in rước lại (đổi giờ) hoặc bấm nút đóng. */
+.pk-print-divider-row td {
+  background: rgba(194, 13, 8, 0.06);
+  border-top: 1px dashed var(--red);
+  border-bottom: 1px dashed var(--red);
+  color: var(--red);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: .5px;
+  text-align: center;
+  padding: 6px 8px;
+  position: relative;
+}
+.pk-print-divider-close {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--red);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+/* Chớp nền vàng nhạt 1 lần khi "Đến vị trí" (pkJumpToPhongVeRow) cuộn tới đúng dòng, để dễ nhận ra giữa
+   danh sách dài — tự tắt sau khi animation chạy xong (animation-fill-mode mặc định, không cần dọn class). */
+@keyframes pkRowFlash {
+  0% { background-color: #FFF3C4; }
+  100% { background-color: transparent; }
+}
+.pk-row-flash td { animation: pkRowFlash 1.6s ease-out; }
+
 /* Cột "Số ghế" (trang Trung chuyển) — cột hẹp, nằm ngay sau cột "SL". Chỉ hiện số ghế đã chỉ định; bấm
    vào nhảy thẳng sang phơi tương ứng (data-action="sellTicketForTrip"). Chưa gán phơi thì hiện dấu "_"
    (.pk-seat-none). */
@@ -945,136 +1032,9 @@
   display: table-cell;
 }
 
-/* ===================== VÉ TRUNG CHUYỂN / PHIẾU IN TÀI XẾ (tab Trung chuyển, role trung chuyển) — port
-   Y CHANG từ shuttle.html (css/shuttle.css), đổi id #printTicketModal/#printTicketContainer thành
-   #tsPrintTicketModal/#tsPrintTicketContainer cho khớp HTML đã port. ===================== */
-.print-ticket-wrapper {
-  background: var(--white);
-  border: 1px solid var(--border-gray);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  max-height: 440px;
-  overflow-y: auto;
-}
-.ticket-receipt {
-  font-family: inherit;
-  color: var(--text-main);
-}
-.ticket-receipt-head {
-  text-align: center;
-  border-bottom: 2px dashed var(--border-gray);
-  padding-bottom: 12px;
-  margin-bottom: 12px;
-}
-.ticket-receipt-brand {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--red-dark);
-  letter-spacing: 0.5px;
-}
-.ticket-receipt-title {
-  font-size: 14px;
-  font-weight: 800;
-  text-transform: uppercase;
-  margin-top: 4px;
-}
-.ticket-receipt-meta {
-  font-size: 11.5px;
-  color: var(--text-sub);
-  margin-top: 2px;
-}
-.ticket-driver-box {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border-gray);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
-  font-size: 12.5px;
-  margin-bottom: 14px;
-}
-.ticket-driver-box div b {
-  color: var(--text-main);
-}
-.ticket-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-  margin-bottom: 16px;
-}
-.ticket-table th {
-  background: var(--surface);
-  border: 1px solid var(--border-gray);
-  padding: 6px 8px;
-  font-weight: 700;
-  text-align: left;
-}
-.ticket-table td {
-  border: 1px solid var(--border-gray);
-  padding: 6px 8px;
-  vertical-align: top;
-}
-.ticket-sign-row {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 20px;
-  padding-top: 10px;
-}
-.ticket-sign-box {
-  text-align: center;
-  width: 45%;
-  font-size: 12px;
-}
-.ticket-sign-box b {
-  display: block;
-  font-weight: 700;
-}
-.ticket-sign-box span {
-  font-size: 11px;
-  color: var(--text-sub);
-  font-style: italic;
-  display: block;
-  margin-top: 2px;
-}
-.ticket-sign-space {
-  height: 40px;
-}
-
-@media print {
-  body * {
-    visibility: hidden !important;
-  }
-  #tsPrintTicketContainer, #tsPrintTicketContainer * {
-    visibility: visible !important;
-  }
-  #tsPrintTicketModal {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: auto;
-    background: white;
-    display: block !important;
-  }
-  #tsPrintTicketModal .modal {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-shadow: none !important;
-    border: none !important;
-    padding: 0 !important;
-  }
-  #tsPrintTicketModal .modal-actions,
-  #tsPrintTicketModal h3,
-  #tsPrintTicketModal button {
-    display: none !important;
-  }
-  .print-ticket-wrapper {
-    border: none !important;
-    max-height: none !important;
-    padding: 0 !important;
-  }
-}
+/* In vé trung chuyển giờ dùng chung cơ chế mở cửa sổ in riêng (window.open + TICKET_PRINT_STYLE) với
+   vé lên xe bên role phòng vé — xem buildTransshipMultiTicketPrintHtml()/tsPrintSelectedTickets() ở
+   ticketstaff.js — nên không còn modal xem trước/CSS @media print riêng ở trang này nữa. */
 
 /* Modal "Chỉ định xe rước liền" (#assignPickupModal) — .panel-head/.panel-body/.panel-footer/.icon-close
    đã dùng chung ở css/shared/booking-ui.css; chỉ ghi đè riêng layout 2 cột + kích thước cho modal này. */

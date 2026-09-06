@@ -121,6 +121,17 @@ let seatPlanUp = [
 // chuyển ghế của khách sang một chuyến xe khác, không chỉ trong cùng 1 chuyến.
 const todayStr = new Date().toISOString().split("T")[0];
 
+/* ---- Zone 1: trạng thái lịch chọn ngày (khai báo SỚM vì renderZone1TripList() lọc theo selectedDate
+   và được gọi ngay lúc nạp trang). Ngày mặc định = HÔM NAY THẬT (khớp todayStr — cùng ngày mà phơi mẫu
+   / tab Phơi xe / Rước liền / Đặt lại vé đang dùng). Trước đây gắn cứng 08/07/2026 nên lịch Zone 1
+   lệch hẳn với dữ liệu phơi và không lọc gì cả. ---- */
+function zone1TodayDate() { return new Date(todayStr + 'T00:00:00'); }
+function zone1DateStr(dt) {
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+let calDate = zone1TodayDate();
+let selectedDate = zone1TodayDate();
+
 function loadAllTrips() {
   const saved = TripService.getRawString();
   if (saved) {
@@ -129,6 +140,10 @@ function loadAllTrips() {
       if (Array.isArray(parsed) && parsed.length > 0) {
         parsed.forEach((t, idx) => {
           if (!t.date || t.date === '2026-07-29') t.date = todayStr;
+          // Phơi MẪU (isTemplate) luôn được kéo về ngày HÔM NAY mỗi lần tải trang — chúng là "mẫu" dùng
+          // để nhân bản, không phải chuyến có ngày thật; nhờ vậy luôn tìm thấy ngay ở Zone 1 với lịch mặc
+          // định là hôm nay (trước đây bị đóng băng ở ngày localStorage được ghi lần đầu → "mất tích").
+          if (t.isTemplate) t.date = todayStr;
           // Phơi cũ nạp từ trước khi có createdAt (seed/mẫu) không có mốc thời gian tạo thật — gán tạm
           // theo thứ tự trong mảng (số rất nhỏ so với Date.now()) để phơi tạo thật sự sau này luôn nổi
           // lên đầu danh sách (xem applyFilters), còn phơi cũ vẫn giữ đúng thứ tự tương đối với nhau.
@@ -158,15 +173,83 @@ function tripRouteSense(route) {
   return route.startsWith('Sài Gòn') ? 'di' : 've';
 }
 
-// Lọc allTripsMeta thành 2 danh sách theo chiều (dùng chung ở nơi cần đồng bộ lại sau khi allTripsMeta thay đổi).
+// Suy id HƯỚNG (1 trong 4 hướng cố định) của 1 phơi: ưu tiên FleetStore, fallback theo sense cũ
+// (phơi/tuyến lạ chưa có trong store → gộp vào hướng cùng chiều: 'sg-ag' nếu đi, 'ag-sg' nếu về).
+function tripDirectionId(route) {
+  try {
+    if (window.FleetStore && typeof FleetStore.getRouteDirectionId === 'function') {
+      const id = FleetStore.getRouteDirectionId(route);
+      if (id) return id;
+    }
+  } catch (e) { /* fallback */ }
+  return tripRouteSense(route) === 've' ? 'ag-sg' : 'sg-ag';
+}
+
+// Gom allTripsMeta theo id hướng — { [dirId]: [...] } — dùng lại sau mỗi lần allTripsMeta đổi.
 function refreshTripMetaFilters() {
-  sgcdTripsMeta = allTripsMeta.filter(t => t.route && tripRouteSense(t.route) === 'di' && t.status !== 'Đã hủy');
-  cdsgTripsMeta = allTripsMeta.filter(t => t.route && tripRouteSense(t.route) === 've' && t.status !== 'Đã hủy');
+  tripsByDirection = {};
+  allTripsMeta.forEach(t => {
+    if (!t || !t.route || t.status === 'Đã hủy') return;
+    const id = tripDirectionId(t.route);
+    (tripsByDirection[id] = tripsByDirection[id] || []).push(t);
+  });
 }
 
 let allTripsMeta = loadAllTrips();
-let sgcdTripsMeta, cdsgTripsMeta;
+let tripsByDirection = {};
 refreshTripMetaFilters();
+
+// Zone 1 "Hướng đi" — 4 hướng cố định, đọc từ FleetStore (không còn hard-code 2 chiều sg-cd/cd-sg).
+// directionLabels: { [dirId]: label }
+// routeOptions:    { [dirId]: [{id:'all'|<label>, label, fromStations, toStations}] } — LUÔN đủ 4 key.
+//   Bỏ tuyến "gộp" (nhãn = nhãn hướng, VD "Sài Gòn - An Giang") vì chọn nó = "Tất cả tuyến".
+//   fromStations/toStations lấy từ FleetStore để renderZone1TripList() lọc phơi theo TRẠM ĐI/TRẠM ĐẾN.
+let selectedDirection = 'sg-ag';
+let selectedRoute = 'all';
+let directionLabels = {};
+let routeOptions = {};
+function reloadDirectionLabels() {
+  const dirs = (window.FleetStore ? FleetStore.getDirections() : [])
+    .filter(d => d && d.active !== false)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  const dtc = window.FleetStore ? FleetStore.buildDirTripCfg() : {};
+  directionLabels = {};
+  routeOptions = {};
+  dirs.forEach(d => {
+    directionLabels[d.id] = d.label;
+    const dcfg = dtc[d.id] || {};
+    const mainLabel = dcfg.route; // nhãn tuyến "gộp" của hướng
+    routeOptions[d.id] = [{ id: 'all', label: 'Tất cả tuyến' }].concat(
+      (dcfg.routes || [])
+        .filter(r => r.label && r.label !== mainLabel)
+        .map(r => ({
+          id: r.label,
+          label: r.label,
+          fromStations: (r.fromStations || []).slice(),
+          toStations: (r.toStations || []).slice()
+        }))
+    );
+  });
+  if (!directionLabels[selectedDirection]) {
+    selectedDirection = Object.keys(directionLabels)[0] || 'sg-ag';
+    selectedRoute = 'all';
+  }
+}
+reloadDirectionLabels();
+
+// 1 phơi có "khớp tuyến đang lọc ở Zone 1" không: so TRẠM ĐI + TRẠM ĐẾN của phơi với nhóm trạm đi/đến
+// của tuyến (không dùng chuỗi trip.route). Phơi thiếu cả 2 trạm → fallback so nhãn trip.route.
+function zone1TripMatchesRoute(t) {
+  if (!selectedRoute || selectedRoute === 'all') return true;
+  const r = (routeOptions[selectedDirection] || []).find(o => o.id === selectedRoute);
+  if (!r || !r.fromStations) return true;
+  if (t.fromStation || t.toStation) {
+    const okFrom = !t.fromStation || !r.fromStations.length || r.fromStations.indexOf(t.fromStation) !== -1;
+    const okTo = !t.toStation || !r.toStations.length || r.toStations.indexOf(t.toStation) !== -1;
+    return okFrom && okTo;
+  }
+  return t.route === selectedRoute;
+}
 
 // Sinh dữ liệu ghế mẫu cho các chuyến còn lại (mỗi ghế là 1 khách hàng độc nhất)
 
@@ -224,6 +307,10 @@ window.addEventListener('storage', (e) => {
     try { if (typeof onFilterDirectionChange === 'function') onFilterDirectionChange(); } catch (err) {}
     try { if (typeof refreshTripsList === 'function') refreshTripsList(); } catch (err) {}
     try { if (typeof applyFilters === 'function') applyFilters(); } catch (err) {}
+  }
+  // Admin sửa danh mục trạm ở tab khác → đổ lại các <select>/<datalist> Trạm đi/Trạm đến gắn cứng.
+  if (e.key === HN_STATIONS_KEY) {
+    try { if (typeof populateStationPickers === 'function') populateStationPickers(); } catch (err) {}
   }
   if (e.key === HN_STORAGE_KEY || e.key === HN_TRIPS_KEY) {
     if (e.key === HN_TRIPS_KEY) {
@@ -287,6 +374,8 @@ let transferSourceTripId = null; // chuyến của các ghế nguồn đang ch�
 let transferTargetTripId = null; // chuyến đang xem để chọn ghế trống làm đích (có thể khác chuyến nguồn)
 let transferSourceCancelId = null; // id bản ghi trong cancelledSeats đang chọn để "chuyển ghế" sang phơi khác (thay vì 1 ghế nguồn còn sống)
 let sellFromTransferBarSeats = null; // (các) ghế đang chờ bán nhanh từ thanh chuyển ghế, không qua panel sửa vé — xem sellFromTransferBar()
+let pendingRebookSell = null; // { tripId, seatCodes, form, deposit } đang chờ xác nhận thanh toán từ modal "Đặt lại vé" — xem confirmRebookAndSell() ở ticketstaff-account.js
+let pendingPickupAssignSell = null; // { paxId, tripId, seatCodes, unitPrice } đang chờ xác nhận thanh toán từ modal "Chỉ định xe rước" — xem pkConfirmAssign() ở ticketstaff-pickup.js
 let currentPanelSeat = null;
 let currentPanelSeats = [];
 let currentEditSeatCode = null;
@@ -374,8 +463,7 @@ function renderCancelledListTable() {
 // ===== Chọn dòng (checkbox) + thanh nổi "In vé trung chuyển" ở 2 bảng Trung chuyển đón/trả (tab Trung
 // chuyển trong booking view, zone3Transship) — CHỈ hiện cho role trung chuyển (xem renderTransshipTables,
 // toggle class "ts-dispatch-role"). Key = "pickup:"/"dropoff:" + ticketNo (2 bảng khoá độc lập, 1 khách
-// có cả 2 chặng đón+trả thì mỗi chặng là 1 dòng in riêng, đúng như mẫu phiếu #tsPrintTicketModal chỉ có
-// 1 địa chỉ/dòng). =====
+// có cả 2 chặng đón+trả thì mỗi chặng in ra 1 tờ vé riêng, mỗi tờ chỉ có 1 địa chỉ đón/trả). =====
 let tsSelectedTicketKeys = new Set();
 
 function tsToggleRow(key, checkboxEl) {
@@ -426,90 +514,123 @@ function tsFindRowByKey(key) {
   return { leg, item: g.main, seatCodes: g.members ? g.members.map((s) => s.code) : [g.main.code], seatCount: g.members ? g.members.length : 1 };
 }
 
+// Chuẩn bị dữ liệu hiển thị cho 1 tờ "vé trung chuyển" (1 khách / 1 chặng đón hoặc trả) — cùng khuôn dữ
+// liệu với buildTicketPrintData() bên role phòng vé (ticketNo/nowStr/seatsText/customerName/phone/route/
+// time/unitPrice/totalPrice/qrImgUrl/paymentMethod) để dùng chung buildTicketPageHtml()/TICKET_PRINT_STYLE,
+// chỉ thêm 2 trường riêng cho trung chuyển: legLabel (Đón khách/Trả khách) và address (địa chỉ đón/trả
+// thực tế, không phải tên trạm).
+function tsBuildTransshipTicketData(r, currentTrip) {
+  const item = r.item;
+  const address = r.leg === 'dropoff'
+    ? (item.dropoffAddress || item.arrivalTransfer || item.lastStop || '—')
+    : (item.pickupAddress || item.transship || item.transshipStation || item.firstStop || '—');
+  const ticketNo = item.ticketNo || ('TC-' + String(Math.floor(1000 + Math.random() * 9000)));
+  const seatsText = r.seatCodes.join(', ');
+  const customerName = item.customerName || 'Khách';
+  const phone = item.phone || '—';
+  const route = currentTrip.route || 'Sài Gòn - An Giang';
+  const time = currentTrip.time || '—';
+  const unitPrice = item.price || 0;
+  const totalPrice = unitPrice * r.seatCount;
+  const paymentMethod = item.paymentMethod || 'Tiền mặt';
+  const legLabel = r.leg === 'dropoff' ? 'Trả khách' : 'Đón khách';
+
+  const now = new Date();
+  const nowStr = `${now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - ${now.toLocaleDateString('vi-VN')}`;
+
+  return { ticketNo, nowStr, seatsText, customerName, phone, route, time, legLabel, address, unitPrice, totalPrice, paymentMethod };
+}
+
+// Dựng 1 trang vé trung chuyển — bố cục Y CHANG vé lên xe bên role phòng vé (buildTicketPageHtml() ở
+// dưới: brand-header/ticket-title/dash-line/kv-row/seat-box/total-price-box/footer-note), chỉ khác tiêu
+// đề ("VÉ TRUNG CHUYỂN" thay vì "VÉ XE KHÁCH"), ô nổi bật hiện chặng đón/trả thay vì số ghế, có thêm dòng
+// địa chỉ đón/trả thực tế cho tài xế, và KHÔNG có mã QR (vé trung chuyển không cần quét QR lên xe).
+function buildTransshipTicketPageHtml(d) {
+  return `
+    <div class="brand-header">
+      <div class="brand-badge">HN</div>
+      <div class="brand-name">HUỆ NGHĨA EXPRESS</div>
+      <div class="brand-sub">Hệ thống Đặt vé & Trung chuyển Chuyên nghiệp</div>
+    </div>
+
+    <div class="ticket-title">VÉ TRUNG CHUYỂN</div>
+    <div class="dash-line"></div>
+
+    <div class="kv-row"><span class="kv-label">Mã vé:</span><span class="kv-val">${d.ticketNo}</span></div>
+    <div class="kv-row"><span class="kv-label">Ngày in:</span><span class="kv-val">${d.nowStr}</span></div>
+
+    <div class="dash-line"></div>
+
+    <div class="seat-box">${d.legLabel.toUpperCase()}</div>
+
+    <div class="kv-row"><span class="kv-label">Hành khách:</span><span class="kv-val">${d.customerName}</span></div>
+    <div class="kv-row"><span class="kv-label">Điện thoại:</span><span class="kv-val">${d.phone}</span></div>
+    <div class="kv-row"><span class="kv-label">Tuyến xe:</span><span class="kv-val">${d.route}</span></div>
+    <div class="kv-row"><span class="kv-label">Giờ xuất bến:</span><span class="kv-val">${d.time}</span></div>
+    <div class="kv-row"><span class="kv-label">Số ghế:</span><span class="kv-val">${d.seatsText}</span></div>
+    <div class="kv-row"><span class="kv-label">Địa chỉ:</span><span class="kv-val">${d.address}</span></div>
+
+    <div class="dash-line"></div>
+
+    <div class="kv-row"><span class="kv-label">Đơn giá:</span><span class="kv-val">${d.unitPrice.toLocaleString('vi-VN')}đ/vé</span></div>
+    <div class="total-price-box">TỔNG TIỀN: ${d.totalPrice.toLocaleString('vi-VN')}đ</div>
+    <div class="kv-row"><span class="kv-label">Thanh toán:</span><span class="kv-val">${d.paymentMethod}</span></div>
+
+    <div class="footer-note">
+      <b>Cảm ơn quý khách đã chọn Huệ Nghĩa Express!</b><br>
+      Tổng đài đặt vé & hỗ trợ: <b>1900 63 64 99</b>
+    </div>
+  `;
+}
+
+// Gộp nhiều tờ vé trung chuyển vào CHUNG 1 cửa sổ in (mỗi tờ 1 trang, ngăn cách bằng page-break) — cùng
+// cơ chế với buildMultiTicketPrintHtml() bên role phòng vé, tránh bị trình duyệt chặn popup nếu gọi
+// window.open() riêng cho từng tờ.
+function buildTransshipMultiTicketPrintHtml(dataList) {
+  const pagesHtml = dataList.map(d => `<div class="ticket-page">${buildTransshipTicketPageHtml(d)}</div>`).join('');
+  const titleTicketNo = dataList.length ? dataList[0].ticketNo : '';
+  return `
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+    <meta charset="UTF-8">
+    <title>In Vé Trung Chuyển Huệ Nghĩa - ${titleTicketNo}${dataList.length > 1 ? ` (+${dataList.length - 1})` : ''}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>${TICKET_PRINT_STYLE}</style>
+    </head>
+    <body>
+    ${pagesHtml}
+    <script>
+      window.onload = function() {
+        setTimeout(function() {
+          window.print();
+        }, 400);
+      };
+    </script>
+    </body>
+    </html>
+  `;
+}
+
+// In (các) vé trung chuyển đã chọn — mỗi khách/chặng 1 tờ vé riêng (vé lẻ), cùng kiểu dáng và cùng cách
+// mở cửa sổ in tự động như vé lên xe bên role phòng vé (printTicketsSeparately()), thay vì bảng phiếu
+// điều phối gộp nhiều khách hay modal xem trước trên trang như trước đây.
 function tsPrintSelectedTickets() {
   if (tsSelectedTicketKeys.size === 0) return;
   const rows = Array.from(tsSelectedTicketKeys).map(tsFindRowByKey).filter(Boolean);
   if (!rows.length) return;
 
   const currentTrip = (typeof allTripsMeta !== 'undefined' && allTripsMeta.find((t) => t.id === currentTripId)) || {};
-  const container = document.getElementById('tsPrintTicketContainer');
-  const now = new Date();
-  const printTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} - ${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-  const totalPax = rows.reduce((sum, r) => sum + r.seatCount, 0);
-
-  container.innerHTML = `
-    <div class="ticket-receipt">
-      <div class="ticket-receipt-head">
-        <div class="ticket-receipt-brand">NHÀ XE HUỆ NGHĨA EXPRESS</div>
-        <div class="ticket-receipt-title">PHIẾU ĐIỀU PHỐI TRUNG CHUYỂN KHÁCH HÀNG</div>
-        <div class="ticket-receipt-meta">Thời gian xuất lệnh: ${printTimeStr}</div>
-      </div>
-
-      <div class="ticket-driver-box">
-        <div><b>Chuyến đi:</b> ${escapeHtml(currentTrip.route || 'Sài Gòn - Châu Đốc')}</div>
-        <div><b>Giờ khởi hành:</b> ${escapeHtml(currentTrip.time || '—')}</div>
-        <div><b>Ngày chạy:</b> ${escapeHtml(currentTrip.date || '—')}</div>
-        <div><b>Tổng số khách:</b> ${rows.length} lượt khách (${totalPax} pax)</div>
-      </div>
-
-      <table class="ticket-table">
-        <thead>
-          <tr>
-            <th style="width:30px; text-align:center;">STT</th>
-            <th style="width:130px;">Tên khách & SĐT</th>
-            <th style="width:60px;">Chặng</th>
-            <th>Địa chỉ đón / trả</th>
-            <th style="width:50px; text-align:center;">Số vé</th>
-            <th style="width:70px;">Số ghế</th>
-            <th style="width:75px; text-align:right;">Giá vé</th>
-            <th style="width:90px;">Ghi chú</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map((r, idx) => {
-            const item = r.item;
-            const address = r.leg === 'dropoff'
-              ? (item.dropoffAddress || item.arrivalTransfer || item.lastStop || '—')
-              : (item.pickupAddress || item.transship || item.transshipStation || item.firstStop || '—');
-            const totalPrice = item.price ? (item.price * r.seatCount).toLocaleString('vi-VN') + 'đ' : '—';
-            return `
-            <tr>
-              <td style="text-align:center; font-weight:600;">${idx + 1}</td>
-              <td>
-                <b>${escapeHtml(item.customerName || 'Khách')}</b><br>
-                <span style="font-size:11px; color:#555;">${escapeHtml(item.phone || '—')}</span>
-              </td>
-              <td>${r.leg === 'dropoff' ? 'Trả' : 'Đón'}</td>
-              <td>${escapeHtml(address)}</td>
-              <td style="text-align:center; font-weight:700;">${r.seatCount}</td>
-              <td><b>${escapeHtml(r.seatCodes.join(', '))}</b></td>
-              <td style="text-align:right; font-weight:600;">${totalPrice}</td>
-              <td>${escapeHtml(seatNoteWithReason(item) || '—')}</td>
-            </tr>
-          `; }).join('')}
-        </tbody>
-      </table>
-
-      <div class="ticket-sign-row">
-        <div class="ticket-sign-box">
-          <b>Điều hành viên</b>
-          <span>(Ký & ghi rõ họ tên)</span>
-          <div class="ticket-sign-space"></div>
-        </div>
-        <div class="ticket-sign-box">
-          <b>Tài xế nhận lệnh</b>
-          <span>(Ký & ghi rõ họ tên)</span>
-          <div class="ticket-sign-space"></div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('tsPrintTicketModal').classList.add('open');
-}
-
-function tsTriggerPrintTicket() {
-  window.print();
+  const dataList = rows.map(r => tsBuildTransshipTicketData(r, currentTrip));
+  const printHtml = buildTransshipMultiTicketPrintHtml(dataList);
+  const printWin = window.open('', '_blank', 'width=450,height=600');
+  if (printWin) {
+    printWin.document.open();
+    printWin.document.write(printHtml);
+    printWin.document.close();
+  }
 }
 
 function tsRenderTransshipStatusBadge(item, leg, hasAssignedDriver) {
@@ -530,13 +651,13 @@ function tsRenderTransshipStatusBadge(item, leg, hasAssignedDriver) {
 // Trước tiên tìm ở phơi đang mở; không thấy thì quét toàn bộ tripSeatBank để bảng gộp trang "Trung
 // chuyển" (gộp khách trung chuyển từ MỌI phơi) cũng ghi/sửa ghi chú trạng thái được như bảng rước liền.
 function tsFindRealSeatsByTicket(ticketNo) {
-  const cur = [...seatPlanDown, ...seatPlanUp, ...(extraLeftoverSeats || [])].filter(s => s.ticketNo === ticketNo);
+  const cur = [...seatPlanDown, ...seatPlanUp, ...(extraLeftoverSeats || []), ...(subSeats || [])].filter(s => s.ticketNo === ticketNo);
   if (cur.length) return cur;
   const out = [];
   Object.keys(tripSeatBank || {}).forEach(tid => {
     const b = tripSeatBank[tid];
     if (!b) return;
-    [...(b.down || []), ...(b.up || []), ...(b.extraSeats || [])].forEach(s => {
+    [...(b.down || []), ...(b.up || []), ...(b.extraSeats || []), ...(b.subSeats || [])].forEach(s => {
       if (s && s.ticketNo === ticketNo) out.push(s);
     });
   });
@@ -569,15 +690,149 @@ function saveTransshipStatusNote() {
   realSeats.forEach(s => { s[noteField] = value; });
   saveSeatBank();
 
-  // Ghi chú cột "Phòng vé" của dòng khách trung chuyển vừa đổi -> đánh dấu để đẩy dòng đó lên đầu bảng
-  // gộp trang "Trung chuyển" (giống hành vi của khách rước liền khi sửa ghi chú).
-  if (changed && leg !== 'dropoff') pkMarkRowUpdated(pkTransshipRowKey(ticketNo));
+  // Ghi chú cột "Phòng vé" của dòng khách trung chuyển vừa đổi — KHÔNG còn đẩy dòng lên đầu bảng gộp
+  // trang "Trung chuyển" nữa, chỉ báo bằng dòng thông báo đỏ ở đầu bảng (tab "Tất cả", xem
+  // pkNotifyPhongVeUpdate), giống hành vi của khách rước liền khi sửa ghi chú.
+  if (changed && leg !== 'dropoff') pkNotifyPhongVeUpdate(realSeats[0] && realSeats[0].phone, pkTransshipRowKey(ticketNo));
 
   closeModal('tsStatusNoteModal');
   tsTransshipStatusNoteActive = null;
   renderTransshipTables();
   if (currentView === 'pickup') pkRenderPaxTable();
 }
+
+// ===== Filter kiểu Excel theo từng cột — 2 bảng "Trung chuyển đón"/"Trung chuyển trả" (zone3Transship) =====
+// Mỗi cột lọc bằng cách CHỌN các giá trị muốn giữ lại (checkbox, y hệt Excel) thay vì gõ từ khoá/chọn 1
+// giá trị — đúng tinh thần "filter kiểu Excel ở tiêu đề bảng" đã yêu cầu. State: tsColumnFilterState[table]
+// là object { field: Set(giá trị được giữ) }; field KHÔNG có mặt trong object = không lọc (giữ tất cả).
+// Chọn đủ hết mọi giá trị đang có (Áp dụng) coi như bỏ lọc luôn (xoá field khỏi state) — tránh giữ 1 Set
+// "chọn hết" vô nghĩa mãi trong state.
+let tsColumnFilterState = { pickup: {}, dropoff: {} };
+
+// 2 danh sách khách ĐÃ TÍNH SẴN field (driverName/station/address/...) của lần render gần nhất — popover
+// filter (tsOpenColumnFilter) đọc lại từ đây để biết "cột này đang có những giá trị nào" mà không phải
+// tính lại từ đầu (tính 1 lần trong renderTransshipTables(), dùng chung cho cả lọc lẫn popover).
+let tsLastPickupRows = [];
+let tsLastDropoffRows = [];
+
+// Cách lấy giá trị-để-lọc của 1 cột từ 1 dòng đã tính sẵn (object trả về bởi map() trong
+// renderTransshipTables()) — DÙNG CHUNG cho việc lọc danh sách hiển thị lẫn việc liệt kê giá trị trong
+// popover, tránh 2 nơi tính field lệch nhau. CHỈ cột "Trạm đi"/"Trạm đến" có filter (yêu cầu thu hẹp lại,
+// các cột khác không cần) — object chỉ còn 1 field nhưng vẫn giữ dạng map để tsRowPassesColumnFilters/
+// tsOpenColumnFilter dùng chung logic cho cả 2 bảng mà không cần rẽ nhánh riêng.
+const TS_PICKUP_FIELD_VALUE = {
+  station: r => r.station
+};
+const TS_DROPOFF_FIELD_VALUE = {
+  station: r => r.station
+};
+
+// 1 dòng có "lọt" qua bộ lọc hiện tại của cả bảng hay không — true nếu MỌI cột đang có lọc đều chứa đúng
+// giá trị của dòng đó (AND giữa các cột, giống Excel: lọc nhiều cột cùng lúc thì phải khớp hết).
+function tsRowPassesColumnFilters(table, row, fieldValueMap) {
+  const state = tsColumnFilterState[table];
+  for (const field in state) {
+    const allowed = state[field];
+    if (allowed && !allowed.has(fieldValueMap[field](row))) return false;
+  }
+  return true;
+}
+
+// Bật/tắt style "đang lọc" (.ch-col-filter-btn.active, đỏ đậm) trên nút lọc mỗi cột — gọi lại mỗi lần
+// render để luôn khớp đúng tsColumnFilterState hiện tại (kể cả khi lọc bị xoá bằng cách khác).
+function tsUpdateColFilterButtonsActive(table) {
+  const fields = table === 'pickup' ? Object.keys(TS_PICKUP_FIELD_VALUE) : Object.keys(TS_DROPOFF_FIELD_VALUE);
+  fields.forEach(field => {
+    const btn = document.getElementById(`tsColFilterBtn-${table}-${field}`);
+    if (btn) btn.classList.toggle('active', !!tsColumnFilterState[table][field]);
+  });
+}
+
+// ----- Popover filter dùng chung (#tsColFilterPopover) -----
+let tsColFilterCtx = null; // { table, field, allValues, checkedSet } | null — cột đang mở popover
+
+function tsOpenColumnFilter(table, field, btnEl) {
+  const rows = table === 'pickup' ? tsLastPickupRows : tsLastDropoffRows;
+  const valueFn = (table === 'pickup' ? TS_PICKUP_FIELD_VALUE : TS_DROPOFF_FIELD_VALUE)[field];
+  const allValues = Array.from(new Set(rows.map(valueFn))).sort((a, b) => a.localeCompare(b, 'vi'));
+  const currentAllowed = tsColumnFilterState[table][field]; // Set | undefined (undefined = đang giữ hết)
+
+  tsColFilterCtx = {
+    table, field, allValues,
+    checkedSet: new Set(currentAllowed ? allValues.filter(v => currentAllowed.has(v)) : allValues)
+  };
+
+  const popover = document.getElementById('tsColFilterPopover');
+  const search = document.getElementById('tsColFilterSearch');
+  if (!popover || !search) return;
+  search.value = '';
+  tsRenderColFilterList('');
+
+  const rect = btnEl.getBoundingClientRect();
+  popover.style.display = 'block'; // hiện trước rồi mới đo offsetWidth (ẩn thì offsetWidth luôn = 0)
+  const popW = popover.offsetWidth || 240;
+  popover.style.top = (rect.bottom + 4) + 'px';
+  popover.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - popW - 8)) + 'px';
+  search.focus();
+}
+
+// Đổ lại danh sách checkbox trong popover — lọc theo ô tìm kiếm nội bộ (keyword, chỉ để dễ tìm giá trị
+// giữa danh sách dài, KHÔNG đụng tới checkedSet) nên các giá trị bị ẩn tạm thời do đang gõ tìm vẫn giữ
+// nguyên trạng thái tick/bỏ tick khi gõ xoá từ khoá để hiện lại.
+function tsRenderColFilterList(keyword) {
+  if (!tsColFilterCtx) return;
+  const list = document.getElementById('tsColFilterList');
+  if (!list) return;
+  const kw = (keyword || '').toLowerCase();
+  const values = kw ? tsColFilterCtx.allValues.filter(v => v.toLowerCase().includes(kw)) : tsColFilterCtx.allValues;
+  list.innerHTML = values.length ? values.map(v => {
+    const idx = tsColFilterCtx.allValues.indexOf(v);
+    const checked = tsColFilterCtx.checkedSet.has(v);
+    return `<label class="ch-popover-opt"><input type="checkbox" data-change-action="tsColFilterToggle" data-args='[${idx},"__this__"]' ${checked ? 'checked' : ''}><span>${escapeHtml(v)}</span></label>`;
+  }).join('') : '<div style="padding:8px 4px;color:var(--text-sub);font-size:12.5px;">Không có giá trị phù hợp</div>';
+}
+
+function tsColFilterSearchInput(value) {
+  tsRenderColFilterList(value);
+}
+
+function tsColFilterToggle(idx, checkboxEl) {
+  if (!tsColFilterCtx) return;
+  const value = tsColFilterCtx.allValues[idx];
+  if (checkboxEl.checked) tsColFilterCtx.checkedSet.add(value);
+  else tsColFilterCtx.checkedSet.delete(value);
+}
+
+function tsColFilterApply() {
+  if (!tsColFilterCtx) return;
+  const { table, field, allValues, checkedSet } = tsColFilterCtx;
+  if (checkedSet.size >= allValues.length) {
+    delete tsColumnFilterState[table][field]; // chọn hết = coi như không lọc, khỏi giữ Set thừa trong state
+  } else {
+    tsColumnFilterState[table][field] = new Set(checkedSet);
+  }
+  tsCloseColumnFilter();
+  renderTransshipTables();
+}
+
+function tsColFilterClear() {
+  if (!tsColFilterCtx) return;
+  delete tsColumnFilterState[tsColFilterCtx.table][tsColFilterCtx.field];
+  tsCloseColumnFilter();
+  renderTransshipTables();
+}
+
+function tsCloseColumnFilter() {
+  const popover = document.getElementById('tsColFilterPopover');
+  if (popover) popover.style.display = 'none';
+  tsColFilterCtx = null;
+}
+
+document.addEventListener('click', (e) => {
+  if (!tsColFilterCtx) return;
+  if (e.target.closest('#tsColFilterPopover') || e.target.closest('.ch-col-filter-btn')) return;
+  tsCloseColumnFilter();
+});
 
 function renderTransshipTables() {
   const pickupBody = document.getElementById('transshipPickupBody');
@@ -617,87 +872,123 @@ function renderTransshipTables() {
   // diện nhất quán giữa các tab. escapeHtml() áp dụng cho mọi text tự do (tên tài xế/khách, địa chỉ, ghi
   // chú) vì đây đều là dữ liệu nhập tay — chèn thẳng vào title="..."/HTML mà không escape sẽ vỡ layout
   // giống lỗi từng gặp ở cột Ghi chú bảng Hành khách nếu text chứa dấu ngoặc kép/&/<.
-  // Render Table 1: DANH SÁCH TRUNG CHUYỂN ĐÓN
+  // Render Table 1: DANH SÁCH TRUNG CHUYỂN ĐÓN — tính sẵn mọi field cần cho cả hiển thị lẫn lọc (1 lần/
+  // khách), dùng chung cho việc liệt kê giá trị trong popover filter kiểu Excel (tsOpenColumnFilter) lẫn
+  // lọc theo tsColumnFilterState, tránh tính 2 lần/duplicate logic giữa 2 việc.
   if (pickupBody) {
-    if (pickupList.length === 0) {
-      pickupBody.innerHTML = '<tr><td colspan="11" class="ts-empty">Không có hành khách cần trung chuyển đón trong chuyến này</td></tr>';
+    const pickupRows = pickupList.map(g => {
+      const item = g.main;
+      const driverKey = `${(item.phone || '').replace(/\s+/g, '')}_don`;
+      const assignedDriver = shuttleDriverMap[driverKey];
+      const driverName = assignedDriver ? assignedDriver.driverName : 'Chưa gán tài xế';
+      const driverTooltip = assignedDriver
+        ? `SĐT: ${assignedDriver.driverPhone || '—'} · Biển số: ${assignedDriver.driverPlate || '—'}${assignedDriver.driverVehicleType ? ' · ' + assignedDriver.driverVehicleType : ''}`
+        : '';
+      const driverCellHtml = assignedDriver
+        ? `<span title="${escapeHtml(driverTooltip)}">${escapeHtml(assignedDriver.driverName)}</span>`
+        : `<span class="ts-driver-unassigned">Chưa gán tài xế</span>`;
+      // "Trạm đi" (station) KHÔNG còn là cột riêng — gộp hiển thị chung vào ô "Địa chỉ đón" (trạm chính ở
+      // dòng đầu, địa chỉ cụ thể ở dòng phụ nhỏ hơn nếu khác trạm — xem addressHtml bên dưới) nhưng vẫn
+      // giữ làm giá trị-để-lọc riêng cho nút lọc gắn trên header "Địa chỉ đón" (tsOpenColumnFilter).
+      const station = item.firstStop || '—';
+      const pickupLoc = item.pickupAddress || item.transship || item.transshipStation || item.firstStop || '—';
+      const seatCodes = g.members ? g.members.map(s => s.code) : [item.code || '—'];
+      const seatCount = g.members ? g.members.length : 1;
+      const phone = item.phone || '—';
+      const totalPrice = item.price ? (item.price * seatCount).toLocaleString('vi-VN') + 'đ' : '—';
+      const note = seatNoteWithReason(item);
+      const customerName = item.customerName || 'Khách';
+      const statusLabel = assignedDriver ? 'Đang đón' : 'Chờ đón';
+      const statusBadge = tsRenderTransshipStatusBadge(item, 'pickup', !!assignedDriver);
+      const ticketKey = 'pickup:' + (item.ticketNo || ('T-' + item.code));
+      return { item, driverName, driverCellHtml, station, pickupLoc, seatCodes, seatCount, phone, totalPrice, note, customerName, statusLabel, statusBadge, ticketKey };
+    });
+
+    tsLastPickupRows = pickupRows; // popover filter (tsOpenColumnFilter) đọc lại từ đây
+    tsUpdateColFilterButtonsActive('pickup');
+    const pickupRowsFiltered = pickupRows.filter(r => tsRowPassesColumnFilters('pickup', r, TS_PICKUP_FIELD_VALUE));
+
+    if (pickupRowsFiltered.length === 0) {
+      pickupBody.innerHTML = `<tr><td colspan="11" class="ts-empty">${pickupRows.length === 0 ? 'Không có hành khách cần trung chuyển đón trong chuyến này' : 'Không có khách nào khớp bộ lọc đang chọn'}</td></tr>`;
     } else {
-      pickupBody.innerHTML = pickupList.map((g, idx) => {
-        const item = g.main;
-        const driverKey = `${(item.phone || '').replace(/\s+/g, '')}_don`;
-        const assignedDriver = shuttleDriverMap[driverKey];
-        const driverTooltip = assignedDriver
-          ? `SĐT: ${assignedDriver.driverPhone || '—'} · Biển số: ${assignedDriver.driverPlate || '—'}${assignedDriver.driverVehicleType ? ' · ' + assignedDriver.driverVehicleType : ''}`
-          : '';
-        const driverCellHtml = assignedDriver
-          ? `<span title="${escapeHtml(driverTooltip)}">${escapeHtml(assignedDriver.driverName)}</span>`
-          : `<span class="ts-driver-unassigned">Chưa gán tài xế</span>`;
-        const pickupLoc = escapeHtml(item.pickupAddress || item.transship || item.transshipStation || item.firstStop || '—');
-        const seatCodes = g.members ? g.members.map(s => s.code) : [item.code || '—'];
-        const seatCount = g.members ? g.members.length : 1;
-        const phone = item.phone || '—';
-        const totalPrice = item.price ? (item.price * seatCount).toLocaleString('vi-VN') + 'đ' : '—';
-        const note = seatNoteWithReason(item);
-        const noteSafe = escapeHtml(note);
-        const noteHtml = note
+      pickupBody.innerHTML = pickupRowsFiltered.map((r, idx) => {
+        const noteSafe = escapeHtml(r.note);
+        const noteHtml = r.note
           ? `<div class="pax-note-row"><svg class="pax-note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="pax-note-clamp">${noteSafe}</span></div>`
           : `<span class="pax-note-empty">—</span>`;
-        const customerNameSafe = escapeHtml(item.customerName || 'Khách');
-        const statusBadge = tsRenderTransshipStatusBadge(item, 'pickup', !!assignedDriver);
-        const ticketKey = 'pickup:' + (item.ticketNo || ('T-' + item.code));
-
+        // "Địa chỉ đón" gộp cả trạm đi lẫn địa chỉ cụ thể: trạm ở dòng chính, địa chỉ cụ thể ở dòng phụ
+        // nhỏ hơn (.ch-sub-address, y hệt pattern cột "Hành trình" trang Rước liền) — chỉ hiện dòng phụ
+        // khi nó khác trạm (tránh lặp lại y hệt 1 chữ 2 lần khi khách không có địa chỉ cụ thể riêng).
+        const addressHtml = (r.pickupLoc && r.pickupLoc !== r.station)
+          ? `${escapeHtml(r.station)}<div class="ch-sub-address">${escapeHtml(r.pickupLoc)}</div>`
+          : escapeHtml(r.station);
         return `
-          <tr data-ticket="${escapeHtml(item.ticketNo || '')}">
+          <tr data-ticket="${escapeHtml(r.item.ticketNo || '')}">
             <td class="mono pax-col-stt">${idx + 1}</td>
-            <td class="pax-col-driver">${driverCellHtml}</td>
-            <td class="pax-col-address">${pickupLoc}</td>
-            <td class="pax-col-sl">${seatCount}</td>
-            <td class="pax-col-vt">${seatCodes.join(', ')}</td>
-            <td class="pax-col-name">${customerNameSafe}</td>
-            <td class="pax-col-phone">${phone}</td>
-            <td class="pax-col-total">${totalPrice}</td>
-            <td class="pax-col-status">${statusBadge}</td>
+            <td class="pax-col-driver">${r.driverCellHtml}</td>
+            <td class="pax-col-address">${addressHtml}</td>
+            <td class="pax-col-sl">${r.seatCount}</td>
+            <td class="pax-col-vt">${escapeHtml(r.seatCodes.join(', '))}</td>
+            <td class="pax-col-name">${escapeHtml(r.customerName)}</td>
+            <td class="pax-col-phone">${escapeHtml(r.phone)}</td>
+            <td class="pax-col-total">${r.totalPrice}</td>
+            <td class="pax-col-status">${r.statusBadge}</td>
             <td class="pax-col-note" title="${noteSafe}">${noteHtml}</td>
-            <td class="pax-col-check ts-check-col"><input type="checkbox" ${tsSelectedTicketKeys.has(ticketKey) ? 'checked' : ''} data-change-action="tsToggleRow" data-args='["${ticketKey}","__this__"]'></td>
+            <td class="pax-col-check ts-check-col"><input type="checkbox" ${tsSelectedTicketKeys.has(r.ticketKey) ? 'checked' : ''} data-change-action="tsToggleRow" data-args='["${r.ticketKey}","__this__"]'></td>
           </tr>
         `;
       }).join('');
     }
   }
 
-  // Render Table 2: DANH SÁCH TRUNG CHUYỂN TRẢ
+  // Render Table 2: DANH SÁCH TRUNG CHUYỂN TRẢ — cùng cách làm với bảng "đón" ở trên.
   if (dropoffBody) {
-    if (dropoffList.length === 0) {
-      dropoffBody.innerHTML = '<tr><td colspan="10" class="ts-empty">Không có hành khách cần trung chuyển trả trong chuyến này</td></tr>';
+    const dropoffRows = dropoffList.map(g => {
+      const item = g.main;
+      // "Trạm đến" (station) KHÔNG còn là cột riêng — gộp hiển thị chung vào ô "Địa chỉ đón/trả" (trạm
+      // chính ở dòng đầu, địa chỉ cụ thể ở dòng phụ nếu khác trạm) nhưng vẫn giữ làm giá trị-để-lọc riêng
+      // cho nút lọc gắn trên header "Địa chỉ đón/trả" (tsOpenColumnFilter).
+      const station = item.lastStop || '—';
+      const dropoffLoc = item.dropoffAddress || item.arrivalTransfer || item.lastStop || '—';
+      const seatCodes = g.members ? g.members.map(s => s.code) : [item.code || '—'];
+      const seatCount = g.members ? g.members.length : 1;
+      const phone = item.phone || '—';
+      const totalPrice = item.price ? (item.price * seatCount).toLocaleString('vi-VN') + 'đ' : '—';
+      const note = seatNoteWithReason(item);
+      const customerName = item.customerName || 'Khách';
+      const statusLabel = item.paid ? 'Đã trả' : 'Chờ trả';
+      const statusBadge = tsRenderTransshipStatusBadge(item, 'dropoff');
+      const ticketKey = 'dropoff:' + (item.ticketNo || ('T-' + item.code));
+      return { item, station, dropoffLoc, seatCodes, seatCount, phone, totalPrice, note, customerName, statusLabel, statusBadge, ticketKey };
+    });
+
+    tsLastDropoffRows = dropoffRows; // popover filter (tsOpenColumnFilter) đọc lại từ đây
+    tsUpdateColFilterButtonsActive('dropoff');
+    const dropoffRowsFiltered = dropoffRows.filter(r => tsRowPassesColumnFilters('dropoff', r, TS_DROPOFF_FIELD_VALUE));
+
+    if (dropoffRowsFiltered.length === 0) {
+      dropoffBody.innerHTML = `<tr><td colspan="10" class="ts-empty">${dropoffRows.length === 0 ? 'Không có hành khách cần trung chuyển trả trong chuyến này' : 'Không có khách nào khớp bộ lọc đang chọn'}</td></tr>`;
     } else {
-      dropoffBody.innerHTML = dropoffList.map((g, idx) => {
-        const item = g.main;
-        const dropoffLoc = escapeHtml(item.dropoffAddress || item.arrivalTransfer || item.lastStop || '—');
-        const seatCodes = g.members ? g.members.map(s => s.code) : [item.code || '—'];
-        const seatCount = g.members ? g.members.length : 1;
-        const phone = item.phone || '—';
-        const totalPrice = item.price ? (item.price * seatCount).toLocaleString('vi-VN') + 'đ' : '—';
-        const note = seatNoteWithReason(item);
-        const noteSafe = escapeHtml(note);
-        const noteHtml = note
+      dropoffBody.innerHTML = dropoffRowsFiltered.map((r, idx) => {
+        const noteSafe = escapeHtml(r.note);
+        const noteHtml = r.note
           ? `<div class="pax-note-row"><svg class="pax-note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="pax-note-clamp">${noteSafe}</span></div>`
           : `<span class="pax-note-empty">—</span>`;
-        const customerNameSafe = escapeHtml(item.customerName || 'Khách');
-        const statusBadge = tsRenderTransshipStatusBadge(item, 'dropoff');
-        const ticketKey = 'dropoff:' + (item.ticketNo || ('T-' + item.code));
-
+        const addressHtml = (r.dropoffLoc && r.dropoffLoc !== r.station)
+          ? `${escapeHtml(r.station)}<div class="ch-sub-address">${escapeHtml(r.dropoffLoc)}</div>`
+          : escapeHtml(r.station);
         return `
-          <tr data-ticket="${escapeHtml(item.ticketNo || '')}">
+          <tr data-ticket="${escapeHtml(r.item.ticketNo || '')}">
             <td class="mono pax-col-stt">${idx + 1}</td>
-            <td class="pax-col-address">${dropoffLoc}</td>
-            <td class="pax-col-sl">${seatCount}</td>
-            <td class="pax-col-vt">${seatCodes.join(', ')}</td>
-            <td class="pax-col-name">${customerNameSafe}</td>
-            <td class="pax-col-phone">${phone}</td>
-            <td class="pax-col-total">${totalPrice}</td>
-            <td class="pax-col-status">${statusBadge}</td>
+            <td class="pax-col-address">${addressHtml}</td>
+            <td class="pax-col-sl">${r.seatCount}</td>
+            <td class="pax-col-vt">${escapeHtml(r.seatCodes.join(', '))}</td>
+            <td class="pax-col-name">${escapeHtml(r.customerName)}</td>
+            <td class="pax-col-phone">${escapeHtml(r.phone)}</td>
+            <td class="pax-col-total">${r.totalPrice}</td>
+            <td class="pax-col-status">${r.statusBadge}</td>
             <td class="pax-col-note" title="${noteSafe}">${noteHtml}</td>
-            <td class="pax-col-check ts-check-col"><input type="checkbox" ${tsSelectedTicketKeys.has(ticketKey) ? 'checked' : ''} data-change-action="tsToggleRow" data-args='["${ticketKey}","__this__"]'></td>
+            <td class="pax-col-check ts-check-col"><input type="checkbox" ${tsSelectedTicketKeys.has(r.ticketKey) ? 'checked' : ''} data-change-action="tsToggleRow" data-args='["${r.ticketKey}","__this__"]'></td>
           </tr>
         `;
       }).join('');
@@ -713,7 +1004,7 @@ document.addEventListener('click', function (e) {
 });
 
 function getAllBookedSeats() {
-  return [...seatPlanDown.map(s => ({ ...s, floor: 'down' })), ...seatPlanUp.map(s => ({ ...s, floor: 'up' })), ...extraLeftoverSeats.map(s => ({ ...s, floor: 'extra' }))]
+  return [...seatPlanDown.map(s => ({ ...s, floor: 'down' })), ...seatPlanUp.map(s => ({ ...s, floor: 'up' })), ...extraLeftoverSeats.map(s => ({ ...s, floor: 'extra' })), ...subSeats.map(s => ({ ...s, floor: 'sub' }))]
     .filter(s => ['sold', 'hold', 'free', 'cargo'].includes(s.state));
 }
 
@@ -825,7 +1116,7 @@ function renderPassengerList() {
 // khi xe có nhiều ghế (~44-47 ghế → tới ~2000 lượt so sánh dư thừa mỗi lần render trước khi sửa).
 function buildTicketGroupMap() {
   const map = new Map();
-  [...seatPlanDown, ...seatPlanUp].forEach(s => {
+  [...seatPlanDown, ...seatPlanUp, ...subSeats].forEach(s => {
     if (!s.ticketNo) return;
     if (!map.has(s.ticketNo)) map.set(s.ticketNo, []);
     map.get(s.ticketNo).push(s);
@@ -833,7 +1124,7 @@ function buildTicketGroupMap() {
   return map;
 }
 
-function seatCard(seat, ticketGroupMap) {
+function seatCard(seat, ticketGroupMap, isNarrow) {
   if (seat.state === 'hidden') {
     return `<div class="seat-card hidden-placeholder"></div>`;
   }
@@ -897,15 +1188,30 @@ function seatCard(seat, ticketGroupMap) {
     <div class="seat-note" title="${noteStr}"><span class="seat-label-full">Ghi chú: </span><span class="seat-label-short">GC: </span>${noteStr}</div>
   `;
 
+  const guestTagHtml = isEmpty ? '' : guestTypeTagHtml(seat.guestType);
+
+  // Card đủ rộng (layout 2 cột mặc định) -> giữ nguyên kiểu cũ: tag loại khách đi cùng hàng với mã ghế,
+  // cọc+giá+nút Hủy gộp chung 1 cụm ở góc phải.
+  // Card hẹp (layout 3 cột, xe ~34+ chỗ trở lên) -> cụm cọc+giá+Hủy gộp chung dễ tràn ra ngoài thẻ, nên
+  // tách riêng: hàng 1 chỉ còn mã ghế (trái) + giá/Hủy (phải, luôn cố định góc phải); hàng 2 (bên dưới)
+  // là tag loại khách (trái) + cọc (phải, thẳng lề với giá ở hàng trên).
+  const topHtml = isNarrow
+    ? `<div class="seat-top">
+      <div class="seat-code">${seat.code}</div>
+      <div class="seat-top-right">${priceHtml}${cancelTag}</div>
+    </div>
+    ${(guestTagHtml || depositHtml) ? `<div class="seat-second-row"><div class="seat-second-row-left">${guestTagHtml}</div><div class="seat-second-row-right">${depositHtml}</div></div>` : ''}`
+    : `<div class="seat-top">
+      <div>
+        <div class="seat-code" style="display:inline-block; vertical-align:middle;">${seat.code}</div>${guestTagHtml}
+      </div>
+      <div class="seat-top-right">${depositHtml}${priceHtml}${cancelTag}</div>
+    </div>`;
+
   return `
   <div class="seat-card ${cardStateClass}" data-code="${seat.code}" data-action="onSeatClick" data-args='${JSON.stringify(["__event__", seat.code])}'>
     ${lockHtml}
-    <div class="seat-top">
-      <div>
-        <div class="seat-code" style="display:inline-block; vertical-align:middle;">${seat.code}</div>${isEmpty ? '' : guestTypeTagHtml(seat.guestType)}
-      </div>
-      <div class="seat-top-right">${depositHtml}${priceHtml}${cancelTag}</div>
-    </div>
+    ${topHtml}
     ${linesHtml}
     <button class="seat-footbtn" type="button" data-action="seatFootBtnClick" data-stop-propagation="1" data-seat-code="${seat.code}" data-edit-mode="${isEmpty ? '0' : '1'}"><span class="foot-text-normal">${footLabel}</span><span class="foot-text-hover">${footHoverLabel}</span></button>
   </div>`;
@@ -921,11 +1227,11 @@ function renderSeats() {
 
   if (floorDownEl) {
     floorDownEl.classList.toggle('cols-3', useThreeCols);
-    floorDownEl.innerHTML = seatPlanDown.map(s => seatCard(s, ticketGroupMap)).join('');
+    floorDownEl.innerHTML = seatPlanDown.map(s => seatCard(s, ticketGroupMap, useThreeCols)).join('');
   }
   if (floorUpEl) {
     floorUpEl.classList.toggle('cols-3', useThreeCols);
-    floorUpEl.innerHTML = seatPlanUp.map(s => seatCard(s, ticketGroupMap)).join('');
+    floorUpEl.innerHTML = seatPlanUp.map(s => seatCard(s, ticketGroupMap, useThreeCols)).join('');
   }
 
   updatePassengerTabCount();
@@ -942,8 +1248,11 @@ function renderSeats() {
 function updateTripStats() {
   const allSeats = [...seatPlanDown, ...seatPlanUp];
   const totalSeats = allSeats.filter(s => s.state !== 'hidden').length + subSeats.length;
-  const bookedSeats = allSeats.filter(s => ['sold', 'hold', 'free', 'cargo'].includes(s.state)).concat(subSeats);
-  const soldSeats = bookedSeats.filter(s => s.state === 'sold' || s.state === 'sub');
+  // Ghế phụ giờ cũng có trạng thái 'empty' (ô trống chưa bán, xem addEmptySubSeat) nên phải lọc theo
+  // cùng điều kiện với ghế thường thay vì gộp thẳng toàn bộ subSeats vào "đã đặt" như trước (lúc đó mọi
+  // ghế phụ đều là đã bán, không có khái niệm ghế phụ trống).
+  const bookedSeats = allSeats.concat(subSeats).filter(s => ['sold', 'hold', 'free', 'cargo'].includes(s.state));
+  const soldSeats = bookedSeats.filter(s => s.state === 'sold');
 
   let totalRevenue = 0, paidRevenue = 0, unpaidRevenue = 0;
   bookedSeats.forEach(s => {
@@ -979,6 +1288,11 @@ renderSubSeats();
 renderCancelledSeats();
 updateCancelledTabCount();
 renderZone1TripList();
+if (typeof populateDirectionFilter === 'function') populateDirectionFilter();
+if (typeof populateStationPickers === 'function') populateStationPickers();
+// Dựng sẵn 4 mục cho combobox "Hướng đi" Zone 1 (HTML để rỗng) — khỏi phụ thuộc lần focus đầu.
+if (typeof renderDirectionOptions === 'function') renderDirectionOptions('');
+if (typeof renderRouteOptions === 'function') renderRouteOptions('');
 
 function setZone1Collapsed(collapsed) {
   document.body.classList.toggle('zone1-collapsed', collapsed);
@@ -1244,21 +1558,39 @@ function refreshTicket() {
   updateTicketQR();
 }
 
+// Modal "Đặt cọc" (#depositModal) dùng CHUNG cho nhiều nơi — panel đặt vé chính (checkbox
+// f_deposit_enabled) lẫn modal "Đặt lại vé" (checkbox rbDepositEnabled) — nên phải nhớ checkbox nào vừa
+// bật cọc để lúc "Xác nhận"/"Hủy" cập nhật/bỏ tick ĐÚNG checkbox đó, không hard-code riêng cho panel
+// chính như trước (bấm "Đặt cọc" bên modal Đặt lại vé sẽ vô tình bỏ tick nhầm checkbox của panel chính).
+let depositModalSourceCheckboxId = 'f_deposit_enabled';
+
 // Tick "Đặt cọc" -> mở ngay modal nhập số tiền + phương thức. Bỏ tick -> tắt cọc, xoá số tiền đã gõ
-// để lần tick lại sau không giữ số cũ gây nhầm.
+// để lần tick lại sau không giữ số cũ gây nhầm. Gọi qua data-change-action nên `this` = checkbox vừa bấm.
 function onDepositToggle() {
-  const checked = document.getElementById('f_deposit_enabled').checked;
-  if (checked) {
+  depositModalSourceCheckboxId = this.id || 'f_deposit_enabled';
+  if (this.checked) {
     openDepositModal();
   } else {
     document.getElementById('f_deposit_amount').value = '';
-    refreshTicket();
+    if (depositModalSourceCheckboxId === 'f_deposit_enabled') refreshTicket();
+    else updateRebookDepositHint();
   }
 }
 
 function openDepositModal() {
   document.getElementById('f_deposit_amount').focus();
   document.getElementById('depositModal').classList.add('open');
+}
+
+// Hiện số tiền cọc đã nhập bên modal "Đặt lại vé" — panel đặt vé chính có cả tờ vé xem trước
+// (refreshTicket() tự vẽ dòng "Đã cọc"), còn modal Đặt lại vé không có tờ vé nên chỉ cần 1 dòng gợi ý
+// ngắn cạnh checkbox "Đặt cọc".
+function updateRebookDepositHint() {
+  const hint = document.getElementById('rbDepositHint');
+  if (!hint) return;
+  const enabled = document.getElementById('rbDepositEnabled')?.checked;
+  const amount = parseInt(document.getElementById('f_deposit_amount').value, 10) || 0;
+  hint.textContent = (enabled && amount > 0) ? `Đã cọc: ${amount.toLocaleString('vi-VN')}đ` : '';
 }
 
 // "Xác nhận" trong modal — bắt buộc phải có số tiền cọc > 0 mới cho đóng modal.
@@ -1269,15 +1601,18 @@ function closeDepositModal() {
     return;
   }
   document.getElementById('depositModal').classList.remove('open');
-  refreshTicket();
+  if (depositModalSourceCheckboxId === 'f_deposit_enabled') refreshTicket();
+  else updateRebookDepositHint();
 }
 
-// "Hủy" trong modal — huỷ luôn việc đặt cọc, bỏ tick checkbox lại.
+// "Hủy" trong modal — huỷ luôn việc đặt cọc, bỏ tick đúng checkbox đã mở modal này lại.
 function cancelDepositModal() {
   document.getElementById('depositModal').classList.remove('open');
-  document.getElementById('f_deposit_enabled').checked = false;
+  const checkboxEl = document.getElementById(depositModalSourceCheckboxId);
+  if (checkboxEl) checkboxEl.checked = false;
   document.getElementById('f_deposit_amount').value = '';
-  refreshTicket();
+  if (depositModalSourceCheckboxId === 'f_deposit_enabled') refreshTicket();
+  else updateRebookDepositHint();
 }
 
 function buildScannableQRText() {
@@ -1465,17 +1800,17 @@ function buildMultiTicketPrintHtml(dataList) {
 // Chuẩn bị dữ liệu hiển thị cho 1 tờ vé (không mở cửa sổ in) — tách khỏi printTicket() để dùng lại
 // được cho cả in nhiều vé gộp chung 1 cửa sổ (xem printTicketsSeparately()).
 function buildTicketPrintData(seats) {
-  const currentTrip = (allTripsMeta && allTripsMeta.find(t => t.id === currentTripId)) || { route: 'Sài Gòn - Châu Đốc', time: '07:00' };
+  const currentTrip = (allTripsMeta && allTripsMeta.find(t => t.id === currentTripId)) || { route: 'Sài Gòn - An Giang', time: '07:00' };
   const firstSeat = seats[0];
   const seatsText = seats.map(s => s.code).join(', ');
-  const ticketNo = firstSeat.ticketNo || ('SGCD-' + String(Math.floor(1000 + Math.random() * 9000)));
+  const ticketNo = firstSeat.ticketNo || ('SGAG-' + String(Math.floor(1000 + Math.random() * 9000)));
   const customerName = firstSeat.customerName || document.getElementById('f_name').value.trim() || 'Khách lẻ';
   const phone = firstSeat.phone || collectPhoneValues('f_phone', 'f_phone_extra') || '—';
-  const fromStation = firstSeat.firstStop || getStationValue().trim() || 'Trạm Kinh Dương Vương';
+  const fromStation = firstSeat.firstStop || getStationValue().trim() || '508 Kinh Dương Vương';
   const toStation = firstSeat.lastStop || document.getElementById('f_destination').value.trim() || 'Trạm Châu Đốc';
   const unitPrice = firstSeat.price || getEditedPrice();
   const totalPrice = unitPrice * seats.length;
-  const route = currentTrip.route || 'Sài Gòn - Châu Đốc';
+  const route = currentTrip.route || 'Sài Gòn - An Giang';
   const time = currentTrip.time || '07:00';
   const paymentMethod = firstSeat.paymentMethod || 'Tiền mặt';
 
@@ -1513,8 +1848,11 @@ function reprintCurrentPanelTicket() {
   printTicketsSeparately(seats);
 }
 
-function focusPriceEdit() {
-  const el = document.getElementById('t_price');
+// Cả 3 hàm dưới đây dùng chung cho giá vé panel đặt vé chính (#t_price, gọi không truyền tham số) lẫn
+// giá vé modal "Đặt lại vé" (#rbPrice, gọi kèm 'rbPrice') — xem readAndValidateRebookDeposit()/
+// confirmRebook() ở ticketstaff-account.js.
+function focusPriceEdit(priceElId) {
+  const el = document.getElementById(priceElId || 't_price');
   if (!el) return;
   el.contentEditable = "true";
   el.focus();
@@ -1527,16 +1865,18 @@ function focusPriceEdit() {
   } catch (e) { }
 }
 
-function onPriceEdit() {
-  const el = document.getElementById('t_price');
+function onPriceEdit(priceElId) {
+  const id = priceElId || 't_price';
+  const el = document.getElementById(id);
   if (!el) return;
   const num = parseInt(el.textContent.replace(/[^0-9]/g, '')) || 0;
   el.textContent = num.toLocaleString('vi-VN') + 'đ';
-  updateZeroPriceReasonVisibility();
+  updateZeroPriceReasonVisibility(id);
+  if (id === 'rbPrice' && typeof updateRebookTotalPrice === 'function') updateRebookTotalPrice();
 }
 
-function getEditedPrice() {
-  const el = document.getElementById('t_price');
+function getEditedPrice(priceElId) {
+  const el = document.getElementById(priceElId || 't_price');
   if (!el) return 280000;
   // Không dùng "|| 280000": giá 0đ (miễn phí, có lý do) là giá trị hợp lệ, không phải giá trị thiếu.
   const num = parseInt(el.textContent.replace(/[^0-9]/g, ''), 10);
@@ -1549,7 +1889,7 @@ function getEditedPrice() {
 // hiện sai/không đổi khi sửa đúng ghế không phải ghế đại diện đó.
 function syncDepositToTicketGroup(seat) {
   if (!seat.ticketNo) return;
-  [...seatPlanDown, ...seatPlanUp, ...extraLeftoverSeats].forEach(s => {
+  [...seatPlanDown, ...seatPlanUp, ...extraLeftoverSeats, ...subSeats].forEach(s => {
     if (s !== seat && s.ticketNo === seat.ticketNo) {
       s.depositAmount = seat.depositAmount;
       s.depositMethod = seat.depositMethod;
@@ -1712,10 +2052,152 @@ function sellTicket() {
 
 function closeSellPaymentModal() {
   document.getElementById('sellPaymentModal').classList.remove('open');
+  // Bỏ dở giữa chừng (bấm "Đóng" thay vì xác nhận) — dọn sạch mọi ngữ cảnh đang chờ modal này xử lý,
+  // tránh lần mở tiếp theo (từ 1 luồng bán vé khác) lỡ chạy nhầm ngữ cảnh cũ còn sót lại.
+  sellFromTransferBarSeats = null;
+  pendingRebookSell = null;
+  pendingPickupAssignSell = null;
+}
+
+// Gắn nhãn trạm bán/giai đoạn bán (PRE_DEPART/POST_DEPART) + lần Re-open đang mở (nếu có) CHỈ 1 LẦN
+// lúc tạo vé mới — dùng chung cho mọi luồng tạo vé "sold" ngoài panel chính (Đặt lại vé, Chỉ định xe
+// rước) để nhất quán với applyFormToSeat() ở sellTicket()/confirmSellPayment().
+function tsStampSoldPhaseIfNeeded(seat, tripId) {
+  if (seat.soldPhase) return;
+  seat.sellingStation = (typeof getCurrentStation === 'function') ? getCurrentStation() : '';
+  const tripStatus = (typeof getTripLifecycleStatus === 'function') ? getTripLifecycleStatus(tripId) : 'SELLING';
+  seat.soldPhase = tripStatus === 'SELLING' ? 'PRE_DEPART' : 'POST_DEPART';
+  seat.reopenEventId = (tripStatus === 'REOPEN' && typeof getActiveReopenEvent === 'function')
+    ? ((getActiveReopenEvent(tripId) || {}).id || null)
+    : null;
 }
 
 function confirmSellPayment() {
   const paymentMethod = document.querySelector('input[name="sellPaymentMethod"]:checked')?.value || 'Tiền mặt';
+
+  // "Bán vé" từ modal "Đặt lại vé" (confirmRebookAndSell() ở ticketstaff-account.js) — chuyến đích có
+  // thể KHÁC chuyến đang xem (rebookSelectedTripId, không phải currentTripId).
+  if (pendingRebookSell) {
+    const ctx = pendingRebookSell;
+    pendingRebookSell = null;
+    const bank = tripSeatBank[ctx.tripId];
+    if (!bank) { closeSellPaymentModal(); return; }
+    const allSeats = [...(bank.down || []), ...(bank.up || [])];
+    const tripMeta = allTripsMeta.find(t => t.id === ctx.tripId);
+    const prefix = (tripMeta?.route?.includes('Sài Gòn')) ? 'SGCD' : 'CDSG';
+    const newTicketNo = `${prefix}-${Math.floor(Math.random() * 9000) + 1000}`;
+    const staffCode = (typeof getCurrentActionStaffCode === 'function') ? getCurrentActionStaffCode() : 'system';
+    const soldSeats = [];
+    ctx.seatCodes.forEach(code => {
+      const seat = allSeats.find(s => s.code === code);
+      if (!seat || seat.state !== 'empty') return;
+      Object.assign(seat, {
+        state: 'sold',
+        customerName: ctx.form.name,
+        phone: ctx.form.phone,
+        guestType: ctx.form.guestType,
+        firstStop: ctx.form.firstStop,
+        transshipStation: ctx.form.transship,
+        lastStop: ctx.form.lastStop,
+        arrivalTransfer: ctx.form.arrivalTransfer,
+        note: ctx.form.note,
+        hasLuggage: ctx.form.hasLuggage,
+        ticketNo: newTicketNo,
+        paid: true,
+        count: ctx.seatCodes.length,
+        staff: staffCode,
+        paymentMethod,
+        price: ctx.priceInfo.price,
+        zeroPriceReason: ctx.priceInfo.zeroPriceReason,
+        depositAmount: ctx.deposit.depositAmount,
+        depositMethod: ctx.deposit.depositMethod,
+        actionTime: new Date().toISOString()
+      });
+      tsStampSoldPhaseIfNeeded(seat, ctx.tripId);
+      soldSeats.push(seat);
+    });
+    if (!soldSeats.length) { showToast('Không thể bán ghế đã chọn'); closeSellPaymentModal(); return; }
+
+    saveSeatBank();
+    if (currentTripId === ctx.tripId) {
+      seatPlanDown = bank.down;
+      seatPlanUp = bank.up;
+      renderSeats();
+    }
+    closeSellPaymentModal();
+    closeRebookModal();
+    showToast(`Đã bán vé thành công ${soldSeats.length} ghế cho ${ctx.form.name}`);
+    printTicketsSeparately(soldSeats);
+    refreshHistoryViewsAfterBooking(ctx.form.phone);
+    return;
+  }
+
+  // "Bán vé" từ modal "Chỉ định xe rước" (pkConfirmAssign() ở ticketstaff-pickup.js).
+  if (pendingPickupAssignSell) {
+    const ctx = pendingPickupAssignSell;
+    pendingPickupAssignSell = null;
+    const pax = pickupPassengers.find(p => p.id === ctx.paxId);
+    const bank = tripSeatBank[ctx.tripId];
+    if (!pax || !bank) { closeSellPaymentModal(); return; }
+    const allSeats = [...(bank.down || []), ...(bank.up || [])];
+    const staffCode = (typeof getCurrentActionStaffCode === 'function') ? getCurrentActionStaffCode() : 'system';
+
+    // Nếu khách đang đổi chỉ định từ 1 hoặc nhiều ghế/phơi xe khác thì trả ghế cũ về trạng thái trống —
+    // chỉ làm lúc xác nhận thanh toán xong (không phải lúc mở modal), tránh mất ghế cũ nếu người dùng
+    // bấm "Đóng" thay vì xác nhận.
+    if (pax.assigned) {
+      const oldBank = tripSeatBank[pax.assigned.tripId];
+      if (oldBank) {
+        const oldSeatsList = pax.assigned.seats || (pax.assigned.seat ? pax.assigned.seat.split(',').map(s => s.trim()).filter(Boolean) : []);
+        oldSeatsList.forEach(code => {
+          const oldSeat = [...oldBank.down, ...oldBank.up].find(s => s.code === code);
+          if (oldSeat) Object.assign(oldSeat, { state: 'empty', customerName: null, phone: null, ticketNo: null, paid: false });
+        });
+      }
+    }
+
+    const soldSeats = [];
+    ctx.seatCodes.forEach(code => {
+      const seat = allSeats.find(s => s.code === code);
+      if (!seat) return;
+      Object.assign(seat, {
+        state: 'sold',
+        customerName: pax.name,
+        phone: pax.phone,
+        firstStop: pax.fromStation,
+        lastStop: pax.toStation,
+        transshipStation: pax.fromTransfer,
+        price: ctx.unitPrice,
+        paid: true,
+        count: ctx.seatCodes.length,
+        ticketNo: ctx.ticketNo,
+        staff: staffCode,
+        paymentMethod,
+        actionTime: new Date().toISOString()
+      });
+      tsStampSoldPhaseIfNeeded(seat, ctx.tripId);
+      soldSeats.push(seat);
+    });
+    if (!soldSeats.length) { showToast('Không thể bán ghế đã chọn'); closeSellPaymentModal(); return; }
+
+    pax.assigned = { tripId: ctx.tripId, seat: ctx.seatCodes.join(', '), seats: [...ctx.seatCodes], price: ctx.unitPrice };
+
+    saveSeatBank();
+    savePickupPassengers();
+    if (currentTripId === ctx.tripId) {
+      seatPlanDown = bank.down;
+      seatPlanUp = bank.up;
+      renderSeats();
+    }
+    closeSellPaymentModal();
+    if (typeof pkCloseAssignModal === 'function') pkCloseAssignModal();
+    if (typeof pkRenderPaxTable === 'function') pkRenderPaxTable();
+    const tripMeta = allTripsMeta.find(t => t.id === ctx.tripId);
+    const totalPrice = ctx.unitPrice * ctx.seatCodes.length;
+    showToast(`Đã bán vé cho ${pax.name} lên xe ${tripMeta ? (tripMeta.plate || '') : ''} — ${ctx.seatCodes.length} ghế (${ctx.seatCodes.join(', ')}) · Tổng: ${totalPrice.toLocaleString('vi-VN')}đ`);
+    printTicketsSeparately(soldSeats);
+    return;
+  }
 
   // Bán nhanh từ thanh chuyển ghế (sellFromTransferBar()) — các ghế này có thể thuộc nhiều vé/khách
   // khác nhau nên KHÔNG đi qua panel sửa vé (không có 1 bộ dữ liệu chung để hiện), chỉ đánh dấu đã
@@ -1949,24 +2431,43 @@ function renderExtraSeats() {
   list.classList.toggle('cols-3', useThreeCols);
 
   const ticketGroupMap = buildTicketGroupMap();
-  list.innerHTML = extraLeftoverSeats.map(s => seatCard(s, ticketGroupMap)).join('');
+  list.innerHTML = extraLeftoverSeats.map(s => seatCard(s, ticketGroupMap, useThreeCols)).join('');
 }
 
 /* ===================== GHẾ PHỤ (chỉ ghi chú + giá tiền) ===================== */
 
-let currentCancelSeatCode = null;
+let currentCancelSeatCodes = [];
 
 function openCancelModal(code) {
   if (blockIfMultiSelectActive()) return;
-  currentCancelSeatCode = code;
+  openCancelModalForCodes([code]);
+}
+
+/* Hủy nhiều ghế cùng lúc — dùng chung modal/lý do hủy với hủy 1 ghế (openCancelModal), chỉ khác là
+   nhận vào danh sách mã ghế thay vì 1 mã. Gọi từ nút "Hủy vé" trên thanh chuyển ghế
+   (xem cancelSelectedFromTransferBar bên dưới) khi đang chọn nhiều ghế đã đặt/đã bán làm nguồn. */
+function openCancelModalForCodes(codes) {
+  if (!codes || !codes.length) return;
+  currentCancelSeatCodes = codes;
   const codeEl = document.getElementById('cancelSeatCode');
   const reasonEl = document.getElementById('cancelReason');
   const btn = document.getElementById('confirmCancelBtn');
-  if (codeEl) codeEl.textContent = code;
+  if (codeEl) codeEl.textContent = codes.join(', ');
   if (reasonEl) reasonEl.value = '';
   if (btn) btn.disabled = true;
   const modal = document.getElementById('cancelModal');
   if (modal) modal.classList.add('open');
+}
+
+/* Hủy (các) ghế đang chọn làm nguồn ở thanh chuyển ghế — cho phép chọn nhiều ghế đã đặt/đã bán rồi
+   hủy cùng lúc thay vì phải mở từng ghế một. Chỉ khả dụng khi tất cả ghế nguồn thuộc đúng chuyến
+   đang xem (không áp dụng cho vé hủy đang chọn lại — transferSourceCancelId). */
+function cancelSelectedFromTransferBar() {
+  if (transferSourceCancelId || !selectedSourceSeats.length || transferSourceTripId !== currentTripId) return;
+  const seats = selectedSourceSeats.map(code => findSeatInTrip(transferSourceTripId, code)).filter(Boolean);
+  if (!seats.length) return;
+  exitMultiSelectMode();
+  openCancelModalForCodes(seats.map(s => s.code));
 }
 
 function checkCancelReason() {
@@ -1978,41 +2479,46 @@ function checkCancelReason() {
 }
 
 function confirmCancel() {
-  const code = currentCancelSeatCode;
-  if (!code) return;
+  const codes = currentCancelSeatCodes;
+  if (!codes || !codes.length) return;
   const reasonEl = document.getElementById('cancelReason');
   const reason = reasonEl ? reasonEl.value.trim() : '';
   if (!reason) return;
 
-  const seat = findSeat(code);
-  if (!seat) return;
-
   const nowStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('vi-VN');
 
-  const cancelledRecord = {
-    id: 'CANCEL_' + Date.now(),
-    code: seat.code,
-    customerName: seat.customerName || 'Khách vảng lai',
-    phone: seat.phone || '—',
-    firstStop: seat.firstStop || 'Kinh Dương Vương',
-    lastStop: seat.lastStop || 'Châu Đốc',
-    price: seat.price || 280000,
-    reason: reason,
-    cancelTime: nowStr,
-    cancelStaff: getCurrentActionStaffCode(),
-    ticketNo: seat.ticketNo || '—',
-    note: seatNoteWithReason(seat) || ''
-  };
-
   if (!cancelledSeats) cancelledSeats = [];
-  cancelledSeats.unshift(cancelledRecord);
+  const cancelledCodes = [];
+  codes.forEach(code => {
+    const seat = findSeat(code);
+    if (!seat) return;
+
+    const cancelledRecord = {
+      id: 'CANCEL_' + Date.now() + '_' + code,
+      code: seat.code,
+      customerName: seat.customerName || 'Khách vảng lai',
+      phone: seat.phone || '—',
+      firstStop: seat.firstStop || 'Kinh Dương Vương',
+      lastStop: seat.lastStop || 'Châu Đốc',
+      price: seat.price || 280000,
+      reason: reason,
+      cancelTime: nowStr,
+      cancelStaff: getCurrentActionStaffCode(),
+      ticketNo: seat.ticketNo || '—',
+      note: seatNoteWithReason(seat) || ''
+    };
+    cancelledSeats.unshift(cancelledRecord);
+    cancelledCodes.push(seat.code);
+
+    // Reset trạng thái ghế về trống
+    clearSeatToEmpty(seat);
+  });
+
+  if (!cancelledCodes.length) return;
 
   if (tripSeatBank[currentTripId]) {
     tripSeatBank[currentTripId].cancelledSeats = cancelledSeats;
   }
-
-  // Reset trạng thái ghế về trống
-  clearSeatToEmpty(seat);
 
   saveSeatBank();
   closeModal('cancelModal');
@@ -2024,37 +2530,8 @@ function confirmCancel() {
   }
   updateTripStats();
   updatePassengerTabCount();
-  showToast(`Đã hủy ghế ${seat.code}. Lý do: ${reason}`);
-}
-
-let editingSubSeatCode = null;
-
-function saveSubSeat() {
-  const note = document.getElementById('subSeatNote').value.trim();
-
-  if (editingSubSeatCode) {
-    const seat = subSeats.find(s => s.code === editingSubSeatCode);
-    if (seat) {
-      seat.note = note;
-      // Giá tiền không được sửa, giữ nguyên giá đã lưu trước đó
-    }
-  } else {
-    subSeats.push({
-      code: nextSubSeatCode(),
-      state: 'sub',
-      note,
-      price: DEFAULT_SUB_SEAT_PRICE,
-      paid: true
-    });
-  }
-
-  if (tripSeatBank[currentTripId]) tripSeatBank[currentTripId].subSeats = subSeats;
-  saveSeatBank();
-  renderSubSeats();
-  updateTripStats();
-  updatePassengerTabCount();
-  closeModal('subSeatModal');
-  showToast(editingSubSeatCode ? 'Đã cập nhật ghế phụ' : 'Đã thêm ghế phụ');
+  showToast(`Đã hủy ghế ${cancelledCodes.join(', ')}. Lý do: ${reason}`);
+  currentCancelSeatCodes = [];
 }
 
 // Dựng lại các <select>/dropdown trong modal Chỉ định xe từ store dùng chung (loại xe / biển số / tài xế
@@ -2304,8 +2781,12 @@ function selectTrip(el, time, routeLabel) {
   if (customerHistoryActive) closeCustomerHistory();
   document.querySelectorAll('.trip-card').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
-  document.getElementById('tripTitle').textContent = time + ' - ' + (routeLabel || 'Sài Gòn - Châu Đốc');
+  document.getElementById('tripTitle').textContent = time + ' - ' + (routeLabel || 'Sài Gòn - An Giang');
   const tripId = el.dataset.trip;
+  // Trạm đi/đến trong panel đặt vé bám theo phơi vừa chọn (region-wide cho Trạm đi; Trạm đến thu hẹp
+  // theo "trạm có thể nhận" nếu phơi có tick — xem stationsForTrip).
+  const selTripMeta = (allTripsMeta || []).find(t => t.id === tripId) || (routeLabel ? { route: routeLabel } : null);
+  if (typeof populateBookingStationDatalists === 'function') populateBookingStationDatalists(selTripMeta);
   const bank = tripSeatBank[tripId];
   if (!tripId || !bank) return;
 
@@ -2351,32 +2832,21 @@ function selectTrip(el, time, routeLabel) {
   if (document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
   if (document.getElementById('zone3Cancelled') && document.getElementById('zone3Cancelled').style.display !== 'none') renderCancelledListTable();
 }
-let selectedDirection = 'sg-cd';
-let selectedRoute = 'all';
-const directionLabels = {
-  'sg-cd': 'Sài Gòn → Châu Đốc',
-  'cd-sg': 'Châu Đốc → Sài Gòn'
-};
-const routeOptions = {
-  'sg-cd': [
-    { id: 'all', label: 'Tất cả tuyến' },
-    { id: 'sg-cd', label: 'Sài Gòn - Châu Đốc' }
-  ],
-  'cd-sg': [
-    { id: 'all', label: 'Tất cả tuyến' },
-    { id: 'cd-sg', label: 'Châu Đốc - Sài Gòn' }
-  ]
-};
+
 function updateTripListForDirection(dir) {
-  const sgList = document.getElementById('tripListSGCD');
-  const cdList = document.getElementById('tripListCDSG');
-  if (!sgList || !cdList) return;
-  const isCD = dir === 'cd-sg';
-  sgList.style.display = isCD ? 'none' : '';
-  cdList.style.display = isCD ? '' : 'none';
-  const activeList = isCD ? cdList : sgList;
-  const firstCard = activeList.querySelector('.trip-card');
-  if (firstCard) selectTrip(firstCard, firstCard.querySelector('.trip-time').textContent, isCD ? 'Châu Đốc - Sài Gòn' : 'Sài Gòn - Châu Đốc');
+  if (!directionLabels[dir]) return;
+  selectedDirection = dir;
+  // Đổi hướng thì bỏ lọc tuyến cũ (danh sách tuyến của mỗi hướng khác nhau).
+  selectedRoute = 'all';
+  const routeInput = document.getElementById('routeTrigger');
+  if (routeInput) routeInput.value = 'Tất cả tuyến';
+  if (typeof renderRouteOptions === 'function') renderRouteOptions('');
+  renderZone1TripList();
+  const firstCard = document.querySelector('#tripListSGCD .trip-card');
+  if (firstCard) {
+    const timeEl = firstCard.querySelector('.trip-time');
+    selectTrip(firstCard, timeEl ? timeEl.textContent : '', directionLabels[dir]);
+  }
 }
 
 /* ===================== SEARCHABLE DROPDOWNS ===================== */
@@ -2458,8 +2928,6 @@ function selectSearchDropdownItem(containerId, label, value, type) {
 }
 
 /* ---- Zone 1: Calendar ---- */
-let calDate = new Date(2026, 6, 8); // 08/07/2026
-let selectedDate = new Date(2026, 6, 8);
 const monthNames = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
 function renderCalendar() {
   const y = calDate.getFullYear(), m = calDate.getMonth();
@@ -2467,7 +2935,7 @@ function renderCalendar() {
   const startOffset = (new Date(y, m, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   const daysInPrevMonth = new Date(y, m, 0).getDate();
-  const todayStr = new Date(2026, 6, 8).toDateString();
+  const todayRefStr = zone1TodayDate().toDateString();
   const selectedStr = selectedDate.toDateString();
 
   let html = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map(d => `<div class="cal-dow">${d}</div>`).join('');
@@ -2477,7 +2945,7 @@ function renderCalendar() {
   for (let d = 1; d <= daysInMonth; d++) {
     const dateObj = new Date(y, m, d);
     const dateStr = dateObj.toDateString();
-    const isToday = dateStr === todayStr;
+    const isToday = dateStr === todayRefStr;
     const isSelected = dateStr === selectedStr;
     const lunar = ((d + 16) % 30) + 1;
     html += `<div class="cal-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-action="pickDate" data-args='${JSON.stringify([y, m, d])}'>${d}<span class="lunar">${lunar}/6</span></div>`;
@@ -2487,16 +2955,23 @@ function renderCalendar() {
   document.getElementById('calGrid').innerHTML = html;
 }
 function shiftMonth(dir) { calDate = new Date(calDate.getFullYear(), calDate.getMonth() + dir, 1); renderCalendar(); }
-function goToday() { calDate = new Date(2026, 6, 8); selectedDate = new Date(2026, 6, 8); renderCalendar(); updateCalTrigger(); }
+function goToday() {
+  calDate = zone1TodayDate();
+  selectedDate = zone1TodayDate();
+  renderCalendar();
+  updateCalTrigger();
+  renderZone1TripList();
+}
 function pickDate(y, m, d) {
   selectedDate = new Date(y, m, d);
   renderCalendar();
   updateCalTrigger();
   toggleCalendar(false);
+  renderZone1TripList();
 }
 
 function updateCalTrigger() {
-  const isToday = selectedDate.toDateString() === new Date(2026, 6, 8).toDateString();
+  const isToday = selectedDate.toDateString() === zone1TodayDate().toDateString();
   const d = String(selectedDate.getDate()).padStart(2, '0');
   const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
   document.getElementById('calTriggerDate').textContent = isToday ? 'Hôm nay' : `${d}/${m}`;
@@ -2622,15 +3097,19 @@ function switchView(viewName) {
 // Admin sửa ở tab khác (xem listener 'storage' phía trên). Seed lần đầu = đúng giá trị hard-code cũ.
 let ROUTES_CFG = FleetStore.buildRoutesCfg();
 
-// Cấu hình "Hướng đi" cho modal Tạo phơi xe (singleModal) — shape { [id]: {label,route,price,
-// fromStations,toStations,pickupStations} }. TRƯỚC ĐÂY khai báo cứng; NAY dựng từ store dùng chung
-// (Hướng + Tuyến do Admin quản trị). Builder chỉ gồm hướng đang bật + có tuyến đang bật.
-let TRIP_DIRECTIONS_CFG = FleetStore.buildTripDirectionsCfg();
+// Cấu hình "Hướng đi" cho modal Tạo phơi xe (singleModal) — key = id HƯỚNG CHÍNH (Admin quản trị),
+// shape { [dirId]: {label,route,sense,price,fromStations,toStations,pickupStations,routeLabels} }.
+// Dropdown chỉ có 4 hướng chính; Trạm đi/Trạm đến là TỔNG HỢP mọi trạm ở địa điểm điểm-đi/điểm-đến
+// của hướng (xem FleetStore.buildDirTripCfg). Chỉ gồm hướng đang bật.
+let TRIP_DIRECTIONS_CFG = FleetStore.buildDirTripCfg();
 
-// Dựng lại 2 cấu hình trên khi Admin sửa Hướng/Tuyến (gọi từ listener 'storage' và sau khi Admin cùng máy đổi dữ liệu).
+// Dựng lại các cấu hình trên khi Admin sửa Hướng/Tuyến (gọi từ listener 'storage' và sau khi Admin cùng máy đổi dữ liệu).
 function reloadFleetCfg() {
   ROUTES_CFG = FleetStore.buildRoutesCfg();
-  TRIP_DIRECTIONS_CFG = FleetStore.buildTripDirectionsCfg();
+  TRIP_DIRECTIONS_CFG = FleetStore.buildDirTripCfg();
+  reloadDirectionLabels();
+  refreshTripMetaFilters();
+  if (typeof populateDirectionFilter === 'function') populateDirectionFilter();
 }
 
 // Global variables specific to Phơi xe
@@ -2681,17 +3160,112 @@ function generateNewEmptyPlan(vehicleType, priceValue = 280000) {
   };
 }
 
+// Đổ 4 hướng cố định vào bộ lọc "Hướng đi" của tab Phơi xe (#filterDirection) — từ FleetStore, giữ lựa
+// chọn hiện tại. Gọi khi tải trang + khi Admin sửa Hướng (reloadFleetCfg).
+function populateDirectionFilter() {
+  const sel = document.getElementById("filterDirection");
+  if (!sel) return;
+  const cur = sel.value;
+  const dirs = FleetStore.getDirections()
+    .filter(d => d && d.active !== false)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  sel.innerHTML = '<option value="">Tất cả hướng</option>' +
+    dirs.map(d => `<option value="${d.id}">${d.label}</option>`).join('');
+  sel.value = dirs.some(d => d.id === cur) ? cur : '';
+}
+
+// Đổ danh mục trạm (FleetStore) vào các <select> chọn Trạm đi/Trạm đến của tab "Rước liền" — phần này
+// KHÔNG gắn với 1 phơi cụ thể (là hàng chờ rước của nhiều chuyến) nên vẫn dùng cả danh mục. Panel đặt vé
+// và modal Đặt lại vé thì lọc theo tuyến của phơi đang mở — xem populateBookingStationDatalists()/
+// populateRebookStationSelects(). Giữ nguyên option "tất cả"/"chọn..." đầu tiên.
+function populateStationPickers() {
+  if (!window.FleetStore) return;
+  const seen = {};
+  const names = [];
+  FleetStore.getStations().forEach(s => {
+    const n = s && s.name;
+    if (n && !seen[n]) { seen[n] = true; names.push(n); }
+  });
+  const optTags = names.map(n => `<option value="${n}">${n}</option>`).join('');
+  const fillSelect = id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const keep = el.querySelector('option[value=""], option[value="all"]');
+    const prev = el.value;
+    el.innerHTML = (keep ? keep.outerHTML : '') + optTags;
+    if (prev && names.indexOf(prev) !== -1) el.value = prev;
+  };
+  ['pkFilterFromStation', 'pkFilterToStation', 'pickupStation', 'pickupDestination'].forEach(fillSelect);
+}
+
+// Trạm theo VÙNG của HƯỚNG (region-wide): Trạm đi = mọi trạm vùng xuất phát, Trạm đến = mọi trạm vùng
+// điểm đến. Route rỗng / hướng lạ → trả cả danh mục.
+function stationsForRoute(route) {
+  const dedupe = arr => { const seen = {}; return (arr || []).filter(n => n && !seen[n] && (seen[n] = true)); };
+  const allNames = () => dedupe((window.FleetStore ? FleetStore.getStations() : []).map(s => s && s.name));
+  if (!route || !window.FleetStore) { const all = allNames(); return { from: all, to: all }; }
+  let from = [], to = [];
+  try {
+    const dirId = FleetStore.getRouteDirectionId(route) || tripDirectionId(route);
+    const cfg = FleetStore.buildDirTripCfg()[dirId];
+    if (cfg) {
+      from = dedupe(cfg.fromStations);
+      to = dedupe(cfg.toStations);
+    }
+  } catch (e) { /* fallback dưới */ }
+  if (!from.length && !to.length) { const all = allNames(); return { from: all, to: all }; }
+  return { from: from, to: to };
+}
+
+// Trạm ĐI / ĐẾN cho panel đặt vé của 1 PHƠI cụ thể:
+//   - Trạm đi : LUÔN = toàn bộ trạm vùng xuất phát của hướng (không đổi).
+//   - Trạm đến: nếu phơi CÓ tick "Trạm có thể nhận thêm khách" (trip.pickupStations không rỗng) → chỉ
+//               gồm Trạm đến chính + các trạm đã tick đó; ngược lại (phơi cũ / chưa tick) → toàn bộ
+//               trạm vùng điểm đến như trước.
+function stationsForTrip(trip) {
+  const base = stationsForRoute(trip && trip.route);
+  const picks = (trip && Array.isArray(trip.pickupStations)) ? trip.pickupStations.filter(Boolean) : [];
+  if (!picks.length) return base;
+  const seen = {};
+  const to = [trip.toStation].concat(picks).filter(s => s && !seen[s] && (seen[s] = true));
+  return { from: base.from, to: to };
+}
+
+// Panel đặt vé (Zone 4): gợi ý Trạm đi/Trạm đến theo phơi đang mở (xem stationsForTrip).
+function populateBookingStationDatalists(trip) {
+  const { from, to } = stationsForTrip(trip);
+  const tags = names => names.map(n => `<option value="${n}"></option>`).join('');
+  const depEl = document.getElementById('departureStationList');
+  const destEl = document.getElementById('destinationStationList');
+  if (depEl) depEl.innerHTML = tags(from);
+  if (destEl) destEl.innerHTML = tags(to);
+}
+
+// Modal "Đặt lại vé": Trạm đi/Trạm đến theo phơi ĐÍCH đang chọn (cùng quy tắc stationsForTrip); giữ lại
+// giá trị đang chọn nếu vẫn hợp lệ, còn setSelectOptionValue() sau đó vẫn tự thêm nếu cần.
+function populateRebookStationSelects(trip) {
+  const { from, to } = stationsForTrip(trip);
+  const fill = (id, names) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prev = el.value;
+    const list = (prev && names.indexOf(prev) === -1) ? [prev].concat(names) : names;
+    el.innerHTML = list.map(n => `<option value="${n}">${n}</option>`).join('');
+    if (prev && list.indexOf(prev) !== -1) el.value = prev;
+  };
+  fill('rbFirstStop', from);
+  fill('rbLastStop', to);
+}
+
 // Direction selection for filters and modals
 function onFilterDirectionChange() {
   const dir = document.getElementById("filterDirection").value;
   const routeSelect = document.getElementById("filterRoute");
   routeSelect.innerHTML = '<option value="">Tất cả tuyến</option>';
 
-  if (dir && ROUTES_CFG[dir]) {
-    ROUTES_CFG[dir].forEach(r => {
-      routeSelect.innerHTML += `<option value="${r.label}">${r.label}</option>`;
-    });
-  }
+  // dir = id HƯỚNG (1 trong 4) — tuyến con lấy từ TRIP_DIRECTIONS_CFG (FleetStore.buildDirTripCfg).
+  const labels = (dir && TRIP_DIRECTIONS_CFG[dir] && TRIP_DIRECTIONS_CFG[dir].routeLabels) || [];
+  labels.forEach(l => { routeSelect.innerHTML += `<option value="${l}">${l}</option>`; });
 }
 
 function onModalDirectionChange(modalType) {
@@ -2722,25 +3296,27 @@ function onRouteSelect(modalType) {
   }
 }
 
-// Đổ danh sách "Hướng đi" (modal Tạo phơi xe đơn) từ TRIP_DIRECTIONS_CFG — gọi lại mỗi lần mở modal
-// (openSingleModal/openEditModal) thay vì đổ 1 lần lúc nạp trang, để không phụ thuộc thứ tự script chạy
-// trước/sau khi HTML đã sẵn sàng.
+// Đổ danh sách "Hướng đi" (modal Tạo phơi xe đơn) = 4 HƯỚNG CHÍNH từ TRIP_DIRECTIONS_CFG — gọi lại mỗi
+// lần mở modal (openSingleModal/openEditModal) thay vì đổ 1 lần lúc nạp trang, để không phụ thuộc thứ
+// tự script chạy trước/sau khi HTML đã sẵn sàng.
 function populateTripDirectionSelect() {
   const sel = document.getElementById("tripDirection");
   if (!sel) return;
-  sel.innerHTML = '<option value="">-- Chọn hướng tuyến --</option>' +
+  sel.innerHTML = '<option value="">-- Chọn hướng --</option>' +
     Object.keys(TRIP_DIRECTIONS_CFG).map(key => `<option value="${key}">${TRIP_DIRECTIONS_CFG[key].label}</option>`).join('');
 }
 
-// Chọn "Hướng đi" xong mới có Trạm đi/Trạm đến/Trạm có thể nhận cụ thể để chọn (mỗi hướng 1 bộ trạm
-// riêng, xem TRIP_DIRECTIONS_CFG) — đổi hướng thì đổ lại toàn bộ 3 ô này từ đầu, đồng thời set sẵn giá vé
-// mặc định theo hướng (nhân viên vẫn sửa lại được nếu cần).
+// Chọn "Hướng đi" xong: Trạm đi = tổng hợp mọi trạm ở địa điểm điểm-đi, Trạm đến = mọi trạm ở địa điểm
+// điểm-đến (xem TRIP_DIRECTIONS_CFG) — đổi hướng thì đổ lại 2 ô trạm + giá vé mặc định của hướng. Danh
+// sách "trạm có thể rước" CHƯA hiện: phải chọn xong Trạm đi + Trạm đến để xác định tuyến chính đã.
 function onTripDirectionChange() {
   const dirKey = document.getElementById("tripDirection").value;
   const fromSel = document.getElementById("tripFromStation");
   const toSel = document.getElementById("tripToStation");
   const priceInput = document.getElementById("tripPrice");
+  const resolvedEl = document.getElementById("tripResolvedRoute");
   const cfg = TRIP_DIRECTIONS_CFG[dirKey];
+  if (resolvedEl) resolvedEl.value = '';
 
   if (!cfg) {
     fromSel.innerHTML = '<option value="">-- Chọn hướng đi trước --</option>';
@@ -2753,20 +3329,81 @@ function onTripDirectionChange() {
     cfg.fromStations.map(s => `<option value="${s}">${s}</option>`).join('');
   toSel.innerHTML = '<option value="">-- Chọn trạm đến --</option>' +
     cfg.toStations.map(s => `<option value="${s}">${s}</option>`).join('');
-  renderPickupStationPills(cfg.pickupStations);
+  renderPickupStationPills([], 'Chọn Trạm đi và Trạm đến để xem trạm có thể nhận');
   priceInput.value = cfg.price;
 
   updateSingleTripNameSuggestion();
 }
 
+// Đổi Trạm đi / Trạm đến → xác định "tuyến chính" khớp (trong số tuyến con của hướng) rồi hiện đúng
+// "trạm có thể rước" của tuyến đó; đồng thời gợi ý lại tên phơi.
+function onTripStationChange() {
+  resolveTripRoute();
+  updateSingleTripNameSuggestion();
+}
+
+// Suy "tuyến chính" từ (hướng, trạm đi, trạm đến): tuyến con nào có trạm đi ∈ fromStations và trạm đến
+// ∈ toStations; nhiều tuyến khớp thì lấy tuyến CỤ THỂ nhất (ít trạm đến nhất → ít trạm nhất → order nhỏ).
+// Không tuyến nào khớp → dùng tuyến chính của hướng, không có trạm rước.
+function pickBestTripRoute(routes, from, to) {
+  const hits = (routes || []).filter(r =>
+    (r.fromStations || []).indexOf(from) !== -1 && (r.toStations || []).indexOf(to) !== -1);
+  if (!hits.length) return null;
+  hits.sort((a, b) =>
+    (a.toStations || []).length - (b.toStations || []).length ||
+    ((a.fromStations || []).length + (a.toStations || []).length) -
+      ((b.fromStations || []).length + (b.toStations || []).length) ||
+    (a.order || 0) - (b.order || 0));
+  return hits[0];
+}
+
+// "Trạm có thể nhận thêm khách" khi tạo phơi = TOÀN BỘ trạm phía điểm đến của hướng — dùng chung
+// FleetStore.pickupStationsForDirection() (xem fleet-store.js). GIỮ nguyên cả Trạm đi/Trạm đến.
+function pickupPoolForDirection(dirId) {
+  try {
+    if (window.FleetStore && typeof FleetStore.pickupStationsForDirection === 'function') {
+      return FleetStore.pickupStationsForDirection(dirId) || [];
+    }
+  } catch (e) { /* fallback */ }
+  return [];
+}
+
+// extraPickups: trạm rước đã lưu của phơi cũ — gộp thêm để lúc SỬA phơi vẫn tick lại được dù trạm đó
+// không nằm trong cụm điểm đến hiện tại (dữ liệu cũ).
+function resolveTripRoute(extraPickups) {
+  const dirId = document.getElementById("tripDirection").value;
+  const cfg = TRIP_DIRECTIONS_CFG[dirId];
+  const from = document.getElementById("tripFromStation").value;
+  const to = document.getElementById("tripToStation").value;
+  const resolvedEl = document.getElementById("tripResolvedRoute");
+  const priceInput = document.getElementById("tripPrice");
+
+  if (!cfg || !from || !to) {
+    if (resolvedEl) resolvedEl.value = '';
+    renderPickupStationPills([], 'Chọn Trạm đi và Trạm đến để xem trạm có thể nhận');
+    return;
+  }
+
+  const matched = pickBestTripRoute(cfg.routes, from, to);
+  const routeLabel = (matched && matched.label) || cfg.route || '';
+  if (resolvedEl) resolvedEl.value = routeLabel;
+  if (matched && matched.price != null) priceInput.value = matched.price;
+
+  // Toàn bộ trạm phía điểm đến của hướng + trạm rước đã lưu (khi sửa phơi), khử trùng lặp.
+  const seen = {};
+  const pickups = pickupPoolForDirection(dirId).concat(extraPickups || [])
+    .filter(s => s && !seen[s] && (seen[s] = true));
+  renderPickupStationPills(pickups, 'Hướng này chưa có trạm nào ở điểm đến');
+}
+
 // "Trạm có thể nhận thêm khách" hiện dạng chip checkbox nằm ngang (không phải <select multiple> cao
 // lêu nghêu) — mỗi chip tự đổi màu qua class "checked" khi tick (xem toggleStationPill bên dưới), vì
 // component chọn nhiều bằng checkbox không có trạng thái ":checked" ở cấp <label> để CSS tự bắt được.
-function renderPickupStationPills(stations) {
+function renderPickupStationPills(stations, emptyMsg) {
   const container = document.getElementById("tripPickupStations");
   if (!container) return;
   if (!stations || !stations.length) {
-    container.innerHTML = '<span class="station-pick-empty">Không có trạm dọc đường</span>';
+    container.innerHTML = `<span class="station-pick-empty">${emptyMsg || 'Không có trạm dọc đường'}</span>`;
     return;
   }
   container.innerHTML = stations.map(s => `
@@ -2853,11 +3490,7 @@ function applyFilters() {
     // trị mặc định "bỏ qua lọc ngày", khiến danh sách trộn lẫn phơi của mọi ngày lại với nhau).
     if (fDate && t.date && t.date !== fDate) return false;
 
-    if (fDir) {
-      const sense = tripRouteSense(routeStr);
-      if (fDir === 'chieu-di' && sense !== 'di') return false;
-      if (fDir === 'chieu-ve' && sense !== 've') return false;
-    }
+    if (fDir && tripDirectionId(routeStr) !== fDir) return false;
 
     if (fRoute && routeStr !== fRoute) return false;
 
@@ -3085,17 +3718,12 @@ function sellTicketForTrip(tripId) {
 
   const trip = allTripsMeta.find(t => t.id === tripId);
 
-  // Zone 1 tách riêng 2 danh sách Chiều đi (#tripListSGCD) / Chiều về (#tripListCDSG), luôn chỉ hiện 1
-  // trong 2 (cái còn lại display:none). Thiếu bước hiện đúng danh sách chứa phơi đích thì thẻ phơi vẫn
-  // được chọn đúng ngầm bên dưới nhưng nằm trong danh sách đang ẩn — nhìn như bấm "Bán vé" không nhảy
-  // tới đâu cả, nhất là với phơi chiều về.
-  const sgList = document.getElementById('tripListSGCD');
-  const cdList = document.getElementById('tripListCDSG');
-  if (trip && sgList && cdList) {
-    const isCD = tripRouteSense(trip.route) === 've';
-    sgList.style.display = isCD ? 'none' : '';
-    cdList.style.display = isCD ? '' : 'none';
-    selectedDirection = isCD ? 'cd-sg' : 'sg-cd';
+  // Zone 1 chỉ hiện phơi của HƯỚNG đang chọn — phải chuyển sang đúng hướng chứa phơi đích rồi render lại,
+  // nếu không thẻ phơi được chọn ngầm nhưng không nằm trong danh sách đang hiển thị.
+  if (trip) {
+    updateTripListForDirection(tripDirectionId(trip.route));
+    const dirInput = document.getElementById('directionTrigger');
+    if (dirInput && directionLabels[selectedDirection]) dirInput.value = directionLabels[selectedDirection];
   }
 
   const cardEl = document.querySelector(`.trip-card[data-trip="${tripId}"]`);
@@ -3222,24 +3850,29 @@ function openEditModal(id) {
   document.getElementById("tripStatus").value = trip.status || 'Chưa chỉ định xe';
   document.getElementById("tripPlate").value = trip.plate || '';
 
-  // Suy ngược đúng key hướng đi (vd 'sg-cd') từ chuỗi route đã lưu ('Sài Gòn - Châu Đốc') để chọn sẵn
-  // trong dropdown "Hướng đi" — phơi tạo trước khi có tính năng này (chưa lưu fromStation/toStation) vẫn
-  // suy ra đúng hướng qua route, chỉ là Trạm đi/Trạm đến sẽ để trống cho nhân viên tự chọn lại.
+  // Suy ngược HƯỚNG CHÍNH từ chuỗi route đã lưu: khớp nhãn tuyến chính, hoặc nằm trong danh sách tuyến
+  // con của hướng (phơi cũ tạo khi còn chọn theo tuyến). Không khớp → để trống cho nhân viên chọn lại.
   populateTripDirectionSelect();
-  const dirKey = Object.keys(TRIP_DIRECTIONS_CFG).find(k => TRIP_DIRECTIONS_CFG[k].route === trip.route) || '';
+  const dirKey = Object.keys(TRIP_DIRECTIONS_CFG).find(k => {
+    const c = TRIP_DIRECTIONS_CFG[k];
+    return c.route === trip.route || (c.routeLabels || []).indexOf(trip.route) !== -1;
+  }) || '';
   document.getElementById("tripDirection").value = dirKey;
   onTripDirectionChange();
 
   document.getElementById("tripFromStation").value = trip.fromStation || '';
   document.getElementById("tripToStation").value = trip.toStation || '';
+  // Suy lại "tuyến chính" + đổ danh sách trạm có thể nhận cho đúng phơi này (gộp thêm trạm đã lưu để
+  // dữ liệu cũ vẫn tick lại được), RỒI mới tick lại các trạm đã lưu.
   const savedPickups = Array.isArray(trip.pickupStations) ? trip.pickupStations : [];
+  resolveTripRoute(savedPickups);
   document.querySelectorAll("#tripPickupStations input[type='checkbox']").forEach(cb => {
     cb.checked = savedPickups.includes(cb.value);
     cb.closest('.station-pick-pill').classList.toggle('checked', cb.checked);
   });
 
-  // Ghi đè lại giá vé/tên phơi thật của phơi này — onTripDirectionChange() ở trên vừa set giá mặc định
-  // theo hướng nên phải set lại SAU, nếu không sẽ mất giá vé thật đã lưu trước đó.
+  // Ghi đè lại giá vé/tên phơi thật của phơi này — onTripDirectionChange()/resolveTripRoute() ở trên vừa
+  // set giá mặc định theo hướng/tuyến nên phải set lại SAU, nếu không sẽ mất giá vé thật đã lưu trước đó.
   document.getElementById("tripPrice").value = trip.price || 280000;
   document.getElementById("tripName").value = trip.name || '';
 
@@ -3350,7 +3983,8 @@ function saveSingleTrip(e) {
     showToast('Vui lòng chọn đầy đủ Hướng đi, Trạm đi và Trạm đến');
     return;
   }
-  const routeVal = dirCfg.route;
+  // "tuyến chính" suy từ Trạm đi/Trạm đến (xem resolveTripRoute); chưa suy được thì fallback tuyến chính của hướng.
+  const routeVal = document.getElementById("tripResolvedRoute").value || dirCfg.route;
   const suggested = `${fromStationVal} - ${toStationVal}`;
   const finalName = nameVal || suggested;
 
@@ -3448,6 +4082,7 @@ function computeBulkTripDates(fromDateStr, toDateStr, weekdays) {
 // chủ động tạo thêm phơi trùng tên hoặc trùng giờ nếu cần (VD tăng cường thêm xe).
 function createBulkTripsFromTemplates(validDates, templates) {
   let createdCount = 0;
+  let firstNew = null;
 
   validDates.forEach(dateVal => {
     templates.forEach(tpl => {
@@ -3470,6 +4105,7 @@ function createBulkTripsFromTemplates(validDates, templates) {
         createdAt: Date.now()
       };
       allTripsMeta.push(newTrip);
+      if (!firstNew) firstNew = newTrip;
 
       tripSeatBank[newId] = generateNewEmptyPlan(tpl.vehicleType, tpl.price);
       tripSeatBank[newId].plate = '';
@@ -3483,7 +4119,7 @@ function createBulkTripsFromTemplates(validDates, templates) {
     });
   });
 
-  return { createdCount };
+  return { createdCount, firstNew };
 }
 
 function confirmBulkFromTemplates() {
@@ -3507,11 +4143,35 @@ function confirmBulkFromTemplates() {
   const confirmed = confirm(`Hệ thống sẽ tạo khoảng ${totalExpected} phơi xe từ ${templates.length} phơi mẫu đã chọn. Xác nhận tạo?`);
   if (!confirmed) return;
 
-  const { createdCount } = createBulkTripsFromTemplates(validDates, templates);
+  const { createdCount, firstNew } = createBulkTripsFromTemplates(validDates, templates);
 
-  // Giữ nguyên bộ lọc "Ngày khởi hành" đang chọn (mặc định hôm nay) — phơi vừa tạo hàng loạt vẫn nằm
-  // đúng ngày của nó trong dữ liệu, chỉ hiện ra khi lọc đúng ngày đó, không tự ý gộp hiện tất cả các ngày.
   saveData();
+
+  // Đưa Zone 1 + bộ lọc tab Phơi xe về ĐÚNG ngày & hướng của đợt vừa tạo để thấy ngay các phơi mới —
+  // trước đây giữ nguyên "hôm nay" nên phơi tạo hàng loạt cho ngày/hướng khác không hiện ở Zone 1.
+  if (createdCount && validDates.length) {
+    const d0 = validDates[0];
+    selectedDate = new Date(d0 + 'T00:00:00');
+    calDate = new Date(d0 + 'T00:00:00');
+    if (typeof renderCalendar === 'function') renderCalendar();
+    if (typeof updateCalTrigger === 'function') updateCalTrigger();
+    zone1HourFilter = 'all';
+    const hourLabel = document.getElementById('zone1HourFilterLabel');
+    if (hourLabel) hourLabel.textContent = 'Tất cả các giờ';
+    const dir = firstNew ? tripDirectionId(firstNew.route) : selectedDirection;
+    if (directionLabels[dir]) {
+      selectedDirection = dir;
+      selectedRoute = 'all';
+      const dInput = document.getElementById('directionTrigger');
+      if (dInput) dInput.value = directionLabels[dir];
+      const rInput = document.getElementById('routeTrigger');
+      if (rInput) rInput.value = 'Tất cả tuyến';
+      if (typeof renderRouteOptions === 'function') renderRouteOptions('');
+    }
+    const fEl = document.getElementById('filterDate');
+    if (fEl) fEl.value = d0;
+  }
+
   refreshTripsList();
   // Ở lại chế độ chọn "phơi mẫu" sau khi tạo xong (không gọi toggleBulkTemplateMode() để thoát) — nhân
   // viên có thể chọn tiếp mẫu khác hoặc đổi khoảng ngày để tạo thêm đợt khác ngay, không phải bấm lại nút
@@ -3536,44 +4196,103 @@ function confirmBulkFromTemplates() {
   }
 })();
 
+// Xe "đã khoá bán vé" = đã khởi hành và KHÔNG còn Re-open đang mở (DEPARTED / REOPEN_CLOSED /
+// MANIFEST_CLOSED) — khớp đúng điều kiện khoá sơ đồ ghế (tsIsSellingLocked, ticketstaff-manifest-ui.js).
+// Dùng để tô màu danh sách phơi Zone 1 (đỏ = đã khoá; xanh = còn bán được, kể cả khi đang Re-open) và
+// để sắp xếp (xem renderZone1TripList bên dưới).
+function zone1IsTripSellingLocked(tripId) {
+  if (typeof tsIsSellingLocked === 'function') return tsIsSellingLocked(tripId);
+  if (typeof getTripLifecycleStatus !== 'function') return false;
+  const st = getTripLifecycleStatus(tripId);
+  return st === TRIP_LIFECYCLE_STATUS.DEPARTED
+    || st === TRIP_LIFECYCLE_STATUS.REOPEN_CLOSED
+    || st === TRIP_LIFECYCLE_STATUS.MANIFEST_CLOSED;
+}
+
+// Xếp danh sách phơi: phơi còn bán được (xanh) lên trên, phơi đã khởi hành / đã khoá bán (đỏ,
+// zone1IsTripSellingLocked) xuống cuối; TRONG TỪNG NHÓM sắp theo giờ khởi hành TĂNG DẦN.
+function zone1TripMinutes(t) {
+  const parts = String((t && t.time) || '00:00').split(':');
+  return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+}
+function zone1SortByDeparture(list) {
+  return list.slice().sort((a, b) => {
+    const aLocked = zone1IsTripSellingLocked(a.id) ? 1 : 0;
+    const bLocked = zone1IsTripSellingLocked(b.id) ? 1 : 0;
+    if (aLocked !== bLocked) return aLocked - bLocked;
+    return zone1TripMinutes(a) - zone1TripMinutes(b);
+  });
+}
+
+// Dựng HTML 1 thẻ phơi xe — NGUỒN DUY NHẤT cho cả 3 nơi hiển thị "danh sách phơi": Zone 1
+// (renderZone1TripList), modal "Đặt lại vé" (renderRebookTripList — #rbTripList) và modal "Chỉ định xe"
+// (pkRenderTripList — #pkTripListPanel). Trước đây mỗi nơi tự ghép markup riêng nên kiểu dáng + logic
+// badge SL ghế bị lệch nhau; nay gom về đây để "thống nhất từ kiểu dáng tới logic".
+//   opts.selectedId   : id chuyến đang chọn → gắn class 'selected'
+//   opts.dataAction    : tên hàm cho data-action khi bấm thẻ (selectTrip / selectRebookTrip / pkSelectTrip)
+//   opts.dataArgsJson  : chuỗi JSON cho data-args
+//   opts.tooltip       : true thì thêm title (chỉ Zone 1 dùng)
+// Màu badge SL ghế THỐNG NHẤT theo vòng đời chuyến: đỏ (tag-departed) = đã khoá bán vé
+// (zone1IsTripSellingLocked), xanh (tag-not-departed) = còn bán được — KHÔNG còn tô theo loại xe
+// limo/thường như 2 modal trước đây nữa.
+function renderPhoiTripCardHtml(trip, opts) {
+  opts = opts || {};
+  const plan = tripSeatBank[trip.id];
+  const totalSeats = plan
+    ? plan.down.filter(s => s.state !== 'hidden').length + plan.up.filter(s => s.state !== 'hidden').length
+    : (trip.totalSeats || 0);
+  const bookedSeats = plan
+    ? [...plan.down, ...plan.up].filter(s => ['sold', 'hold', 'free', 'cargo'].includes(s.state)).length
+    : 0;
+  const selected = trip.id === opts.selectedId ? 'selected' : '';
+  const plate = (plan && plan.plate) || trip.plate || 'Chưa có';
+  const vehicleType = (plan && plan.vehicleType) || trip.vehicleType || 'Chưa rõ';
+  const seatTagClass = zone1IsTripSellingLocked(trip.id) ? 'tag-departed' : 'tag-not-departed';
+  const displayTripName = trip.name || `${trip.route} (${trip.time})`;
+  const titleAttr = opts.tooltip
+    ? ` title="Tên phơi: ${displayTripName}\nBiển số: ${plate}\nLoại xe: ${vehicleType}${trip.note ? '\nGhi chú: ' + trip.note : ''}"`
+    : '';
+
+  return `
+    <div class="trip-card ${selected}" data-trip="${trip.id}" data-action="${opts.dataAction}" data-args='${opts.dataArgsJson}'${titleAttr}>
+      <div class="z1-header">
+        <div class="z1-time-block">
+          <div class="z1-clock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+          <span class="trip-time">${trip.time}</span>
+        </div>
+        <div class="z1-divider"></div>
+        <span class="trip-plate-inline">${plate}</span>
+        <div class="trip-seat-tag ${seatTagClass}">${bookedSeats}/${totalSeats}</div>
+      </div>
+      <div class="z1-name-row">
+        <span class="trip-name-text">${displayTripName}</span>
+      </div>
+    </div>
+  `;
+}
+
 function renderZone1TripList() {
   const sgcdWrap = document.getElementById('tripListSGCD');
   const cdsgWrap = document.getElementById('tripListCDSG');
   if (!sgcdWrap || !cdsgWrap) return;
 
-  const mapTrip = t => {
-    const plan = tripSeatBank[t.id];
-    const totalSeats = plan ? plan.down.filter(s => s.state !== 'hidden').length + plan.up.filter(s => s.state !== 'hidden').length : (t.totalSeats || 24);
-    const bookedSeats = plan ? [...plan.down, ...plan.up].filter(s => ['sold', 'hold', 'free', 'cargo'].includes(s.state)).length : 0;
-    const selected = t.id === currentTripId ? 'selected' : '';
-    const plate = plan && plan.plate ? plan.plate : (t.plate || 'Chưa có');
-    const vehicleType = plan && plan.vehicleType ? plan.vehicleType : (t.vehicleType || 'Chưa rõ');
-    const isLimo = vehicleType.toLowerCase().includes('limousine') || vehicleType.toLowerCase().includes('limo');
-    const seatTagClass = isLimo ? 'tag-limo' : 'tag-normal';
-    const displayTripName = t.name || `${t.route} (${t.time})`;
-    const tooltipText = `Tên phơi: ${displayTripName}\nBiển số: ${plate}\nLoại xe: ${vehicleType}${t.note ? '\nGhi chú: ' + t.note : ''}`;
-
-    return `
-      <div class="trip-card ${selected}" data-trip="${t.id}" data-action="selectTrip" data-args='${JSON.stringify(["__this__", t.time, t.route])}' title="${tooltipText}">
-        <div class="z1-header">
-          <div class="z1-time-block">
-            <div class="z1-clock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
-            <span class="trip-time">${t.time}</span>
-          </div>
-          <div class="z1-divider"></div>
-          <span class="trip-plate-inline">${plate}</span>
-          <div class="trip-seat-tag ${seatTagClass}">${bookedSeats}/${totalSeats}</div>
-        </div>
-        <div class="z1-name-row">
-          <span class="trip-name-text">${displayTripName}</span>
-        </div>
-      </div>
-    `;
-  };
+  const mapTrip = t => renderPhoiTripCardHtml(t, {
+    selectedId: currentTripId,
+    dataAction: 'selectTrip',
+    dataArgsJson: JSON.stringify(['__this__', t.time, t.route]),
+    tooltip: true
+  });
 
   const matchesHourFilter = t => zone1HourFilter === 'all' || parseInt((t.time || '').split(':')[0], 10) === parseInt(zone1HourFilter, 10);
+  // Lọc theo ĐÚNG ngày đã chọn trên lịch Zone 1 (phơi không có ngày thì luôn hiện).
+  const selDateStr = zone1DateStr(selectedDate);
+  const matchesDateFilter = t => !t.date || t.date === selDateStr;
 
-  sgcdWrap.innerHTML = sgcdTripsMeta.filter(matchesHourFilter).map(mapTrip).join('');
-  cdsgWrap.innerHTML = cdsgTripsMeta.filter(matchesHourFilter).map(mapTrip).join('');
+  // Chỉ hiện phơi của HƯỚNG đang chọn (1 trong 4), khớp bộ lọc giờ + ngày + TUYẾN (theo trạm đi/đến).
+  const list = (tripsByDirection[selectedDirection] || [])
+    .filter(t => matchesHourFilter(t) && matchesDateFilter(t) && zone1TripMatchesRoute(t));
+  sgcdWrap.innerHTML = zone1SortByDeparture(list).map(mapTrip).join('') ||
+    '<div class="z1-empty" style="padding:14px;text-align:center;color:var(--text-sub);font-size:12.5px;">Không có phơi xe phù hợp với bộ lọc</div>';
+  cdsgWrap.innerHTML = '';
 }
 

@@ -118,8 +118,14 @@ var CURRENT_VIEW = 'viewDashboard';
 // wrapper không cần forward gì — hành vi y hệt bảng tham chiếu trực tiếp cũ.
 var VIEW_RENDERERS = {
   viewDashboard: function () { renderDashboard(); },
+  viewStations: function () { renderStationsView(); },
+  viewStops: function () { renderStopsView(); },
   viewDirections: function () { renderDirectionsView(); },
   viewTrips: function () { renderTripsView(); },
+  viewPricing: function () { renderPricingView(); },
+  viewSchedule: function () { renderScheduleView(); },
+  viewTransship: function () { renderTransshipView(); },
+  viewTicketList: function () { renderTicketListView(); },
   viewVehicles: function () { renderVehiclesView(); },
   viewStaff: function () { renderStaffView(); },
   viewAccounts: function () { renderAccountsView(); },
@@ -138,10 +144,41 @@ function switchAdminView(view) {
   VIEW_RENDERERS[view]();
 }
 
+/* ---------------------------------------------------------
+   NHÓM SIDEBAR THU GỌN ĐƯỢC (VD "Quản lý vận tải") — bấm tiêu đề nhóm để sổ/thu các nút con, nhớ trạng
+   thái đóng/mở qua localStorage để giữ nguyên khi tải lại trang.
+   --------------------------------------------------------- */
+var ADMIN_NAV_GROUP_KEY = 'hn_admin_navgroup_collapsed_v1';
+function adminToggleNavGroup(wrapId) {
+  var wrap = $(wrapId);
+  var btn = Array.prototype.filter.call(document.querySelectorAll('.admin-nav-group-toggle'), function (b) {
+    return (b.getAttribute('data-args') || '').indexOf('"' + wrapId + '"') !== -1;
+  })[0];
+  if (!wrap || !btn) return;
+  var collapsed = !wrap.classList.contains('collapsed');
+  wrap.classList.toggle('collapsed', collapsed);
+  btn.classList.toggle('collapsed', collapsed);
+  var state = lsRead(ADMIN_NAV_GROUP_KEY, {});
+  state[wrapId] = collapsed;
+  lsWrite(ADMIN_NAV_GROUP_KEY, state);
+}
+function initAdminNavGroups() {
+  var state = lsRead(ADMIN_NAV_GROUP_KEY, {});
+  document.querySelectorAll('.admin-nav-group-toggle').forEach(function (btn) {
+    var m = (btn.getAttribute('data-args') || '').match(/"([^"]+)"/);
+    var wrapId = m && m[1];
+    var wrap = wrapId && $(wrapId);
+    if (!wrap) return;
+    var collapsed = !!state[wrapId];
+    wrap.classList.toggle('collapsed', collapsed);
+    btn.classList.toggle('collapsed', collapsed);
+  });
+}
+
 /* Admin sửa dữ liệu ở tab khác → render lại view đang mở. */
 window.addEventListener('storage', function (e) {
   if (!e.key) return;
-  var watched = [HN_DIRECTIONS_KEY, HN_ROUTES_KEY, HN_STATIONS_KEY, HN_VEHICLE_TYPES_KEY, HN_VEHICLES_KEY, HN_STAFF_KEY, HN_TRIPS_KEY, HN_ADMIN_ACTIVITY_KEY];
+  var watched = [HN_DIRECTIONS_KEY, HN_ROUTES_KEY, HN_STATIONS_KEY, HN_VEHICLE_TYPES_KEY, HN_VEHICLES_KEY, HN_STAFF_KEY, HN_TRIPS_KEY, HN_ADMIN_ACTIVITY_KEY, HN_STORAGE_KEY, HN_PICKUP_PAX_KEY, HN_SHUTTLE_DRIVER_KEY];
   if (watched.indexOf(e.key) !== -1 && VIEW_RENDERERS[CURRENT_VIEW]) VIEW_RENDERERS[CURRENT_VIEW]();
 });
 

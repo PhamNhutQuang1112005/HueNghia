@@ -5,8 +5,22 @@
 // Không phụ thuộc file nào khác. Sau này thay bằng API => xoá file này khỏi ticketstaff.html.
 
 const staffList = ["tuyetphuong.huenghia", "minh.tran", "nguyen.long", "thi.hoa"];
-const stopsFirst = ["Trạm Kinh Dương Vương", "Trạm An Sương", "Trạm Q.5", "Văn phòng trung tâm"];
-const stopsLast = ["Trạm Châu Đốc", "Trạm Tân Châu", "Bến xe Châu Đốc"];
+// Trạm đi/đến demo — khớp danh mục trạm FleetStore (SG + BD phía xuất phát, An Giang phía điểm đến).
+const stopsFirst = [
+  "508 Kinh Dương Vương", "58 Lê Đại Hành", "4 Tống Văn Trân", "Bến xe miền Tây quầy 29",
+  "Sài Gòn", "Tiền Giang", "Vĩnh Long", "Đồng Tháp",
+  "Trạm An Phú", "Bến xe An Phú", "Trạm Bến Cát", "Trạm Phú Chánh", "Trạm Tân Uyên",
+  "Trạm An Tây", "Trạm Bình Phước", "Trạm An Sương", "Bình Dương"
+];
+const stopsLast = [
+  "Trạm An Giang", "Trạm Sa Đéc", "Trạm Long Xuyên", "Trạm Vịnh Tre", "Trạm Châu Đốc",
+  "Trạm An Phú", "Trạm Tri Tôn", "Trạm Chi Lăng", "Trạm Tịnh Biên", "Trạm Nhà Bàng",
+  "Trạm Tân Châu", "Trạm Núi Sập", "Trạm Hà Tiên", "Trạm Long Bình", "Trạm Đồng Ky",
+  "Trạm Bắc Đai", "Trạm Vĩnh Hội Đông", "Trạm Cần Thảo", "Trạm Cái Dầu", "Trạm Năng Gù",
+  "Trạm Bình Hòa", "Trạm Châu Thành", "Trạm Cần Đăng", "Trạm Phú Hòa", "Trạm Óc Eo",
+  "Trạm An Hòa", "Trạm Cựu Hội", "Trạm Ba Chúc", "Trạm Lạc Quới", "Trạm Giang Thành",
+  "Trạm Tân An - Tân Châu"
+];
 const noteSamples = ["", "Khách quen, hay đi ghế gần cửa", "Yêu cầu ghế tầng dưới", "Có trẻ nhỏ đi cùng", ""];
 // Danh sách Khách hàng mẫu & Số điện thoại mẫu (50 profiles độc nhất)
 const nameSamples = [

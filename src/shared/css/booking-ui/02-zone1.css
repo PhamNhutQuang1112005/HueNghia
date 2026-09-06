@@ -380,21 +380,26 @@
   letter-spacing: .4px;
 }
 
-/* Danh sách phơi Zone 1: mỗi thẻ 1 hàng ngang — icon đồng hồ + giờ chạy bên trái, biển số + tuyến đường
-   ở giữa (xếp dọc), SL ghế dạng badge bo góc nổi bật bên phải. Khác hẳn kiểu thẻ 2 hàng dọc (row1/row2)
-   vẫn dùng trong các modal "Đặt lại vé"/"Chỉ định xe" (xem .trip-card/.trip-card-row1/.trip-card-row2
-   gốc bên dưới, không bị ảnh hưởng bởi phần scoped #tripListSGCD/#tripListCDSG này). */
+/* Danh sách phơi: mỗi thẻ 1 hàng ngang — icon đồng hồ + giờ chạy bên trái, biển số + tuyến đường ở giữa
+   (xếp dọc), SL ghế dạng badge bo góc nổi bật bên phải. Dùng CHUNG cho 3 nơi hiển thị "danh sách phơi"
+   (đều render qua renderPhoiTripCardHtml() ở ticketstaff.js): Zone 1 (#tripListSGCD/#tripListCDSG), modal
+   "Đặt lại vé" (#rbTripList) và modal "Chỉ định xe" (#pkTripListPanel) — kiểu dáng phải giống HỆT nhau.
+   .trip-card-row1/.trip-card-row2 gốc bên dưới giờ không còn nơi nào dùng, giữ lại phòng khi cần. */
 #tripListSGCD,
-#tripListCDSG {
+#tripListCDSG,
+#rbTripList,
+#pkTripListPanel {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-/* Thẻ phơi Zone 1 chia 2 phần xếp dọc: header (icon+giờ | divider | biển số ..... badge) và bên dưới là
-   tên phơi chiếm trọn bề rộng card — không còn thụt lề theo icon/divider của header nữa. */
+/* Thẻ phơi chia 2 phần xếp dọc: header (icon+giờ | divider | biển số ..... badge) và bên dưới là tên
+   phơi chiếm trọn bề rộng card — không còn thụt lề theo icon/divider của header nữa. */
 #tripListSGCD .trip-card,
-#tripListCDSG .trip-card {
+#tripListCDSG .trip-card,
+#rbTripList .trip-card,
+#pkTripListPanel .trip-card {
   flex-direction: column;
   align-items: stretch;
   gap: 4px;
@@ -404,7 +409,9 @@
 }
 
 #tripListSGCD .trip-card.selected,
-#tripListCDSG .trip-card.selected {
+#tripListCDSG .trip-card.selected,
+#rbTripList .trip-card.selected,
+#pkTripListPanel .trip-card.selected {
   border-width: 2px;
   border-left: 4px solid var(--red);
 }
@@ -412,7 +419,9 @@
 /* Header: icon+giờ, divider, biển số cùng hàng bên trái; badge ghim cứng bên phải bằng margin-left:auto
    (không cần wrapper riêng) — biển số + badge đều nằm trên header như yêu cầu. */
 #tripListSGCD .z1-header,
-#tripListCDSG .z1-header {
+#tripListCDSG .z1-header,
+#rbTripList .z1-header,
+#pkTripListPanel .z1-header {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -422,7 +431,9 @@
 /* Icon + giờ: bề rộng PX cố định, đủ rộng cho "07:00"/"08:30" + icon ở mọi trường hợp — không overflow,
    không clip, không co giãn theo nội dung hay theo bề rộng card. */
 #tripListSGCD .z1-time-block,
-#tripListCDSG .z1-time-block {
+#tripListCDSG .z1-time-block,
+#rbTripList .z1-time-block,
+#pkTripListPanel .z1-time-block {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -431,7 +442,9 @@
 }
 
 #tripListSGCD .z1-clock,
-#tripListCDSG .z1-clock {
+#tripListCDSG .z1-clock,
+#rbTripList .z1-clock,
+#pkTripListPanel .z1-clock {
   width: 22px;
   height: 22px;
   border-radius: 7px;
@@ -443,21 +456,27 @@
 }
 
 #tripListSGCD .z1-clock svg,
-#tripListCDSG .z1-clock svg {
+#tripListCDSG .z1-clock svg,
+#rbTripList .z1-clock svg,
+#pkTripListPanel .z1-clock svg {
   width: 13px;
   height: 13px;
   stroke: var(--red);
 }
 
 #tripListSGCD .trip-time,
-#tripListCDSG .trip-time {
+#tripListCDSG .trip-time,
+#rbTripList .trip-time,
+#pkTripListPanel .trip-time {
   font-size: 13px;
   white-space: nowrap;
   flex: 0 0 auto;
 }
 
 #tripListSGCD .z1-divider,
-#tripListCDSG .z1-divider {
+#tripListCDSG .z1-divider,
+#rbTripList .z1-divider,
+#pkTripListPanel .z1-divider {
   width: 1px;
   align-self: stretch;
   background: var(--border-gray);
@@ -468,7 +487,9 @@
    bên dưới, dùng chung với các modal) — cỡ chữ theo nội dung (flex:0 0 auto), không kéo giãn lấp đầy
    header để không biến thành 1 thanh màu dài; khoảng trống còn lại giữa biển số và badge để trống. */
 #tripListSGCD .trip-plate-inline,
-#tripListCDSG .trip-plate-inline {
+#tripListCDSG .trip-plate-inline,
+#rbTripList .trip-plate-inline,
+#pkTripListPanel .trip-plate-inline {
   flex: 0 0 auto;
   white-space: nowrap;
 }
@@ -476,7 +497,9 @@
 /* Badge SL ghế: bề rộng PX cố định (không % theo card, không auto theo nội dung), luôn ghim cứng bên
    phải header nhờ margin-left:auto — không tham gia quyết định bề rộng biển số hay tên phơi. */
 #tripListSGCD .trip-seat-tag,
-#tripListCDSG .trip-seat-tag {
+#tripListCDSG .trip-seat-tag,
+#rbTripList .trip-seat-tag,
+#pkTripListPanel .trip-seat-tag {
   border-radius: 6px;
   padding: 0;
   font-size: 11px;
@@ -493,7 +516,9 @@
 /* Tên phơi/tuyến nằm hẳn 1 hàng riêng bên dưới header, chiếm trọn bề rộng card — không còn icon định vị
    phía trước, không còn phải thẳng cột với biển số/icon giờ ở header nữa. */
 #tripListSGCD .z1-name-row,
-#tripListCDSG .z1-name-row {
+#tripListCDSG .z1-name-row,
+#rbTripList .z1-name-row,
+#pkTripListPanel .z1-name-row {
   display: flex;
   align-items: flex-start;
   width: 100%;
@@ -505,7 +530,9 @@
    phòng trường hợp 1 từ đơn lẻ quá dài. min-width:0 bắt buộc vì đây là flex item chứa nowrap-tương-đương
    (line-clamp) — mặc định min-width:auto sẽ khiến chữ tràn ra khỏi hàng thay vì xuống dòng đúng chỗ. */
 #tripListSGCD .trip-name-text,
-#tripListCDSG .trip-name-text {
+#tripListCDSG .trip-name-text,
+#rbTripList .trip-name-text,
+#pkTripListPanel .trip-name-text {
   flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
@@ -611,6 +638,19 @@
 }
 
 .trip-seat-tag.tag-normal {
+  background: #16a34a;
+}
+
+/* Danh sách phơi Zone 1 (renderZone1TripList ở ticketstaff.js): đỏ = xe ĐÃ KHOÁ BÁN VÉ (đã khởi hành
+   và đã đóng Re-open — DEPARTED/REOPEN_CLOSED/MANIFEST_CLOSED, xem zone1IsTripSellingLocked); xanh = xe
+   CÒN BÁN ĐƯỢC (chưa khởi hành, hoặc đang có Re-open mở). Dùng riêng 2 class này (không đụng
+   .tag-limo/.tag-normal ở trên, vẫn dùng cho modal "Đặt lại vé" phân biệt theo loại xe) để đổi ý nghĩa
+   màu chỉ trong danh sách phơi Zone 1. */
+.trip-seat-tag.tag-departed {
+  background: #e11d48;
+}
+
+.trip-seat-tag.tag-not-departed {
   background: #16a34a;
 }
 

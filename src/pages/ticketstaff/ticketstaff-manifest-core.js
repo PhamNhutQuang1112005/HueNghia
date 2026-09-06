@@ -172,7 +172,7 @@ function addShiftClosing(record) {
 // được vé của 1 CHUYẾN KHÁC currentTripId đang xem (VD lúc vá dữ liệu phơi cũ ở tsGetManifestCurrentTotals).
 function tsGetBankBookedSeats(bank) {
   if (!bank) return [];
-  return [...(bank.down || []), ...(bank.up || []), ...(bank.extraSeats || [])]
+  return [...(bank.down || []), ...(bank.up || []), ...(bank.extraSeats || []), ...(bank.subSeats || [])]
     .filter(s => ['sold', 'hold', 'free', 'cargo'].includes(s.state));
 }
 

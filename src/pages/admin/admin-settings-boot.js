@@ -55,4 +55,5 @@ function adminResetConfig() {
    BOOT
    --------------------------------------------------------- */
 initAdminUserMenu();
+initAdminNavGroups();
 switchAdminView('viewDashboard');

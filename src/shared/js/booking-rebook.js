@@ -91,43 +91,28 @@ function renderRebookTripList() {
   const container = document.getElementById('rbTripList');
   if (!container) return;
   const timeVal = document.getElementById('rbFilterTime')?.value || 'all';
-  let html = '';
-  (allTripsMeta || []).forEach(trip => {
-    if (trip.status === 'Đã hủy') return;
-    if (rbSelectedDateStr && trip.date !== rbSelectedDateStr) return;
+
+  const filtered = (allTripsMeta || []).filter(trip => {
+    if (trip.status === 'Đã hủy') return false;
+    if (rbSelectedDateStr && trip.date !== rbSelectedDateStr) return false;
     if (timeVal !== 'all') {
       const hh = parseInt((trip.time || '00:00').split(':')[0], 10);
-      if (timeVal === 'morning' && (hh < 0 || hh >= 12)) return;
-      if (timeVal === 'afternoon' && (hh < 12 || hh >= 18)) return;
-      if (timeVal === 'evening' && (hh < 18 || hh > 24)) return;
+      if (timeVal === 'morning' && (hh < 0 || hh >= 12)) return false;
+      if (timeVal === 'afternoon' && (hh < 12 || hh >= 18)) return false;
+      if (timeVal === 'evening' && (hh < 18 || hh > 24)) return false;
     }
-    const bank = tripSeatBank?.[trip.id];
-    const totalSeats = bank ? bank.down.filter(s => s.state !== 'hidden').length + bank.up.filter(s => s.state !== 'hidden').length : 0;
-    const bookedSeats = bank ? [...bank.down, ...bank.up].filter(s => ['sold', 'hold', 'free', 'cargo'].includes(s.state)).length : 0;
-    const selected = trip.id === rebookSelectedTripId ? 'selected' : '';
-    const plate = trip.plate || 'Chưa có';
-    const vehicleType = trip.vehicleType || 'Chưa rõ';
-    const isLimo = vehicleType.toLowerCase().includes('limousine') || vehicleType.toLowerCase().includes('limo');
-    const seatTagClass = isLimo ? 'tag-limo' : 'tag-normal';
-    const displayTripName = trip.name || `${trip.route} (${trip.time})`;
-
-    // Dùng nguyên .trip-card/.trip-card-row1/.trip-card-row2/.trip-seat-tag của renderZone1TripList()
-    // (js/callcenter.js, js/ticketstaff.js) để danh sách phơi trong modal "Đặt lại vé" giống y hệt danh
-    // sách phơi Zone 1, không phải bản .ch-trip-card riêng nữa.
-    html += `
-      <div class="trip-card ${selected}" data-trip="${trip.id}" data-action="selectRebookTrip" data-args='${JSON.stringify([trip.id])}'>
-        <div class="trip-card-row1">
-          <div class="trip-info-left">
-            <span class="trip-time">${trip.time}</span>
-            <span class="trip-plate-inline">${plate}</span>
-          </div>
-          <div class="trip-seat-tag ${seatTagClass}">${bookedSeats}/${totalSeats}</div>
-        </div>
-        <div class="trip-card-row2">
-          <span class="trip-name-text">${displayTripName}</span>
-        </div>
-      </div>`;
+    return true;
   });
+
+  // Thẻ phơi + màu badge + thứ tự xếp: dùng CHUNG renderPhoiTripCardHtml()/zone1SortByDeparture() của
+  // ticketstaff.js (nạp sau file này nhưng đã sẵn sàng lúc modal mở) để danh sách phơi ở đây giống HỆT
+  // danh sách phơi Zone 1 — cả kiểu dáng lẫn logic (đỏ = chuyến đã khoá bán vé, xếp xuống cuối).
+  const html = zone1SortByDeparture(filtered).map(trip => renderPhoiTripCardHtml(trip, {
+    selectedId: rebookSelectedTripId,
+    dataAction: 'selectRebookTrip',
+    dataArgsJson: JSON.stringify([trip.id])
+  })).join('');
+
   container.innerHTML = html || `<div class="ch-trip-empty">Không có phơi xe phù hợp với bộ lọc.</div>`;
 }
 
@@ -254,6 +239,10 @@ function wireZone1Combobox(inputId, panelId, renderFn, getCanonicalValueFn) {
   });
 })();
 
+// Ghế phụ giờ dùng CHUNG seatCard()/openBookingPanel() với ghế thường (giống cách "Ghế dư" — xem
+// renderExtraSeats() — đã làm từ trước) thay vì render riêng dạng thẻ chỉ có ghi chú + giá tiền: ô
+// trống bấm vào mở đúng panel đặt vé đầy đủ (tên khách, SĐT, tuyến, giá...), hỗ trợ chọn nhiều ghế
+// phụ trống để đặt vé nhóm y hệt sơ đồ ghế chính (xem onSeatClick ở ticketstaff.js).
 function renderSubSeats() {
   const section = document.getElementById('subSeatsSection');
   const list = document.getElementById('subSeatsList');
@@ -263,7 +252,19 @@ function renderSubSeats() {
   const useThreeCols = totalSeats >= 34;
   list.classList.toggle('cols-3', useThreeCols);
 
-  list.innerHTML = subSeats.map(subSeatCard).join('') + subSeatAddTile();
+  const ticketGroupMap = buildTicketGroupMap();
+  list.innerHTML = subSeats.map(s => seatCard(s, ticketGroupMap)).join('') + subSeatAddTile();
+}
+
+// Bấm "+" -> thêm ngay 1 ô ghế phụ TRỐNG vào danh sách (y hệt 1 ghế trống trên sơ đồ chính), không mở
+// modal ngay như trước — bấm vào chính ô trống đó (qua seatCard() -> onSeatClick) mới mở panel đặt vé.
+function addEmptySubSeat() {
+  if (typeof blockIfMultiSelectActive === 'function' && blockIfMultiSelectActive()) return;
+  subSeats.push({ code: nextSubSeatCode(), state: 'empty', price: DEFAULT_SUB_SEAT_PRICE, count: 1 });
+  if (tripSeatBank[currentTripId]) tripSeatBank[currentTripId].subSeats = subSeats;
+  saveSeatBank();
+  renderSubSeats();
+  updateTripStats();
 }
 
 // Quét tripSeatBank (phơi đang có trong ngày), trả về danh sách vé đã đặt/bán/rước dạng phẳng (chưa gom
@@ -312,6 +313,15 @@ function scanTripSeatBankHistory(matchSeatFn) {
   return rawResults;
 }
 
+// Khoá sắp xếp lịch sử: ưu tiên đúng THỜI ĐIỂM đặt/bán vé (seat.actionTime, ISO đầy đủ ngày+giờ) chứ
+// KHÔNG phải ngày khởi hành của chuyến (r.date) — 1 vé đặt ngay bây giờ cho chuyến chạy tuần sau vẫn phải
+// lên đầu danh sách vì thao tác vừa xảy ra, trong khi sắp theo r.date sẽ đẩy nó xuống dưới các vé cũ hơn
+// đặt cho chuyến chạy sớm hơn. Dữ liệu mẫu quá khứ (CUSTOMER_HISTORY_DATA) không có actionTime nên vẫn
+// lùi về r.date (kèm giờ 00:00:00 để so sánh chuỗi ISO cùng định dạng với actionTime thật).
+function historySortKey(r) {
+  return r.actionTime || (r.date ? r.date + 'T00:00:00' : '');
+}
+
 function searchCustomerByPhone(query) {
   const raw = (query || '').toString().trim();
   if (!raw) return [];
@@ -329,7 +339,7 @@ function searchCustomerByPhone(query) {
   // dữ liệu lịch sử quá khứ (CUSTOMER_HISTORY_DATA) theo yêu cầu — trước đây có gộp cả 2 nguồn. Muốn xem
   // cả lịch sử quá khứ của TẤT CẢ khách thì dùng trang "Lịch sử hành khách" (loadAllPassengerHistory).
   const rawResults = scanTripSeatBankHistory(seat => isMatch(seat.phone, seat.customerName, seat.ticketNo));
-  return groupHistoryResults(rawResults).sort((a, b) => b.date.localeCompare(a.date));
+  return groupHistoryResults(rawResults).sort((a, b) => historySortKey(b).localeCompare(historySortKey(a)));
 }
 
 // Toàn bộ lịch sử vé của TẤT CẢ khách (không lọc theo SĐT/tên) cho trang "Lịch sử hành khách" — gồm cả
@@ -337,7 +347,7 @@ function searchCustomerByPhone(query) {
 function loadAllPassengerHistory() {
   const rawResults = scanTripSeatBankHistory(() => true);
   CUSTOMER_HISTORY_DATA.forEach(h => rawResults.push({ ...h, isToday: false }));
-  return groupHistoryResults(rawResults).sort((a, b) => b.date.localeCompare(a.date));
+  return groupHistoryResults(rawResults).sort((a, b) => historySortKey(b).localeCompare(historySortKey(a)));
 }
 
 function selectRebookTrip(tripId) {
@@ -346,8 +356,36 @@ function selectRebookTrip(tripId) {
   document.querySelectorAll('#rbTripList .trip-card').forEach(c => c.classList.remove('selected'));
   const card = document.querySelector(`#rbTripList .trip-card[data-trip="${tripId}"]`);
   if (card) card.classList.add('selected');
+  // Trạm đi/đến trong modal đặt lại vé bám theo phơi đích vừa chọn (xem stationsForTrip).
+  const tripMeta = (allTripsMeta || []).find(t => t.id === tripId);
+  if (tripMeta && typeof populateRebookStationSelects === 'function') populateRebookStationSelects(tripMeta);
   renderMiniSeatMap(tripId);
   updateRebookBtn();
+  updateRebookPricePreview();
+}
+
+// Hiện giá vé MẶC ĐỊNH của đúng phơi vừa chọn lên ô giá (#rbPrice) — nhân viên vẫn sửa được ngay sau đó
+// (focusPriceEdit/onPriceEdit, giống hệt panel đặt vé chính). Chỉ gọi lúc CHỌN PHƠI (đổi hẳn ngữ cảnh
+// giá), không gọi lại mỗi lần tích/bỏ ghế (toggleRebookSeat) để không ghi đè giá nhân viên vừa sửa tay.
+function updateRebookPricePreview() {
+  const priceEl = document.getElementById('rbPrice');
+  if (!priceEl) return;
+  const trip = rebookSelectedTripId ? (allTripsMeta || []).find(t => t.id === rebookSelectedTripId) : null;
+  const price = trip ? (trip.price || 280000) : 280000;
+  priceEl.textContent = price.toLocaleString('vi-VN') + 'đ';
+  priceEl.contentEditable = 'true';
+  if (typeof updateZeroPriceReasonVisibility === 'function') updateZeroPriceReasonVisibility('rbPrice');
+  updateRebookTotalPrice();
+}
+
+// "Tổng cộng" = đơn giá (ô #rbPrice) × số ghế đang chọn — gọi lại mỗi khi 1 trong 2 giá trị đó đổi
+// (chọn/bỏ ghế qua updateRebookBtn(), hoặc sửa giá qua onPriceEdit() ở ticketstaff.js).
+function updateRebookTotalPrice() {
+  const totalEl = document.getElementById('rbTotalPrice');
+  if (!totalEl) return;
+  const unitPrice = (typeof getEditedPrice === 'function') ? getEditedPrice('rbPrice') : 0;
+  const count = rebookSelectedSeats.length;
+  totalEl.textContent = (unitPrice * count).toLocaleString('vi-VN') + 'đ';
 }
 
 function selectRoute(route) {
@@ -361,26 +399,14 @@ function selectRoute(route) {
   });
   document.getElementById('routeDropdown').classList.remove('open');
   showToast('Chọn tuyến: ' + routeItem.label);
+  // Lọc lại danh sách phơi Zone 1 ngay theo tuyến vừa chọn (so trạm đi/đến của phơi).
+  if (typeof renderZone1TripList === 'function') renderZone1TripList();
 }
 
 function subSeatAddTile() {
   return `
-  <div class="seat-card sub-add" data-action="openSubSeatModal">
+  <div class="seat-card sub-add" data-action="addEmptySubSeat">
     <span class="sub-add-plus">+</span>
-  </div>`;
-}
-
-function subSeatCard(seat) {
-  return `
-  <div class="seat-card sub" data-code="${seat.code}" data-action="openSubSeatModal" data-args='${JSON.stringify([seat.code])}'>
-    <div class="seat-top">
-      <div><div class="seat-code">${seat.code}</div></div>
-      <div class="seat-top-right">
-        <div class="seat-price-tag">${(seat.price || 0).toLocaleString('vi-VN')}đ</div>
-        <button type="button" class="seat-cancel-tag" data-action="deleteSubSeat" data-stop-propagation="1" data-args='${JSON.stringify([seat.code])}'>Xóa</button>
-      </div>
-    </div>
-    <div class="seat-note" title="${seat.note || ''}">${seat.note || '—'}</div>
   </div>`;
 }
 
@@ -459,6 +485,7 @@ function updateRebookBtn() {
   const isDisabled = !rebookSelectedTripId || !rebookSelectedSeats.length;
   if (btn) btn.disabled = isDisabled;
   if (sellBtn) sellBtn.disabled = isDisabled;
+  updateRebookTotalPrice();
 }
 
 function updateTransferBarVisibility() {
@@ -498,7 +525,8 @@ function updateTransferHint() {
   // và TẤT CẢ ghế nguồn đang chọn đều chưa bán (state khác 'sold').
   const sellBtn = document.getElementById('stickySellBtn');
   const reprintBtn = document.getElementById('stickyReprintBtn');
-  if (sellBtn || reprintBtn) {
+  const cancelBtn = document.getElementById('stickyCancelBtn');
+  if (sellBtn || reprintBtn || cancelBtn) {
     const sourceSeats = (!transferSourceCancelId && selectedSourceSeats.length && transferSourceTripId === currentTripId)
       ? selectedSourceSeats.map(code => findSeatInTrip(transferSourceTripId, code)).filter(Boolean)
       : [];
@@ -511,6 +539,13 @@ function updateTransferHint() {
     if (reprintBtn) {
       const canReprint = sourceSeats.length > 0 && sourceSeats.every(s => s.state === 'sold');
       reprintBtn.style.display = canReprint ? '' : 'none';
+    }
+    // Nút "Hủy vé" trên thanh chuyển ghế — cho phép hủy 1 hoặc nhiều ghế (đã đặt hoặc đã bán) cùng
+    // lúc, chỉ hiện khi đang chọn ghế nguồn theo chế độ chuyển ghế (không phải đang chọn vé hủy để
+    // đặt lại, và không phải chế độ đặt vé nhóm chọn ghế trống).
+    if (cancelBtn) {
+      const canCancel = selectionMode === 'transfer' && sourceSeats.length > 0;
+      cancelBtn.style.display = canCancel ? '' : 'none';
     }
   }
   updateTransferBarVisibility();

@@ -20,6 +20,11 @@ function renderTripLifecycleUI() {
   badge.className = 'trip-status-badge ' + meta.cssClass;
 
   actionsBox.innerHTML = tsBuildLifecycleButtonsHtml(status);
+
+  // Mọi lần đổi vòng đời chuyến (khởi hành / Re-open / đóng Re-open / kết ca) đều gọi hàm này — vẽ lại
+  // danh sách phơi Zone 1 để badge SL ghế đổi màu ngay (đỏ = đã khoá bán vé, xem zone1IsTripSellingLocked)
+  // thay vì chờ tới lần render kế tiếp. selectTrip đã tự vẽ Zone 1 nên 1 lần vẽ lại thừa ở đó là không đáng kể.
+  if (typeof renderZone1TripList === 'function') renderZone1TripList();
 }
 
 function tsBuildLifecycleButtonsHtml(status) {
@@ -1009,6 +1014,22 @@ function tsEsc(str) {
     };
   }
 
+  const originalOpenCancelModalForCodes = window.openCancelModalForCodes;
+  if (typeof originalOpenCancelModalForCodes === 'function') {
+    window.openCancelModalForCodes = function (codes) {
+      if (tsIsSellingLocked(currentTripId)) { showToast(lockMsg); return; }
+      return originalOpenCancelModalForCodes(codes);
+    };
+  }
+
+  const originalCancelSelectedFromTransferBar = window.cancelSelectedFromTransferBar;
+  if (typeof originalCancelSelectedFromTransferBar === 'function') {
+    window.cancelSelectedFromTransferBar = function () {
+      if (tsIsSellingLocked(currentTripId)) { showToast(lockMsg); return; }
+      return originalCancelSelectedFromTransferBar();
+    };
+  }
+
   const originalSellTicket = window.sellTicket;
   if (typeof originalSellTicket === 'function') {
     window.sellTicket = function () {
@@ -1030,6 +1051,18 @@ function tsEsc(str) {
     window.sellFromTransferBar = function () {
       if (tsIsSellingLocked(currentTripId)) { showToast(lockMsg); return; }
       return originalSellFromTransferBar();
+    };
+  }
+
+  // "Chuyển ghế" / "Đặt vé nhóm" / "Khôi phục vé hủy" trên thanh chuyển ghế — về lý thuyết chỉ bấm được
+  // sau khi đã chọn ghế qua onSeatClick (đã khóa ở trên), nhưng vẫn khóa thêm ở đây phòng trường hợp
+  // chuyến bị khởi hành/đóng Re-open NGAY LÚC đang có sẵn lượt chọn dở dang (vd 2 nhân viên thao tác
+  // cùng lúc), tránh hoàn tất chuyển/đặt ghế trên 1 chuyến đã khóa bán vé.
+  const originalConfirmSelectionAction = window.confirmSelectionAction;
+  if (typeof originalConfirmSelectionAction === 'function') {
+    window.confirmSelectionAction = function () {
+      if (tsIsSellingLocked(currentTripId)) { showToast(lockMsg); return; }
+      return originalConfirmSelectionAction();
     };
   }
 

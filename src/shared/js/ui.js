@@ -24,11 +24,17 @@ function openBookingPanel(seats, options = {}) {
   // Vé đã bán (state 'sold') chỉ xem thông tin, không cho lưu/bán lại — ẩn nút "Lưu thay đổi" (cả 2
   // trang) và "Bán vé" (riêng ticketstaff) thay vì chặn không cho mở panel như trước.
   const isReadOnly = mode === 'edit' && seat && seat.state === 'sold';
+  // Ghế phụ ("S1", "S2"...) không có phần "Đặt cọc"/nút "Đặt vé" (giữ chỗ) — chỉ bán thẳng, xem
+  // isSubSeatCode() ở shared/booking.js. Chỉ áp dụng khi TẤT CẢ ghế trong lượt đặt đều là ghế phụ —
+  // nhóm gồm cả ghế thường lẫn ghế phụ vẫn đi theo luồng vé thường (có cọc, có "Đặt vé").
+  const isSubSeatBooking = seats.length > 0 && typeof isSubSeatCode === 'function' && seats.every(s => isSubSeatCode(s.code));
   const saveBtn = document.getElementById('savePanelBtn');
   const sellBtn = document.getElementById('sellPanelBtn');
   const reprintBtn = document.getElementById('reprintPanelBtn');
-  if (saveBtn) saveBtn.style.display = isReadOnly ? 'none' : '';
+  const depositBlockEl = document.querySelector('.deposit-block');
+  if (saveBtn) saveBtn.style.display = (isReadOnly || isSubSeatBooking) ? 'none' : '';
   if (sellBtn) sellBtn.style.display = isReadOnly ? 'none' : '';
+  if (depositBlockEl) depositBlockEl.style.display = isSubSeatBooking ? 'none' : '';
   // Vé đã bán không tự động in lại (VD: sau khi chuyển ghế) — chỉ hiện nút này để nhân viên chủ động
   // bấm in khi cần (chỉ có ở ticketstaff, callcenter không có #reprintPanelBtn/chức năng in).
   if (reprintBtn) reprintBtn.style.display = isReadOnly ? '' : 'none';
@@ -63,6 +69,8 @@ function openBookingPanel(seats, options = {}) {
   if (panelHeadSub) panelHeadSub.textContent = [tripTime && tripRoute ? `${tripTime} - ${tripRoute}` : (tripRoute || tripTime), tripDateText].filter(Boolean).join(' • ');
   const tRouteEl = document.getElementById('t_route');
   if (tRouteEl) tRouteEl.textContent = tripRoute || '—';
+  // Gợi ý Trạm đi/Trạm đến theo phơi đang mở (không đổ cả danh mục trạm) — xem stationsForTrip().
+  if (typeof populateBookingStationDatalists === 'function') populateBookingStationDatalists(tripMeta || (tripRoute ? { route: tripRoute } : null));
   const tDatetimeEl = document.getElementById('t_datetime');
   if (tDatetimeEl) tDatetimeEl.textContent = tripLine || '—';
   const batchWrap = document.getElementById('batchChipRow');
@@ -126,9 +134,14 @@ function closePanel() {
 // "Ghi chú"/seat.note) — hiện/ẩn ô này theo giá đang hiển thị trên vé mẫu. Gọi lại mỗi khi giá thay
 // đổi (mở panel, sửa giá). Ô này luôn được openBookingPanel() điền sẵn từ seat.zeroPriceReason khi
 // sửa 1 ghế đã có giá 0đ từ trước nên không cần bắt gõ lại mỗi lần lưu.
-function updateZeroPriceReasonVisibility() {
-  const priceEl = document.getElementById('t_price');
-  const wrap = document.getElementById('zeroPriceReasonWrap');
+// Dùng chung cho cả giá vé panel đặt vé chính (#t_price) lẫn modal "Đặt lại vé" (#rbPrice, xem
+// ticketstaff.html) — truyền đúng id ô giá + tra ra đúng khối "Lý do giá 0đ" tương ứng.
+const PRICE_ZERO_REASON_WRAP_BY_ID = { t_price: 'zeroPriceReasonWrap', rbPrice: 'rbZeroPriceReasonWrap' };
+function updateZeroPriceReasonVisibility(priceElId) {
+  const id = priceElId || 't_price';
+  const wrapId = PRICE_ZERO_REASON_WRAP_BY_ID[id] || 'zeroPriceReasonWrap';
+  const priceEl = document.getElementById(id);
+  const wrap = document.getElementById(wrapId);
   if (!priceEl || !wrap) return;
   const price = parseInt((priceEl.textContent || '').replace(/[^0-9]/g, '')) || 0;
   wrap.style.display = price === 0 ? 'flex' : 'none';

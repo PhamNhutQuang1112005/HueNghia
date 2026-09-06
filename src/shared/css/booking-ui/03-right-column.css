@@ -498,6 +498,34 @@
   font-weight: 800;
 }
 
+/* Hàng riêng bên dưới .seat-top: tag loại khách bên trái, tiền cọc bên phải (thẳng lề với giá tiền ở
+   hàng trên) — xem seatCard() ở ticketstaff.js. */
+.seat-second-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  min-height: 18px;
+}
+
+.seat-second-row-left,
+.seat-second-row-right {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* Tag loại khách là item ĐẦU TIÊN của hàng 2 (không đứng cạnh mã ghế như ở layout cũ) nên bỏ margin-left
+   mặc định của .seat-guest-type-tag, tránh lệch khỏi mép trái của thẻ. */
+.seat-second-row-left .seat-guest-type-tag {
+  margin-left: 0;
+}
+
+.seat-second-row-right {
+  margin-left: auto;
+}
+
 .seat-guest-type-tag {
   display: inline-block;
   vertical-align: middle;
@@ -599,6 +627,13 @@
   background: var(--white);
   color: var(--text-sub);
   border: 1.5px solid var(--black);
+}
+
+/* Ghế trống không có giá để hiện — seatCard() vẫn render sẵn 1 div .seat-price-tag rỗng (không chữ)
+   cho ghế trống, ẩn hẳn ở đây (thay vì chỉ ẩn lúc rê chuột) để không lộ ra 1 khung màu trống vô nghĩa
+   ở góc thẻ ghế trống, kể cả sơ đồ ghế chính lẫn danh sách ghế phụ (đều dùng chung seatCard()). */
+.seat-card.empty .seat-price-tag {
+  display: none;
 }
 
 /* .cargo gộp chung màu với .hold — không còn loại ghế "xanh biển" riêng trên sơ đồ ghế; ghế có baga

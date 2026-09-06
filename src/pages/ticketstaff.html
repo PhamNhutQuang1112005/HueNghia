@@ -13,14 +13,14 @@
      ../shared/css/booking-ui/ — NẠP ĐÚNG THỨ TỰ 01→11 (chính là thứ tự dòng của file gốc)
      để cascade/specificity không đổi. Xem ../shared/css/booking-ui/README.md. -->
 <link rel="stylesheet" href="../shared/css/booking-ui/01-base-layout.css?v=108">
-<link rel="stylesheet" href="../shared/css/booking-ui/02-zone1.css?v=108">
-<link rel="stylesheet" href="../shared/css/booking-ui/03-right-column.css?v=108">
+<link rel="stylesheet" href="../shared/css/booking-ui/02-zone1.css?v=109">
+<link rel="stylesheet" href="../shared/css/booking-ui/03-right-column.css?v=109">
 <link rel="stylesheet" href="../shared/css/booking-ui/04-overlay-modals.css?v=108">
 <link rel="stylesheet" href="../shared/css/booking-ui/05-passenger-list.css?v=108">
-<link rel="stylesheet" href="../shared/css/booking-ui/06-grid-table.css?v=108">
+<link rel="stylesheet" href="../shared/css/booking-ui/06-grid-table.css?v=109">
 <link rel="stylesheet" href="../shared/css/booking-ui/07-customer-history.css?v=108">
 <link rel="stylesheet" href="../shared/css/booking-ui/08-phoi-management.css?v=108">
-<link rel="stylesheet" href="../shared/css/booking-ui/09-rebook-modal.css?v=108">
+<link rel="stylesheet" href="../shared/css/booking-ui/09-rebook-modal.css?v=109">
 <link rel="stylesheet" href="../shared/css/booking-ui/10-customer-history-seatmap.css?v=108">
 <link rel="stylesheet" href="../shared/css/booking-ui/11-responsive.css?v=108">
 <link rel="stylesheet" href="ticketstaff/ticketstaff.css?v=100">
@@ -105,19 +105,11 @@
       <div style="position:relative;">
         <label class="field-label" for="directionTrigger">Hướng đi</label>
         <div class="combo-input-wrap">
-          <input type="text" class="combo-input" id="directionTrigger" autocomplete="off" placeholder="Tìm hướng đi..." value="Sài Gòn → Châu Đốc">
+          <input type="text" class="combo-input" id="directionTrigger" autocomplete="off" placeholder="Tìm hướng đi..." value="Sài Gòn - An Giang">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
         </div>
-        <div class="dropdown-panel" id="directionDropdown">
-          <div class="dropdown-item active" data-dir="sg-cd" data-action="toggleDirection" data-args='["sg-cd"]'>
-            <span>Sài Gòn → Châu Đốc</span>
-            <span class="dropdown-item-check">✓</span>
-          </div>
-          <div class="dropdown-item" data-dir="cd-sg" data-action="toggleDirection" data-args='["cd-sg"]'>
-            <span>Châu Đốc → Sài Gòn</span>
-            <span class="dropdown-item-check">✓</span>
-          </div>
-        </div>
+        <!-- 4 hướng cố định — JS renderDirectionOptions() dựng lại từ FleetStore.getDirections() -->
+        <div class="dropdown-panel" id="directionDropdown"></div>
       </div>
 
       <div style="position:relative;">
@@ -133,13 +125,10 @@
           <input type="text" class="combo-input" id="routeTrigger" autocomplete="off" placeholder="Tìm tuyến..." value="Tất cả tuyến">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
         </div>
+        <!-- JS renderRouteOptions() dựng lại theo hướng đang chọn (FleetStore) -->
         <div class="dropdown-panel" id="routeDropdown">
           <div class="dropdown-item active" data-route="all" data-action="selectRoute" data-args='["all"]'>
             <span>Tất cả tuyến</span>
-            <span class="dropdown-item-check">✓</span>
-          </div>
-          <div class="dropdown-item" data-route="sg-cd" data-action="selectRoute" data-args='["sg-cd"]'>
-            <span>Sài Gòn - Châu Đốc</span>
             <span class="dropdown-item-check">✓</span>
           </div>
         </div>
@@ -203,59 +192,10 @@
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div class="trip-list-head"><span>Danh sách phơi xe</span></div>
 
-        <div id="tripListSGCD">
-          <div class="trip-card selected" data-trip="1" data-action="selectTrip" data-args='["__this__", "07:00", "Sài Gòn - Châu Đốc"]'>
-              <div><div class="trip-time-row"><span class="trip-time">07:00</span><span class="trip-plate-inline">51F-123.45</span></div><div class="trip-sub" title="Sài Gòn - Châu Đốc (07:00) - Xuất bến VP Q.5 • Limousine 24 Phòng">Sài Gòn - Châu Đốc (07:00) - Xuất bến VP Q.5 • Limousine 24 Phòng</div></div>
-            <div class="trip-nums"><div class="n1">10/32</div></div>
-          </div>
-
-          <div class="trip-card" data-trip="2" data-action="selectTrip" data-args='["__this__", "08:30", "Sài Gòn - Châu Đốc"]'>
-              <div><div class="trip-time-row"><span class="trip-time">08:30</span><span class="trip-plate-inline">50H-678.90</span></div><div class="trip-sub" title="Sài Gòn - Châu Đốc (08:30) - Chạy bến An Sương • Giường nằm 34 chỗ">Sài Gòn - Châu Đốc (08:30) - Chạy bến An Sương • Giường nằm 34 chỗ</div></div>
-            <div class="trip-nums"><div class="n1">22/34</div></div>
-          </div>
-
-          <div class="trip-card" data-trip="3" data-action="selectTrip" data-args='["__this__", "10:00", "Sài Gòn - Châu Đốc"]'>
-              <div><div class="trip-time-row"><span class="trip-time">10:00</span><span class="trip-plate-inline">51F-234.56</span></div><div class="trip-sub" title="Sài Gòn - Châu Đốc (10:00) - Chuyến sáng trung tâm • Limousine 24 Phòng">Sài Gòn - Châu Đốc (10:00) - Chuyến sáng trung tâm • Limousine 24 Phòng</div></div>
-            <div class="trip-nums"><div class="n1">6/24</div></div>
-          </div>
-
-          <div class="trip-card" data-trip="4" data-action="selectTrip" data-args='["__this__", "13:15", "Sài Gòn - Châu Đốc"]'>
-              <div><div class="trip-time-row"><span class="trip-time">13:15</span><span class="trip-plate-inline">50H-345.67</span></div><div class="trip-sub" title="Sài Gòn - Châu Đốc (13:15) - Tăng cường xe 45 chỗ • Ghế ngồi 45 chỗ">Sài Gòn - Châu Đốc (13:15) - Tăng cường xe 45 chỗ • Ghế ngồi 45 chỗ</div></div>
-            <div class="trip-nums"><div class="n1">30/45</div></div>
-          </div>
-
-          <div class="trip-card" data-trip="5" data-action="selectTrip" data-args='["__this__", "15:30", "Sài Gòn - Châu Đốc"]'>
-              <div><div class="trip-time-row"><span class="trip-time">15:30</span><span class="trip-plate-inline">51F-456.78</span></div><div class="trip-sub" title="Sài Gòn - Châu Đốc (15:30) - Tuyến cố định chiều • Limousine 24 Phòng">Sài Gòn - Châu Đốc (15:30) - Tuyến cố định chiều • Limousine 24 Phòng</div></div>
-            <div class="trip-nums"><div class="n1">18/24</div></div>
-          </div>
-
-          <div class="trip-card" data-trip="6" data-action="selectTrip" data-args='["__this__", "17:00", "Sài Gòn - Châu Đốc"]'>
-              <div><div class="trip-time-row"><span class="trip-time">17:00</span><span class="trip-plate-inline">50H-567.89</span></div><div class="trip-sub" title="Sài Gòn - Châu Đốc (17:00) - Chuyến chiều tối • Giường nằm 34 chỗ">Sài Gòn - Châu Đốc (17:00) - Chuyến chiều tối • Giường nằm 34 chỗ</div></div>
-            <div class="trip-nums"><div class="n1">5/34</div></div>
-          </div>
-        </div>
-
-        <div id="tripListCDSG" style="display:none;">
-          <div class="trip-card selected" data-trip="7" data-action="selectTrip" data-args='["__this__", "06:00", "Châu Đốc - Sài Gòn"]'>
-              <div><div class="trip-time-row"><span class="trip-time">06:00</span><span class="trip-plate-inline">51F-123.45</span></div><div class="trip-sub" title="Châu Đốc - Sài Gòn (06:00) - Xuất bến sớm Bến Xe CD • Limousine 24 Phòng">Châu Đốc - Sài Gòn (06:00) - Xuất bến sớm Bến Xe CD • Limousine 24 Phòng</div></div>
-            <div class="trip-nums"><div class="n1">14/32</div></div>
-          </div>
-
-          <div class="trip-card" data-trip="8" data-action="selectTrip" data-args='["__this__", "09:15", "Châu Đốc - Sài Gòn"]'>
-              <div><div class="trip-time-row"><span class="trip-time">09:15</span><span class="trip-plate-inline">50H-678.90</span></div><div class="trip-sub" title="Châu Đốc - Sài Gòn (09:15) - Chuyến sáng Châu Đốc • Giường nằm 34 chỗ">Châu Đốc - Sài Gòn (09:15) - Chuyến sáng Châu Đốc • Giường nằm 34 chỗ</div></div>
-            <div class="trip-nums"><div class="n1">20/34</div></div>
-          </div>
-
-          <div class="trip-card" data-trip="9" data-action="selectTrip" data-args='["__this__", "14:00", "Châu Đốc - Sài Gòn"]'>
-              <div><div class="trip-time-row"><span class="trip-time">14:00</span><span class="trip-plate-inline">51F-234.56</span></div><div class="trip-sub" title="Châu Đốc - Sài Gòn (14:00) - Tuyến cố định rước khách • Limousine 24 Phòng">Châu Đốc - Sài Gòn (14:00) - Tuyến cố định rước khách • Limousine 24 Phòng</div></div>
-            <div class="trip-nums"><div class="n1">9/24</div></div>
-          </div>
-
-          <div class="trip-card" data-trip="10" data-action="selectTrip" data-args='["__this__", "21:00", "Châu Đốc - Sài Gòn"]'>
-              <div><div class="trip-time-row"><span class="trip-time">21:00</span><span class="trip-plate-inline">50H-567.89</span></div><div class="trip-sub" title="Châu Đốc - Sài Gòn (21:00) - Chuyến đêm Limousine VIP • Giường nằm 34 chỗ">Châu Đốc - Sài Gòn (21:00) - Chuyến đêm Limousine VIP • Giường nằm 34 chỗ</div></div>
-            <div class="trip-nums"><div class="n1">7/34</div></div>
-          </div>
-        </div>
+        <!-- 2 container GIỮ id cũ (nhiều chỗ JS tham chiếu) — renderZone1TripList() đổ phơi của
+             hướng đang chọn vào #tripListSGCD, #tripListCDSG để rỗng. -->
+        <div id="tripListSGCD"></div>
+        <div id="tripListCDSG" style="display:none;"></div>
 
         <div class="more-trips">Xem thêm phơi xe <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></div>
       </div>
@@ -275,7 +215,7 @@
         <div class="z2-row1">
           <div class="z2-title-compact">
             <div class="z2-trip-ico"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9"/><path d="M4 16h16"/><path d="M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M18 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg></div>
-            <h1 id="tripTitle">07:00 - Sài Gòn - Châu Đốc</h1>
+            <h1 id="tripTitle">07:00 - Sài Gòn - An Giang</h1>
             <span class="trip-status-badge" id="tripStatusBadge"></span>
             <span class="car-type"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9"/><path d="M4 16h16"/></svg> Limousine 24 Phòng</span>
             <span class="z2-dot">●</span>
@@ -484,7 +424,7 @@
                 <tr>
                   <th class="pax-col-stt">STT</th>
                   <th class="pax-col-driver">Tài xế</th>
-                  <th class="pax-col-address">Địa chỉ đón</th>
+                  <th class="pax-col-address ch-th-filterable"><div class="ch-th-content"><span>Địa chỉ đón</span><button type="button" class="ch-col-filter-btn" id="tsColFilterBtn-pickup-station" data-action="tsOpenColumnFilter" data-args='["pickup","station","__this__"]' title="Lọc theo trạm đi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button></div></th>
                   <th class="pax-col-sl">SL</th>
                   <th class="pax-col-vt">Vị trí</th>
                   <th class="pax-col-name">Họ và tên</th>
@@ -510,11 +450,11 @@
             </div>
           </div>
           <div class="transship-table-wrap">
-            <table class="pax-table pax-table--grid pax-table--transship">
+            <table class="pax-table pax-table--grid pax-table--transship pax-table--transship-dropoff">
               <thead>
                 <tr>
                   <th class="pax-col-stt">STT</th>
-                  <th class="pax-col-address">Địa chỉ đón/trả</th>
+                  <th class="pax-col-address ch-th-filterable"><div class="ch-th-content"><span>Địa chỉ đón/trả</span><button type="button" class="ch-col-filter-btn" id="tsColFilterBtn-dropoff-station" data-action="tsOpenColumnFilter" data-args='["dropoff","station","__this__"]' title="Lọc theo trạm đến"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button></div></th>
                   <th class="pax-col-sl">SL</th>
                   <th class="pax-col-vt">Vị trí</th>
                   <th class="pax-col-name">Họ và tên</th>
@@ -530,6 +470,19 @@
           </div>
         </div>
       </section>
+
+      <!-- Popover filter kiểu Excel DÙNG CHUNG cho MỌI cột có thể lọc ở 2 bảng Trung chuyển đón/trả (nút
+           .ch-col-filter-btn trong <th>, xem tsOpenColumnFilter() trong ticketstaff.js) — 1 popover duy
+           nhất, định vị lại (top/left) + đổ lại danh sách giá trị mỗi lần bấm nút lọc của 1 cột khác nhau,
+           thay vì tạo 19 popover tĩnh riêng cho từng cột. -->
+      <div class="ch-excel-filter-popover" id="tsColFilterPopover" style="display:none;">
+        <input type="text" class="ch-popover-search" id="tsColFilterSearch" placeholder="Tìm giá trị..." data-input-action="tsColFilterSearchInput" data-args='["__this_value__"]'>
+        <div class="ch-popover-list" id="tsColFilterList"></div>
+        <div class="ch-popover-actions">
+          <button type="button" class="ch-popover-btn clear" data-action="tsColFilterClear">Xoá lọc</button>
+          <button type="button" class="ch-popover-btn apply" data-action="tsColFilterApply">Áp dụng</button>
+        </div>
+      </div>
 
       <!-- Thanh nổi chọn khách trung chuyển để in vé (role trung chuyển, tab Trung chuyển) — cùng kiểu
            .sticky-actions với thanh "Chuyển ghế" ở tab Hành khách, id riêng để không đụng nhau. -->
@@ -597,6 +550,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
             In lại vé
           </button>
+          <button class="btn btn-cancel-seats" id="stickyCancelBtn" type="button" data-action="cancelSelectedFromTransferBar" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            Hủy vé
+          </button>
           <button class="btn btn-secondary" id="stickyActionBtn" type="button" data-action="confirmSelectionAction">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3v18"/><path d="m21 7-4-4-4 4"/><path d="M7 21V3"/><path d="m3 17 4 4 4-4"/></svg>
             Chuyển ghế
@@ -642,10 +599,9 @@
         </div>
         <div class="filter-field">
           <label for="phFilterDirection">Hướng đi</label>
+          <!-- 4 hướng cố định — rebuildPhFilterOptions() (booking.js) đổ lại từ FleetStore.getDirections() -->
           <select id="phFilterDirection" data-change-action="phOnFilterDirectionChange">
             <option value="">Tất cả hướng</option>
-            <option value="chieu-di">Chiều đi</option>
-            <option value="chieu-ve">Chiều về</option>
           </select>
         </div>
         <div class="filter-field">
@@ -752,10 +708,9 @@
         </div>
         <div class="filter-field">
           <label for="filterDirection">Hướng đi</label>
+          <!-- 4 hướng cố định — populateDirectionFilter() (ticketstaff.js) đổ lại từ FleetStore.getDirections() -->
           <select id="filterDirection" data-change-action="onFilterDirectionChange">
-            <option value="">Tất cả</option>
-            <option value="chieu-di">Chiều đi</option>
-            <option value="chieu-ve">Chiều về</option>
+            <option value="">Tất cả hướng</option>
           </select>
         </div>
         <div class="filter-field">
@@ -877,12 +832,9 @@
 
         <div class="filter-field">
           <label>Trạm đi</label>
+          <!-- populateStationPickers() (ticketstaff.js) đổ danh mục trạm từ FleetStore, giữ option "all" -->
           <select id="pkFilterFromStation" data-change-action="pkApplyFilters">
             <option value="all">Tất cả trạm đi</option>
-            <option value="Trạm Kinh Dương Vương">Trạm Kinh Dương Vương</option>
-            <option value="Trạm An Sương">Trạm An Sương</option>
-            <option value="Trạm Q.5">Trạm Q.5</option>
-            <option value="Văn phòng trung tâm">Văn phòng trung tâm</option>
           </select>
         </div>
 
@@ -890,11 +842,6 @@
           <label>Trạm đến</label>
           <select id="pkFilterToStation" data-change-action="pkApplyFilters">
             <option value="all">Tất cả trạm đến</option>
-            <option value="Trạm Châu Đốc">Trạm Châu Đốc</option>
-            <option value="Trạm Long Xuyên">Trạm Long Xuyên</option>
-            <option value="Trạm Tân Châu">Trạm Tân Châu</option>
-            <option value="Bến xe Châu Đốc">Bến xe Châu Đốc</option>
-            <option value="Trạm Cần Thơ">Trạm Cần Thơ</option>
           </select>
         </div>
 
@@ -919,6 +866,8 @@
 
         <div class="filter-reset">
           <button type="button" class="btn btn-secondary" data-action="pkResetFilters">Đặt lại bộ lọc</button>
+          <!-- Chỉ role trung chuyển thấy nút này (pkIsShuttleDispatchRole()) — ẩn/hiện gắn ở pkRenderPaxTable() -->
+          <button type="button" class="btn btn-secondary" id="pkPrintRuocBtn" data-action="pkOpenPrintRuocModal" style="display:none;">In rước</button>
           <button type="button" class="btn btn-primary" id="pkOpenPickupBtn" data-action="openPickupModal">Rước liền</button>
         </div>
       </div>
@@ -1022,10 +971,6 @@
             <label>Trạm đi</label>
             <select id="pickupStation" data-change-action="refreshPickupPreviewAndPrice">
               <option value="">Chọn trạm đi</option>
-              <option>Trạm Kinh Dương Vương</option>
-              <option>Trạm An Sương</option>
-              <option>Trạm Q.5</option>
-              <option>Văn phòng trung tâm</option>
             </select>
           </div>
           <div class="form-field">
@@ -1040,11 +985,6 @@
             <label>Trạm đến</label>
             <select id="pickupDestination" data-change-action="refreshPickupPreviewAndPrice">
               <option value="">Chọn trạm đến</option>
-              <option>Trạm Châu Đốc</option>
-              <option>Trạm Tân Châu</option>
-              <option>Bến xe Châu Đốc</option>
-              <option>Trạm Long Xuyên</option>
-              <option>Trạm Cần Thơ</option>
             </select>
           </div>
           <div class="form-field">
@@ -1198,7 +1138,7 @@
     <div id="pkStatusDriverSection">
       <div class="form-field">
         <label>Tài xế trung chuyển</label>
-        <select id="pkStatusDriverSelect">
+        <select id="pkStatusDriverSelect" data-change-action="pkOnStatusDriverChange">
           <option value="">-- Giữ nguyên / chưa gán --</option>
         </select>
       </div>
@@ -1207,6 +1147,7 @@
         <div class="form-field" style="margin-bottom: 0;">
           <label>Loại xe</label>
           <select id="pkStatusVehicleTypeSelect">
+            <option value="">— Chưa chọn —</option>
             <option value="Xe 16 chỗ">Xe 16 chỗ</option>
             <option value="Xe 7 chỗ">Xe 7 chỗ</option>
             <option value="Xe 29 chỗ">Xe 29 chỗ</option>
@@ -1217,6 +1158,7 @@
         <div class="form-field" style="margin-bottom: 0;">
           <label>Biển số xe</label>
           <select id="pkStatusPlateSelect">
+            <option value="">— Chưa chọn —</option>
             <option value="51B-666.66">51B-666.66</option>
             <option value="51B-777.77">51B-777.77</option>
             <option value="50H-888.88">50H-888.88</option>
@@ -1230,6 +1172,7 @@
 
     <div class="modal-actions">
       <button type="button" class="btn btn-secondary" data-action="closeModal" data-args='["pkUpdateStatusModal"]'>Hủy</button>
+      <button type="button" class="btn btn-secondary" style="border-color: var(--red); color: var(--red);" data-action="pkAssignDriverVehicle">Gán</button>
       <button type="button" class="btn btn-primary" data-action="pkSaveDriverUpdate">Lưu</button>
     </div>
   </div>
@@ -1241,7 +1184,7 @@
     <div class="panel-head">
       <div>
         <h2><span id="panelTitleMode">Đặt vé</span> - Ghế <span id="panelSeatCode">A1</span></h2>
-        <div class="sub" id="panelHeadSub">07:00 - Sài Gòn - Châu Đốc • 08/07/2026</div>
+        <div class="sub" id="panelHeadSub">07:00 - Sài Gòn - An Giang • 08/07/2026</div>
       </div>
       <button class="icon-close" data-action="closePanel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
@@ -1277,12 +1220,8 @@
           <div class="form-field">
             <label id="f_station_label">Trạm đi</label>
             <input type="text" id="f_station_select" placeholder="Chọn trạm đi..." data-input-action="refreshTicket" autocomplete="off">
-            <datalist id="departureStationList">
-              <option value="Trạm Kinh Dương Vương">
-              <option value="Trạm An Sương">
-              <option value="Trạm Q.5">
-              <option value="Văn phòng trung tâm">
-            </datalist>
+            <!-- populateStationPickers() (ticketstaff.js) đổ danh mục trạm từ FleetStore -->
+            <datalist id="departureStationList"></datalist>
             <datalist id="stopPointList">
               <option value="Ngã tư Bình Phước">
               <option value="Cầu vượt Sóng Thần">
@@ -1302,13 +1241,7 @@
           <div class="form-field">
             <label>Trạm đến</label>
             <input type="text" id="f_destination" placeholder="Chọn trạm đến..." data-input-action="refreshTicket" autocomplete="off">
-            <datalist id="destinationStationList">
-              <option value="Trạm Châu Đốc">
-              <option value="Trạm Tân Châu">
-              <option value="Bến xe Châu Đốc">
-              <option value="Trạm Long Xuyên">
-              <option value="Trạm Cần Thơ">
-            </datalist>
+            <datalist id="destinationStationList"></datalist>
           </div>
           <div class="form-field">
             <label>Trung chuyển đến</label>
@@ -1342,7 +1275,7 @@
         <div class="ticket">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
             <div>
-              <div class="route" id="t_route">Sài Gòn - Châu Đốc</div>
+              <div class="route" id="t_route">Sài Gòn - An Giang</div>
               <div class="datetime" id="t_datetime">07:00 • 08/07/2026</div>
               <div class="seatno" id="t_seat">A1</div>
             </div>
@@ -1568,24 +1501,6 @@
   </div>
 </div>
 
-<!-- ===== MODAL: GHẾ PHỤ (GHI CHÚ + GIÁ TIỀN) ===== -->
-<div class="modal-overlay" id="subSeatModal">
-  <div class="modal">
-    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
-      <h3 id="subSeatModalTitle" style="margin:0;">Thêm ghế phụ</h3>
-      <div class="seat-price-tag" id="subSeatPriceDisplay">280.000đ</div>
-    </div>
-    <div class="form-field">
-      <label>Ghi chú</label>
-      <textarea id="subSeatNote" rows="3" placeholder="Nhập ghi chú..."></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" data-action="closeModal" data-args='["subSeatModal"]'>Đóng</button>
-      <button class="btn btn-primary" data-action="saveSubSeat">Lưu</button>
-    </div>
-  </div>
-</div>
-
 <!-- ===== MODAL: KHỞI HÀNH XE ===== -->
 <div class="modal-overlay" id="departModal">
   <div class="modal manifest-modal manifest-modal-wide">
@@ -1756,7 +1671,7 @@
 
     <div class="rebook-panel-body">
       <div class="rebook-col-left">
-        <div class="rebook-form-section">
+        <div class="rebook-form-section rebook-customer-section">
           <h3 class="rebook-section-title">Thông tin khách hàng</h3>
           <div class="form-row" style="--cols:3;">
             <div class="form-field">
@@ -1780,12 +1695,8 @@
           <div class="form-row" id="rbStationRow" style="--cols:1;">
             <div class="form-field">
               <label id="rbStationLabel">Trạm đi</label>
-              <select id="rbFirstStop">
-                <option value="Trạm Kinh Dương Vương">Trạm Kinh Dương Vương</option>
-                <option value="Trạm An Sương">Trạm An Sương</option>
-                <option value="Trạm Q.5">Trạm Q.5</option>
-                <option value="Văn phòng trung tâm">Văn phòng trung tâm</option>
-              </select>
+              <!-- populateStationPickers() (ticketstaff.js) đổ danh mục trạm từ FleetStore -->
+              <select id="rbFirstStop"></select>
             </div>
             <div class="form-field" id="rbTransshipWrap" style="display:none;">
               <label id="rbTransshipLabel">Trung chuyển đi <span style="color:var(--red);">*</span></label>
@@ -1805,13 +1716,7 @@
           <div class="form-row" style="--cols:2;">
             <div class="form-field">
               <label>Trạm đến</label>
-              <select id="rbLastStop">
-                <option value="Trạm Châu Đốc">Trạm Châu Đốc</option>
-                <option value="Trạm Tân Châu">Trạm Tân Châu</option>
-                <option value="Bến xe Châu Đốc">Bến xe Châu Đốc</option>
-                <option value="Trạm Long Xuyên">Trạm Long Xuyên</option>
-                <option value="Trạm Cần Thơ">Trạm Cần Thơ</option>
-              </select>
+              <select id="rbLastStop"></select>
             </div>
             <div class="form-field">
               <label>Trung chuyển đến</label>
@@ -1878,6 +1783,39 @@
         <div class="ch-mini-seat-map" id="rbSeatMap">
           <p class="ch-seat-placeholder">Vui lòng chọn phơi xe trước</p>
         </div>
+
+        <div class="ticket rebook-price-ticket">
+          <div class="price-row">
+            <span class="rebook-price-caption">Đơn giá</span>
+            <div class="price-row" style="gap:6px;">
+              <span class="price" id="rbPrice" contenteditable="true" data-blur-action="onPriceEdit" data-action="focusPriceEdit" data-args='["rbPrice"]' style="cursor:pointer;" title="Nhấp để sửa giá vé">280.000đ</span>
+              <button type="button" class="btn-icon-edit-price" data-action="focusPriceEdit" data-args='["rbPrice"]' style="background:none; border:none; padding:2px; cursor:pointer; display:flex; align-items:center; color:var(--text-sub);" title="Sửa giá vé">
+                <svg class="edit-price" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="zero-price-reason" id="rbZeroPriceReasonWrap" style="display:none;">
+            <label for="rbZeroPriceReason">Lý do giá 0đ <span style="color:var(--red);">*</span></label>
+            <input type="text" id="rbZeroPriceReason" placeholder="VD: Vé mời, khách nội bộ...">
+          </div>
+
+          <div class="ticket-dash"></div>
+
+          <div class="kv">
+            <span>Tổng cộng</span>
+            <span id="rbTotalPrice" class="rebook-total-value">0đ</span>
+          </div>
+
+          <div class="ticket-dash"></div>
+
+          <div class="deposit-block">
+            <label class="checkbox-inline">
+              <input type="checkbox" id="rbDepositEnabled" data-change-action="onDepositToggle">
+              Đặt cọc
+            </label>
+            <span id="rbDepositHint" class="rebook-deposit-hint"></span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1926,27 +1864,18 @@
   </div>
 </div>
 
-<!-- ============ MODAL: In vé trung chuyển (tab Trung chuyển, role trung chuyển) — port từ shuttle.html
-     #printTicketModal, đổi tiền tố id thành ts để không trùng ============ -->
-<div class="modal-overlay" id="tsPrintTicketModal">
-  <div class="modal modal-wide" style="width: 720px; max-width: 95vw;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-gray); padding-bottom: 10px;">
-      <h3 style="margin: 0; font-size: 16px;">In Vé / Phơi Trung Chuyển Cho Tài Xế</h3>
-      <button type="button" class="btn btn-secondary" data-action="closeModal" data-args='["tsPrintTicketModal"]' style="padding: 4px 10px; font-size: 12px;">✕ Đóng</button>
+<!-- ===== MODAL: IN RƯỚC THEO PHƠI XE (nút "In rước", role trung chuyển) — lưu sẽ chèn 1 dòng phân cách
+     đỏ "+++++ giờ +++++" lên đầu bảng gộp, xem pkSavePrintRuoc() ===== -->
+<div class="modal-overlay" id="pkPrintRuocModal">
+  <div class="modal" style="max-width:380px;">
+    <h3>In rước</h3>
+    <div class="form-field">
+      <label>Giờ</label>
+      <input type="text" id="pkPrintRuocTimeInput" placeholder="VD: 14:30">
     </div>
-
-    <div class="print-ticket-wrapper" id="tsPrintTicketContainer"></div>
-
-    <div class="modal-actions" style="margin-top: 16px; border-top: 1px solid var(--surface); padding-top: 12px;">
-      <button class="btn btn-secondary" data-action="closeModal" data-args='["tsPrintTicketModal"]'>Bỏ qua</button>
-      <button class="btn btn-primary" data-action="tsTriggerPrintTicket">
-        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width: 14px; height: 14px; margin-right: 4px;">
-          <polyline points="6 9 6 2 18 2 18 9"></polyline>
-          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-          <rect x="6" y="14" width="12" height="8"></rect>
-        </svg>
-        In vé trung chuyển
-      </button>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="closeModal" data-args='["pkPrintRuocModal"]'>Đóng</button>
+      <button class="btn btn-primary" data-action="pkSavePrintRuoc">Lưu</button>
     </div>
   </div>
 </div>
@@ -2003,24 +1932,25 @@
     <div class="modal-body">
       <form id="singleForm" data-submit-action="saveSingleTrip" data-args='["__event__"]'>
         <input type="hidden" id="editTripId">
+        <input type="hidden" id="tripResolvedRoute">
         <div class="modal-row">
           <div class="form-group flex-1">
             <label for="tripDirection">Hướng đi <span class="required">*</span></label>
             <select id="tripDirection" required data-change-action="onTripDirectionChange">
-              <option value="">-- Chọn hướng tuyến --</option>
+              <option value="">-- Chọn hướng --</option>
             </select>
           </div>
         </div>
         <div class="modal-row">
           <div class="form-group flex-1">
             <label for="tripFromStation">Trạm đi <span class="required">*</span></label>
-            <select id="tripFromStation" required data-change-action="updateSingleTripNameSuggestion">
+            <select id="tripFromStation" required data-change-action="onTripStationChange">
               <option value="">-- Chọn hướng đi trước --</option>
             </select>
           </div>
           <div class="form-group flex-1">
             <label for="tripToStation">Trạm đến <span class="required">*</span></label>
-            <select id="tripToStation" required data-change-action="updateSingleTripNameSuggestion">
+            <select id="tripToStation" required data-change-action="onTripStationChange">
               <option value="">-- Chọn hướng đi trước --</option>
             </select>
           </div>
@@ -2096,35 +2026,35 @@
 <div class="seat-menu" id="seatMenu"></div>
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg><span id="toastText"></span></div>
 
-<script src="../shared/js/storage-keys.js?v=7"></script>
+<script src="../shared/js/storage-keys.js?v=8"></script>
 <script src="../shared/js/format.js?v=9"></script>
-<script src="../shared/js/constants.js?v=4"></script>
-<script src="../data/sample-seat-pool.js?v=1"></script>
-<script src="../data/sample-customer-history.js?v=1"></script>
-<script src="../data/sample-trip-templates.js?v=1"></script>
+<script src="../shared/js/constants.js?v=5"></script>
+<script src="../data/sample-seat-pool.js?v=3"></script>
+<script src="../data/sample-customer-history.js?v=3"></script>
+<script src="../data/sample-trip-templates.js?v=3"></script>
 <script src="../shared/js/seat-bank.js?v=3"></script>
 <script src="../auth/session.js?v=1"></script>
 <script src="../auth/permissions.js?v=1"></script>
-<script src="../shared/js/fleet-store.js?v=5"></script>
+<script src="../shared/js/fleet-store.js?v=11"></script>
 <script src="../services/trip-service.js?v=1"></script>
 <script src="../services/pickup-service.js?v=2"></script>
 <script src="../services/shuttle-driver-service.js?v=1"></script>
-<script src="../shared/js/ui.js?v=13"></script>
+<script src="../shared/js/ui.js?v=16"></script>
 <!-- booking.js (2028 dòng) tách theo banner: history → combobox → rebook+misc.
      NẠP ĐÚNG THỨ TỰ; các mảnh dùng chung biến/hàm global như khi còn 1 file.
      Xem ../shared/js/README-booking.md. -->
-<script src="../shared/js/booking.js?v=51"></script>
-<script src="../shared/js/booking-combobox.js?v=1"></script>
-<script src="../shared/js/booking-rebook.js?v=3"></script>
+<script src="../shared/js/booking.js?v=53"></script>
+<script src="../shared/js/booking-combobox.js?v=3"></script>
+<script src="../shared/js/booking-rebook.js?v=8"></script>
 <!-- ticketstaff.js (5264 dòng) tách theo banner: phần chính (đặt vé/ghế/phơi) →
      tài khoản+tìm lịch sử → rước liền. NẠP ĐÚNG THỨ TỰ, TRƯỚC manifest-*.js.
      Xem ticketstaff/README.md. Chỉ cắt được ≥ dòng 3543 (lệnh top-level 980–985
      gọi hàm định nghĩa tận 1939 & 3543 nhờ hoisting). -->
-<script src="ticketstaff/ticketstaff.js?v=121"></script>
-<script src="ticketstaff/ticketstaff-account.js?v=2"></script>
-<script src="ticketstaff/ticketstaff-pickup.js?v=9"></script>
-<script src="ticketstaff/ticketstaff-manifest-core.js?v=6"></script>
-<script src="ticketstaff/ticketstaff-manifest-ui.js?v=38"></script>
-<script src="../shared/js/events.js?v=2"></script>
+<script src="ticketstaff/ticketstaff.js?v=137"></script>
+<script src="ticketstaff/ticketstaff-account.js?v=3"></script>
+<script src="ticketstaff/ticketstaff-pickup.js?v=16"></script>
+<script src="ticketstaff/ticketstaff-manifest-core.js?v=7"></script>
+<script src="ticketstaff/ticketstaff-manifest-ui.js?v=39"></script>
+<script src="../shared/js/events.js?v=3"></script>
 </body>
 </html>

@@ -34,6 +34,6 @@ const VEHICLE_TYPE_SEATS = {
   "Ghế ngồi 45 chỗ": 45
 };
 
-const DEFAULT_STAFF_STATION = 'Trạm Kinh Dương Vương'; // Trạm đi mặc định theo nhân viên trạm đang đăng nhập
+const DEFAULT_STAFF_STATION = '508 Kinh Dương Vương'; // Trạm đi mặc định theo nhân viên trạm đang đăng nhập
 const DEFAULT_SUB_SEAT_PRICE = 280000;
 const OCCUPIED_STATES = ['sold', 'hold', 'cargo', 'free'];

@@ -288,7 +288,7 @@ function openRebookFromHistory(idx) {
     setVal('rbGuestType', guestType);
     onRebookGuestTypeChange();
 
-    setSelectOptionValue('rbFirstStop', r.firstStop || 'Trạm Kinh Dương Vương');
+    setSelectOptionValue('rbFirstStop', r.firstStop || '508 Kinh Dương Vương');
     // Cùng công thức fallback với getHistoryStopsDisplay() — giữ nhất quán giữa thông tin hiển thị ở
     // danh sách lịch sử và thông tin điền sẵn vào form đặt lại vé (trước đây thiếu transshipStation/
     // fromTransfer nên có trường hợp danh sách hiện thông tin nhưng form đặt lại vé lại trống).
@@ -306,11 +306,25 @@ function openRebookFromHistory(idx) {
     const luggageEl = document.getElementById('rbLuggage');
     if (luggageEl) luggageEl.checked = !!r.hasLuggage;
 
+    // Reset cọc mỗi lần mở lại modal — tránh giữ số tiền/tick cọc của lần đặt lại vé trước đó.
+    const depositEl = document.getElementById('rbDepositEnabled');
+    if (depositEl) depositEl.checked = false;
+    const depositAmountEl = document.getElementById('f_deposit_amount');
+    if (depositAmountEl) depositAmountEl.value = '';
+    if (typeof updateRebookDepositHint === 'function') updateRebookDepositHint();
+
+    const zeroReasonEl = document.getElementById('rbZeroPriceReason');
+    if (zeroReasonEl) zeroReasonEl.value = '';
+
     const subEl = document.getElementById('rbSubtitle');
     if (subEl) subEl.textContent = `Đặt lại từ vé cũ: ${r.route} (${r.time}) — Ghế ${r.seat}`;
 
     rebookSelectedSeats = [];
     rebookSelectedTripId = null;
+    // Reset giá vé về mặc định SAU KHI đã xoá rebookSelectedTripId ở trên — chưa chọn phơi nào nên chưa
+    // có giá thật, sẽ được updateRebookPricePreview() ghi đè đúng giá của phơi ngay khi nhân viên chọn
+    // phơi bên dưới (selectRebookTrip()). Gọi trước đó sẽ lỡ lấy nhầm giá của phơi ở lần đặt lại trước.
+    if (typeof updateRebookPricePreview === 'function') updateRebookPricePreview();
     rbSelectedDateStr = rbTodayStr();
     rbCalDate = new Date();
     rbUpdateCalTrigger();
@@ -348,25 +362,6 @@ function openSeatMenu(ev, seat) {
   menu.style.left = (window.scrollX + rect.left) + 'px';
   menu.classList.add('open');
   ev.stopPropagation();
-}
-
-function openSubSeatModal(code) {
-  editingSubSeatCode = code || null;
-  const titleEl = document.getElementById('subSeatModalTitle');
-  const noteEl = document.getElementById('subSeatNote');
-  const priceDisplayEl = document.getElementById('subSeatPriceDisplay');
-  if (editingSubSeatCode) {
-    const seat = subSeats.find(s => s.code === editingSubSeatCode);
-    if (!seat) return;
-    if (titleEl) titleEl.textContent = `Sửa ghế phụ ${seat.code}`;
-    if (noteEl) noteEl.value = seat.note || '';
-    if (priceDisplayEl) priceDisplayEl.textContent = (seat.price || DEFAULT_SUB_SEAT_PRICE).toLocaleString('vi-VN') + 'đ';
-  } else {
-    if (titleEl) titleEl.textContent = 'Thêm ghế phụ';
-    if (noteEl) noteEl.value = '';
-    if (priceDisplayEl) priceDisplayEl.textContent = DEFAULT_SUB_SEAT_PRICE.toLocaleString('vi-VN') + 'đ';
-  }
-  document.getElementById('subSeatModal').classList.add('open');
 }
 
 function renderCancelledSeats() {

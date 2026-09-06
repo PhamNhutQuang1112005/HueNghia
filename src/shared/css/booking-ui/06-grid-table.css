@@ -301,7 +301,8 @@ textarea:focus {
 
 .cols-3 .seat-card {
   padding: 5px 6px;
-  height: 215px;
+  min-height: 215px;
+  height: auto;
 }
 
 .cols-3 .seat-code {
@@ -311,6 +312,11 @@ textarea:focus {
 .cols-3 .seat-price-tag {
   font-size: 11px;
   padding: 1.5px 6px;
+}
+
+.cols-3 .seat-deposit-tag {
+  font-size: 10px;
+  padding: 1.5px 5px;
 }
 
 .cols-3 .seat-line {
@@ -359,14 +365,8 @@ textarea:focus {
   font-size: 11px;
 }
 
-/* GHẾ PHỤ (SUB SEATS) */
-.seat-card.sub {
-  background: var(--white);
-  border: 2px solid var(--black);
-  cursor: pointer;
-  height: 200px;
-}
-
+/* GHẾ PHỤ (SUB SEATS) — bản thân ô ghế phụ (trống/đã bán) giờ render bằng seatCard() dùng chung với
+   ghế thường (xem renderSubSeats() ở shared/booking-rebook.js), chỉ còn riêng ô "+" bên dưới. */
 .seat-card.sub-add {
   align-items: center;
   justify-content: center;
@@ -376,7 +376,6 @@ textarea:focus {
   height: 200px;
 }
 
-.cols-3 .seat-card.sub,
 .cols-3 .seat-card.sub-add {
   height: 215px;
 }
@@ -439,11 +438,25 @@ textarea:focus {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
+  padding: 12px;
   background: white;
 }
 
 #subSeatsList.cols-3 {
   grid-template-columns: repeat(6, 1fr);
+}
+
+#subSeatsList .seat-card {
+  width: 100%;
+}
+
+/* Ghế phụ ĐÃ BÁN vẫn có nút "Hủy" hiện khi rê chuột (như ghế thường) nhưng KHÔNG ẩn giá tiền đi cùng
+   lúc — huỷ riêng rule .seat-card:hover .seat-price-tag{display:none} trong phạm vi danh sách ghế
+   phụ, giữ giá luôn hiện kể cả khi đang rê chuột qua thẻ (đã có tiền lệ .ch-seat-card-item ở
+   10-customer-history-seatmap.css). Loại trừ .empty vì ô ghế phụ TRỐNG vốn không có giá (thẻ giá
+   rỗng, xem seatCard()) — không loại trừ thì rê chuột lại vô tình hiện cái thẻ rỗng đó lên. */
+#subSeatsList .seat-card:not(.empty):hover .seat-price-tag {
+  display: block;
 }
 
 ::-webkit-scrollbar {
