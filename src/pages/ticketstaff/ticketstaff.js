@@ -295,6 +295,60 @@ if (!savedBank) {
   cancelledSeats = tripSeatBank['1'].cancelledSeats || [];
 }
 
+// ĐỒNG BỘ ticketSeq VỚI SEAT BANK ĐÃ LƯU. `ticketSeq` luôn reset về 1 mỗi lần tải trang rồi bị đoạn
+// sinh ghế mẫu đẩy lên ~20. Nếu seat bank (localStorage) đã có vé của phiên trước với số vé "SGCD-00xx"
+// nằm trong khoảng đó thì vé ĐẶT/BÁN MỚI sẽ TRÙNG số vé với vé cũ → buildTicketGroupMap() gộp nhầm 2 vé
+// KHÔNG liên quan thành 1 "nhóm" (hiện số ghế của nhau, sửa/cọc 1 vé kéo theo vé kia) dù không hề đặt
+// vé nhóm. Kéo ticketSeq vượt qua số vé lớn nhất đang có để số vé mới luôn duy nhất.
+function reseedTicketSeqFromBank() {
+  let maxNo = 0;
+  Object.keys(tripSeatBank).forEach(tid => {
+    const bank = tripSeatBank[tid];
+    if (!bank) return;
+    [].concat(bank.down || [], bank.up || [], bank.subSeats || [], bank.extraSeats || []).forEach(s => {
+      const m = s && s.ticketNo != null && String(s.ticketNo).match(/(\d+)\s*$/);
+      if (m) { const n = parseInt(m[1], 10); if (n > maxNo) maxNo = n; }
+    });
+  });
+  if (maxNo + 1 > ticketSeq) ticketSeq = maxNo + 1;
+}
+reseedTicketSeqFromBank();
+
+// Sửa DỮ LIỆU CŨ đã dính lỗi trùng số vé: trong 1 nhóm cùng ticketNo mà có ghế của KHÁCH KHÁC NHAU
+// (tên + SĐT khác) → tách mỗi khách thành 1 số vé riêng. Vé đặt nhóm thật (mọi ghế cùng 1 khách) giữ y.
+function splitAccidentalTicketGroups() {
+  const OCC = ['sold', 'hold', 'free', 'cargo'];
+  const custKey = s => (s.customerName || '').trim().toLowerCase() + '|' + String(s.phone || '').replace(/[\s.\-]/g, '');
+  let changed = false;
+  Object.keys(tripSeatBank).forEach(tid => {
+    const bank = tripSeatBank[tid];
+    if (!bank) return;
+    const byTicket = new Map();
+    [].concat(bank.down || [], bank.up || [], bank.subSeats || [], bank.extraSeats || []).forEach(s => {
+      if (!s || !s.ticketNo || OCC.indexOf(s.state) === -1) return;
+      if (!byTicket.has(s.ticketNo)) byTicket.set(s.ticketNo, []);
+      byTicket.get(s.ticketNo).push(s);
+    });
+    byTicket.forEach((members, tno) => {
+      if (members.length < 2) return;
+      const groups = new Map();
+      members.forEach(s => {
+        const k = custKey(s);
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(s);
+      });
+      if (groups.size < 2) return; // cùng 1 khách → vé nhóm thật, giữ nguyên
+      Array.from(groups.values()).forEach((g, i) => {
+        const no = i === 0 ? tno : ('SGCD-' + String(ticketSeq++).padStart(4, '0'));
+        g.forEach(s => { s.ticketNo = no; s.count = g.length; });
+      });
+      changed = true;
+    });
+  });
+  if (changed) { try { saveSeatBank(); } catch (e) {} }
+}
+splitAccidentalTicketGroups();
+
 let currentTripId = '1';
 let zone1HourFilter = 'all'; // lọc zone1 theo giờ (dropdown #zone1HourFilter) — khai báo sớm vì renderSeats() gọi renderZone1TripList() ngay khi script vừa nạp
 let currentView = 'booking'; // 'booking' | 'history' — goToTripFromHistory() (shared/booking.js) đọc biến này để tự chuyển về màn đặt vé khi cần
@@ -323,6 +377,8 @@ window.addEventListener('storage', (e) => {
       Object.keys(newBank).forEach(k => {
         tripSeatBank[k] = newBank[k];
       });
+      // Tab khác vừa đặt/bán thêm vé → kéo ticketSeq vượt qua số vé mới nhất để tab này không sinh trùng.
+      reseedTicketSeqFromBank();
       if (tripSeatBank[currentTripId]) {
         seatPlanDown = tripSeatBank[currentTripId].down;
         seatPlanUp = tripSeatBank[currentTripId].up;
@@ -1971,14 +2027,21 @@ function saveTicket() {
   if (!seatsTarget.length) { closePanel(); return; }
 
   if (currentPanelMode === 'edit' && currentPanelSeat) {
-    const seat = currentPanelSeat;
-    applyFormToSeat(seat);
-    syncDepositToTicketGroup(seat);
+    const anchor = currentPanelSeat;
+    // Sửa 1 vé thuộc VÉ NHÓM → áp dụng thông tin form cho MỌI ghế cùng số vé (ticketNo), không chỉ ghế
+    // đang mở. Giữ nguyên field riêng của từng ghế (mã ghế / trạng thái / khoá — applyFormToSeat không
+    // đụng tới). Vé lẻ (ticketNo rỗng hoặc chỉ 1 ghế mang số vé đó) → chỉ sửa đúng ghế đó.
+    const pool = [...seatPlanDown, ...seatPlanUp, ...extraLeftoverSeats, ...subSeats];
+    const groupSeats = anchor.ticketNo ? pool.filter(s => s.ticketNo === anchor.ticketNo) : [];
+    const targets = groupSeats.length ? groupSeats : [anchor];
+    targets.forEach(s => { applyFormToSeat(s); s.count = targets.length; });
     renderSeats();
     saveSeatBank();
     if (document.getElementById('zone3Passengers').style.display !== 'none') renderPassengerList();
     closePanel();
-    showToast(`Đã cập nhật thông tin ghế ${seat.code}`);
+    showToast(targets.length > 1
+      ? `Đã cập nhật ${targets.length} vé trong nhóm (${targets.map(s => s.code).join(', ')})`
+      : `Đã cập nhật thông tin ghế ${anchor.code}`);
     return;
   }
 
